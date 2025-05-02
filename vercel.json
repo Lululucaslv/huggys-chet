@@ -1,9 +1,8 @@
 {
-    "rewrites": [
-      {
-        "source": "/api/chat",
-        "destination": "https://rdnhvrpkplkgycxrgrta.functions.supabase.co/chat"
-      }
-    ]
-  }
-  
+  "rewrites": [
+    {
+      "source": "/api/chat",
+      "destination": "https://rdnhvrpkplkgycxrgrta.functions.supabase.co/functions/v1/handle-text-chat"
+    }
+  ]
+}
