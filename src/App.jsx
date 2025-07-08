@@ -5,7 +5,7 @@ import BookingForm from './components/BookingForm'
 import TherapistDashboard from './components/TherapistDashboard'
 import AuthForm from './components/AuthForm'
 import { sendMessage, logChatMessage } from './utils/api'
-import './App.css'
+import './index.css'
 
 function App() {
   const [messages, setMessages] = useState([])
