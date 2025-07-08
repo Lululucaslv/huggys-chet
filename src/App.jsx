@@ -1,96 +1,248 @@
-import React, { useState, useCallback } from "react";
-import ChatBox from "./ChatBox";
-import InputArea from "./InputArea";
-import AudioPlayer from "./AudioPlayer";
-import { sendChat } from "./utils/api";
-import { getUserIdFromUrl } from "./utils/user";
+import { useState, useRef, useEffect } from 'react'
+import ChatBox from './ChatBox'
+import InputArea from './InputArea'
+import BookingForm from './components/BookingForm'
+import TherapistDashboard from './components/TherapistDashboard'
+import AuthForm from './components/AuthForm'
+import { sendMessage, logChatMessage } from './utils/api'
+import './App.css'
 
-const App = () => {
-  const userId = getUserIdFromUrl();
+function App() {
+  const [messages, setMessages] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentView, setCurrentView] = useState('chat')
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const chatBoxRef = useRef(null)
 
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [imagePreview, setImagePreview] = useState(null);
-  const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
 
-  // 时间格式化函数
-  const getCurrentTime = () =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const checkAuthStatus = async () => {
+    const token = localStorage.getItem('auth_token');
+    const userData = localStorage.getItem('user_data');
+    
+    if (token && userData) {
+      try {
+        const response = await fetch('/api/auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        } else {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+      }
+    }
+    
+    setAuthLoading(false);
+  };
 
-  // 处理消息发送
-  const handleSend = useCallback(async () => {
-    if (loading || (!input && !imagePreview)) return;
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+  };
 
-    const time = getCurrentTime();
-    const newMsg = {
-      role: "user",
-      content: input,
-      imageBase64: imagePreview,
-      time,
-    };
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+    setUser(null);
+    setCurrentView('chat');
+  };
 
-    setMessages((prev) => [...prev, newMsg]);
-    setInput("");
-    setImagePreview(null);
-    setLoading(true);
+  const handleSendMessage = async (content, isVision = false) => {
+    const userMessage = { role: 'user', content }
+    const newMessages = [...messages, userMessage]
+    setMessages(newMessages)
+    setIsLoading(true)
 
     try {
-      const res = await sendChat({ userId, messages: [...messages, newMsg] });
-
-      const reply = res?.reply;
-      if (reply && reply.content) {
-        setMessages((prev) => [
-          ...prev,
-          { ...reply, time: getCurrentTime() },
-        ]);
-        setPlaying(true);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: "AI 未能返回有效内容，请稍后再试。",
-            time: getCurrentTime(),
-          },
-        ]);
-      }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "网络错误，请稍后重试。",
-          time: getCurrentTime(),
-        },
-      ]);
-    } finally {
-      setLoading(false);
+      await logChatMessage(content, 'USER', user?.id || 'anonymous')
+    } catch (error) {
+      console.error('Error logging user message:', error)
     }
-  }, [input, imagePreview, messages, userId, loading]);
 
-  return (
-    <div className="flex flex-col h-screen max-h-screen bg-gray-100">
-      <ChatBox messages={messages} userId={userId} />
-      <InputArea
-        input={input}
-        setInput={setInput}
-        onSend={handleSend}
-        onImage={setImagePreview}
-        imagePreview={imagePreview}
-        onRemoveImage={() => setImagePreview(null)}
-        onVoice={setInput}
-        loading={loading}
-      />
-      {messages.length > 0 &&
-        messages[messages.length - 1].role === "assistant" && (
-          <AudioPlayer
-            text={messages[messages.length - 1].content}
-            play={playing}
-          />
-        )}
+    try {
+      const response = await sendMessage(newMessages, isVision)
+      
+      if (!response.body) {
+        throw new Error('No response body')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      
+      const assistantMessage = { role: 'assistant', content: '' }
+      setMessages(prev => [...prev, assistantMessage])
+
+      let assistantContent = ''
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) {
+          if (assistantContent.trim()) {
+            try {
+              await logChatMessage(assistantContent.trim(), 'AI', user?.id || 'anonymous')
+            } catch (error) {
+              console.error('Error logging AI message:', error);
+            }
+          }
+          break;
+        }
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            
+            if (data === '[DONE]') {
+              setIsLoading(false)
+              return
+            }
+            
+            try {
+              const parsed = JSON.parse(data)
+              const content = parsed.choices?.[0]?.delta?.content
+              
+              if (content) {
+                assistantContent += content
+                setMessages(prev => {
+                  const newMessages = [...prev]
+                  newMessages[newMessages.length - 1] = {
+                    role: 'assistant',
+                    content: assistantContent
+                  }
+                  return newMessages
+                })
+              }
+            } catch (e) {
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: '抱歉，发生了一些错误。请稍后再试。' 
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  const renderNavigation = () => (
+    <div className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-4">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setCurrentView('chat')}
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                currentView === 'chat'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              AI 聊天
+            </button>
+            
+            {user.role === 'CLIENT' && (
+              <button
+                onClick={() => setCurrentView('booking')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'booking'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                预约咨询
+              </button>
+            )}
+            
+            {user.role === 'THERAPIST' && (
+              <button
+                onClick={() => setCurrentView('therapist')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'therapist'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                工作台
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              {user.name} ({user.role === 'CLIENT' ? '来访者' : '心理师'})
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-red-600 hover:text-red-800"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
 
-export default App;
+  const renderContent = () => {
+    switch (currentView) {
+      case 'booking':
+        return <BookingForm user={user} onBookingCreated={() => setCurrentView('chat')} />;
+      case 'therapist':
+        return <TherapistDashboard user={user} />;
+      default:
+        return (
+          <div className="chat-container">
+            <ChatBox 
+              ref={chatBoxRef}
+              messages={messages} 
+              isLoading={isLoading}
+            />
+            <InputArea 
+              onSendMessage={handleSendMessage}
+              disabled={isLoading}
+            />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="app">
+      {renderNavigation()}
+      {renderContent()}
+    </div>
+  )
+}
+
+export default App

@@ -1,32 +1,130 @@
-export async function sendChat({ userId, messages }) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15 秒超时保护
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://huggy-fullscreen-chat.vercel.app/api'
+  : '/api';
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, message: messages[messages.length - 1]?.content }),
-      signal: controller.signal,
-    });
+export const sendMessage = async (messages, isVision = false) => {
+  const response = await fetch(`${API_BASE_URL}/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      stream: true,
+      isVision
+    }),
+  });
 
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("GPT 接口返回错误：", errorText);
-      throw new Error("服务器错误，请稍后重试");
-    }
-
-    const data = await res.json();
-    return {
-      reply: {
-        role: "assistant",
-        content: data.response
-      }
-    };
-  } catch (err) {
-    console.error("发送 GPT 消息失败：", err);
-    throw new Error("连接 GPT 接口失败");
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
-}
+
+  return response;
+};
+
+export const createBooking = async (bookingData) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/bookings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(bookingData),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const getBookings = async (params = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const queryString = new URLSearchParams(params).toString();
+  const response = await fetch(`${API_BASE_URL}/bookings?${queryString}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const getTherapists = async () => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/therapists`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const getSummary = async (bookingId) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/summary-generator?bookingId=${bookingId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const logChatMessage = async (message, sender, userId) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/chat-logger`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      message,
+      sender,
+      userId
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const getBookingAssistance = async (message, context = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/ai-booking-assistant`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      message,
+      context
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
