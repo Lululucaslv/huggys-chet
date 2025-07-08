@@ -56,6 +56,21 @@ export const getBookings = async (params = {}) => {
   return response.json();
 };
 
+export const validateTherapistCode = async (code) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/therapists/validate?code=${code}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export const getTherapists = async () => {
   const token = localStorage.getItem('auth_token');
   const response = await fetch(`${API_BASE_URL}/therapists`, {

@@ -13,6 +13,7 @@ function App() {
   const [currentView, setCurrentView] = useState('chat')
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [bookingData, setBookingData] = useState(null)
   const chatBoxRef = useRef(null)
 
   useEffect(() => {
@@ -160,41 +161,32 @@ function App() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex space-x-8">
-            <button
-              onClick={() => setCurrentView('chat')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                currentView === 'chat'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              AI 聊天
-            </button>
-            
-            {user.role === 'CLIENT' && (
-              <button
-                onClick={() => setCurrentView('booking')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  currentView === 'booking'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                预约咨询
-              </button>
-            )}
-            
             {user.role === 'THERAPIST' && (
-              <button
-                onClick={() => setCurrentView('therapist')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  currentView === 'therapist'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                工作台
-              </button>
+              <>
+                <button
+                  onClick={() => setCurrentView('chat')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentView === 'chat'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  AI 聊天
+                </button>
+                <button
+                  onClick={() => setCurrentView('therapist')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentView === 'therapist'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  工作台
+                </button>
+              </>
+            )}
+            {user.role === 'CLIENT' && (
+              <h1 className="text-xl font-semibold text-gray-800">More Than Hugs - 心理咨询平台</h1>
             )}
           </div>
           
@@ -215,25 +207,58 @@ function App() {
   );
 
   const renderContent = () => {
-    switch (currentView) {
-      case 'booking':
-        return <BookingForm user={user} onBookingCreated={() => setCurrentView('chat')} />;
-      case 'therapist':
-        return <TherapistDashboard user={user} />;
-      default:
-        return (
-          <div className="chat-container">
-            <ChatBox 
-              ref={chatBoxRef}
-              messages={messages} 
-              isLoading={isLoading}
-            />
-            <InputArea 
-              onSendMessage={handleSendMessage}
-              disabled={isLoading}
+    if (user.role === 'THERAPIST') {
+      switch (currentView) {
+        case 'therapist':
+          return <TherapistDashboard user={user} />;
+        default:
+          return (
+            <div className="chat-container">
+              <ChatBox 
+                ref={chatBoxRef}
+                messages={messages} 
+                isLoading={isLoading}
+              />
+              <InputArea 
+                onSendMessage={handleSendMessage}
+                disabled={isLoading}
+              />
+            </div>
+          );
+      }
+    } else {
+      return (
+        <div className="flex h-screen">
+          <div className="w-1/2 border-r border-gray-200">
+            <div className="p-4 bg-gray-50 border-b">
+              <h2 className="text-lg font-semibold">AI 聊天助手</h2>
+            </div>
+            <div className="chat-container h-full">
+              <ChatBox 
+                ref={chatBoxRef}
+                messages={messages} 
+                isLoading={isLoading}
+              />
+              <InputArea 
+                onSendMessage={handleSendMessage}
+                disabled={isLoading}
+                onBookingRequest={(data) => setBookingData(data)}
+              />
+            </div>
+          </div>
+          <div className="w-1/2">
+            <div className="p-4 bg-gray-50 border-b">
+              <h2 className="text-lg font-semibold">预约咨询</h2>
+            </div>
+            <BookingForm 
+              user={user} 
+              onBookingCreated={() => setCurrentView('chat')}
+              bookingData={bookingData}
+              onBookingDataChange={setBookingData}
             />
           </div>
-        );
+        </div>
+      );
     }
   };
 

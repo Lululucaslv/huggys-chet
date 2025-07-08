@@ -29,7 +29,8 @@ export default async function handler(req, res) {
     
     return res.status(200).json({
       success: true,
-      response: aiResponse,
+      response: aiResponse.content || aiResponse,
+      actions: aiResponse.actions || [],
       suggestions: await getBookingSuggestions(user)
     });
 
@@ -46,21 +47,38 @@ async function generateBookingAssistance(message, context, user) {
     throw new Error('OpenAI API key not configured');
   }
 
-  const systemPrompt = `你是More Than Hugs心理咨询平台的AI预约助手。你的任务是帮助${user.role === 'CLIENT' ? '来访者' : '心理师'}处理预约相关的问题。
+  const systemPrompt = `你是More Than Hugs心理咨询平台的AI预约助手。你的任务是帮助来访者完成预约流程。
+
+重要信息：
+- 用户需要输入咨询师代码来选择咨询师，而不是从列表中选择
+- 可用的咨询师代码：
+  * LI2024（李心理师-焦虑症治疗）
+  * WANG2024（王心理师-家庭关系）  
+  * ZHANG2024（张心理师-职场压力）
+- 你可以直接帮用户填写预约信息
 
 用户信息:
 - 姓名: ${user.name}
-- 角色: ${user.role === 'CLIENT' ? '来访者' : '心理师'}
 - 邮箱: ${user.email}
 
-你可以帮助:
-1. 解答预约流程问题
-2. 推荐合适的心理师
+当用户询问预约相关问题时，你应该：
+1. 解释咨询师代码系统
+2. 根据用户需求推荐合适的咨询师代码
 3. 协助选择预约时间
-4. 解释咨询服务内容
-5. 处理预约变更请求
+4. 如果用户同意，可以直接帮他们填写信息
 
-请用温暖、专业的语调回应，并提供具体的帮助建议。`;
+如果你要帮用户填写信息，请在回复中包含JSON格式的actions数组：
+{
+  "actions": [
+    {
+      "type": "setTherapistCode",
+      "code": "LI2024",
+      "label": "填入李心理师代码"
+    }
+  ]
+}
+
+请用温暖、专业的语调回应。`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -74,7 +92,7 @@ async function generateBookingAssistance(message, context, user) {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      max_tokens: 500,
+      max_tokens: 600,
       temperature: 0.7
     })
   });
@@ -84,7 +102,21 @@ async function generateBookingAssistance(message, context, user) {
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  const content = data.choices[0].message.content;
+  
+  let actions = [];
+  try {
+    const actionMatch = content.match(/\{[\s\S]*"actions"[\s\S]*\}/);
+    if (actionMatch) {
+      const actionData = JSON.parse(actionMatch[0]);
+      actions = actionData.actions || [];
+    }
+  } catch (e) {
+  }
+
+  const cleanContent = content.replace(/\{[\s\S]*"actions"[\s\S]*\}/, '').trim();
+  
+  return { content: cleanContent, actions };
 }
 
 async function getBookingSuggestions(user) {
