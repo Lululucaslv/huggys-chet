@@ -1,7 +1,6 @@
 {
   "name": "trae-chat",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:api": "node dev-server.js",
