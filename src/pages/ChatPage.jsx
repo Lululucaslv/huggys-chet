@@ -69,7 +69,6 @@ export default function ChatPage({ user, messages, isLoading, handleSendMessage,
         <InputArea 
           onSendMessage={handleSendMessage}
           disabled={isLoading}
-          onBookingRequest={handleBookingRequest}
         />
       </div>
     </div>

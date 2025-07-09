@@ -1,15 +1,9 @@
 import { useState, useRef } from 'react'
 
-export default function InputArea({ onSendMessage, disabled, onBookingRequest }) {
+export default function InputArea({ onSendMessage, disabled }) {
   const [message, setMessage] = useState('')
   const [isVision, setIsVision] = useState(false)
   const fileInputRef = useRef(null)
-
-  const handleBookingTrigger = () => {
-    if (onBookingRequest) {
-      onBookingRequest({ action: 'openBooking' });
-    }
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -59,16 +53,6 @@ export default function InputArea({ onSendMessage, disabled, onBookingRequest })
               }
             }}
           />
-          
-          {onBookingRequest && (
-            <button
-              type="button"
-              onClick={handleBookingTrigger}
-              className="huggy-booking-btn"
-            >
-              预约
-            </button>
-          )}
           
           <button
             type="submit"
