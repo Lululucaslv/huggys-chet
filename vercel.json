@@ -3,6 +3,10 @@
     {
       "source": "/api/chat",
       "destination": "https://rdnhvrpkplkgycxrgrta.functions.supabase.co/functions/v1/handle-text-chat"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
