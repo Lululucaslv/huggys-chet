@@ -35,6 +35,14 @@ export default function BookingAssistant({ user, onBookingAction }) {
         if (response.suggestions) {
           setSuggestions(response.suggestions);
         }
+        
+        if (response.actions && response.actions.length > 0) {
+          response.actions.forEach(action => {
+            if (onBookingAction) {
+              onBookingAction(action);
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error getting booking assistance:', error);
