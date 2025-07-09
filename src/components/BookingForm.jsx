@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createBooking, validateTherapistCode } from '../utils/api';
 import BookingAssistant from './BookingAssistant';
+import { format, parseISO } from 'date-fns';
 
 export default function BookingForm({ onBookingCreated, user, bookingData, onBookingDataChange }) {
   const [therapistCode, setTherapistCode] = useState('');
@@ -59,7 +60,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
     setError('');
 
     try {
-      const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+      const appointmentDateTime = parseISO(`${appointmentDate}T${appointmentTime}`);
       
       const bookingData = {
         therapistId: therapistInfo.id,
@@ -138,7 +139,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
             type="date"
             value={appointmentDate}
             onChange={(e) => setAppointmentDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
+            min={format(new Date(), 'yyyy-MM-dd')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             required
           />
