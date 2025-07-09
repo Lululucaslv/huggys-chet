@@ -1,25 +1,23 @@
 import React from "react";
 
-const MessageBubble = ({ message, isSelf }) => {
+const MessageBubble = ({ message, isSelf, user }) => {
   if (!message) return null;
 
-  const containerClass = `flex mb-3 ${isSelf ? "justify-end" : "justify-start"}`;
-  const bubbleClass = `max-w-xs md:max-w-md break-words rounded-2xl px-4 py-2 shadow ${
-    isSelf
-      ? "bg-blue-500 text-white rounded-br-none"
-      : "bg-white text-gray-900 rounded-bl-none"
-  }`;
+  const isUser = isSelf;
+  const bubbleClass = `huggy-message-bubble ${isUser ? 'user' : ''}`;
 
   return (
-    <div className={containerClass}>
-      {!isSelf && (
-        <img
-          src={message.avatar || "/ai-avatar.png"}
-          alt="AI头像"
-          className="w-8 h-8 rounded-full mr-2 self-end"
-        />
+    <div className={bubbleClass}>
+      {!isUser && (
+        <div className="huggy-avatar">
+          {message.avatar ? (
+            <img src={message.avatar} alt="AI头像" />
+          ) : (
+            '🤗'
+          )}
+        </div>
       )}
-      <div className={bubbleClass}>
+      <div className="huggy-message-text">
         {message.imageBase64 && (
           <img
             src={message.imageBase64}
@@ -30,14 +28,16 @@ const MessageBubble = ({ message, isSelf }) => {
           />
         )}
         {message.content && <span>{message.content}</span>}
-        <div className="text-xs text-gray-400 mt-1 text-right">{message.time}</div>
+        {message.time && <div className="huggy-message-time">{message.time}</div>}
       </div>
-      {isSelf && (
-        <img
-          src={message.avatar || "/user-avatar.png"}
-          alt="用户头像"
-          className="w-8 h-8 rounded-full ml-2 self-end"
-        />
+      {isUser && (
+        <div className="huggy-user-avatar">
+          {message.avatar ? (
+            <img src={message.avatar} alt="用户头像" />
+          ) : (
+            user?.name?.charAt(0) || '用'
+          )}
+        </div>
       )}
     </div>
   );

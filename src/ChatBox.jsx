@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 
-const ChatBox = ({ messages, userId }) => {
+const ChatBox = ({ messages, isLoading, user }) => {
   const chatRef = useRef(null);
 
-  // 自动滚动到底部
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -12,18 +11,26 @@ const ChatBox = ({ messages, userId }) => {
   }, [messages]);
 
   return (
-    <div
-      ref={chatRef}
-      className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg shadow-inner max-w-4xl mx-auto"
-    >
+    <>
       {messages.map((msg, idx) => (
         <MessageBubble
           key={`${msg.role}-${msg.time}-${idx}`}
           message={msg}
           isSelf={msg.role === "user"}
+          user={user}
         />
       ))}
-    </div>
+      {isLoading && (
+        <div className="huggy-typing-indicator">
+          <div className="huggy-avatar">🤗</div>
+          <div className="huggy-typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

@@ -34,60 +34,72 @@ export default function InputArea({ onSendMessage, disabled, onBookingRequest })
   }
 
   return (
-    <div className="p-4 border-t bg-white">
-      <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="输入您的消息..."
-          className="flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          rows="1"
-          disabled={disabled}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleSubmit(e)
-            }
-          }}
-        />
-        
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleImageUpload}
-          accept="image/*"
-          className="hidden"
-        />
-        
-        <div className="flex space-x-2">
+    <div className="huggy-chat-input-container">
+      <form onSubmit={handleSubmit}>
+        <div className="huggy-input-wrapper">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="huggy-image-upload-btn"
           >
             📷
           </button>
+          
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="输入您的消息..."
+            className="huggy-message-input"
+            rows="1"
+            disabled={disabled}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
+          />
+          
           {onBookingRequest && (
             <button
               type="button"
               onClick={handleBookingTrigger}
-              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              className="huggy-booking-btn"
             >
               预约
             </button>
           )}
+          
           <button
             type="submit"
             disabled={disabled || !message.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="huggy-send-button"
           >
-            发送
+            ➤
           </button>
         </div>
       </form>
       
+      <div className="huggy-input-footer">
+        <div className="huggy-privacy-note">
+          <span>🔒</span>
+          <span>安全加密对话</span>
+        </div>
+        <div className="huggy-char-count">
+          {message.length}/2000
+        </div>
+      </div>
+      
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+        accept="image/*"
+        className="hidden"
+      />
+      
       {isVision && (
-        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+        <div className="huggy-image-preview">
           图片已上传，将进行视觉分析
         </div>
       )}
