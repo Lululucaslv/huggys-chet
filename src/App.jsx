@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import ChatBox from './ChatBox'
 import InputArea from './InputArea'
 import BookingForm from './components/BookingForm'
 import TherapistDashboard from './components/TherapistDashboard'
 import AuthForm from './components/AuthForm'
+import ChatPage from './pages/ChatPage'
+import BookingPage from './pages/BookingPage'
 import { sendMessage, logChatMessage } from './utils/api'
 import './index.css'
 
@@ -15,6 +18,8 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [bookingData, setBookingData] = useState(null)
   const chatBoxRef = useRef(null)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     checkAuthStatus();
@@ -186,7 +191,31 @@ function App() {
               </>
             )}
             {user.role === 'CLIENT' && (
-              <h1 className="text-xl font-semibold text-gray-800">More Than Hugs - 心理咨询平台</h1>
+              <>
+                <h1 className="text-xl font-semibold text-gray-800">More Than Hugs - 心理咨询平台</h1>
+                <div className="flex space-x-4 ml-8">
+                  <button
+                    onClick={() => navigate('/chat')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      location.pathname === '/chat'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    AI 聊天
+                  </button>
+                  <button
+                    onClick={() => navigate('/booking')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      location.pathname === '/booking'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    预约咨询
+                  </button>
+                </div>
+              </>
             )}
           </div>
           
@@ -228,44 +257,43 @@ function App() {
       }
     } else {
       return (
-        <div className="flex h-screen">
-          <div className="w-1/2 border-r border-gray-200">
-            <div className="p-4 bg-gray-50 border-b">
-              <h2 className="text-lg font-semibold">AI 聊天助手</h2>
-            </div>
-            <div className="chat-container h-full">
-              <ChatBox 
-                ref={chatBoxRef}
-                messages={messages} 
-                isLoading={isLoading}
-              />
-              <InputArea 
-                onSendMessage={handleSendMessage}
-                disabled={isLoading}
-                onBookingRequest={(data) => setBookingData(data)}
-              />
-            </div>
-          </div>
-          <div className="w-1/2">
-            <div className="p-4 bg-gray-50 border-b">
-              <h2 className="text-lg font-semibold">预约咨询</h2>
-            </div>
-            <BookingForm 
-              user={user} 
-              onBookingCreated={() => setCurrentView('chat')}
-              bookingData={bookingData}
-              onBookingDataChange={setBookingData}
+        <div className="flex-1 flex flex-col">
+          <Routes>
+            <Route 
+              path="/chat" 
+              element={
+                <ChatPage 
+                  user={user}
+                  messages={messages}
+                  isLoading={isLoading}
+                  handleSendMessage={handleSendMessage}
+                  setBookingData={setBookingData}
+                />
+              } 
             />
-          </div>
+            <Route 
+              path="/booking" 
+              element={
+                <BookingPage 
+                  user={user}
+                  bookingData={bookingData}
+                  setBookingData={setBookingData}
+                />
+              } 
+            />
+            <Route path="/" element={<Navigate to="/chat" replace />} />
+          </Routes>
         </div>
       );
     }
   };
 
   return (
-    <div className="app">
+    <div className="app flex flex-col h-screen">
       {renderNavigation()}
-      {renderContent()}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {renderContent()}
+      </div>
     </div>
   )
 }
