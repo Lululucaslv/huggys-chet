@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { createBooking, validateTherapistCode } from '../utils/api';
 import BookingAssistant from './BookingAssistant';
 import { format, parseISO } from 'date-fns';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function BookingForm({ onBookingCreated, user, bookingData, onBookingDataChange }) {
   const [therapistCode, setTherapistCode] = useState('');
   const [therapistInfo, setTherapistInfo] = useState(null);
-  const [appointmentDate, setAppointmentDate] = useState('');
+  const [appointmentDate, setAppointmentDate] = useState(null);
   const [appointmentTime, setAppointmentTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,7 +62,13 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
     setError('');
 
     try {
-      const appointmentDateTime = parseISO(`${appointmentDate}T${appointmentTime}`);
+      if (!appointmentDate) {
+        setError('请选择预约日期');
+        return;
+      }
+      
+      const formattedDate = format(appointmentDate, 'yyyy-MM-dd');
+      const appointmentDateTime = parseISO(`${formattedDate}T${appointmentTime}`);
       
       const bookingData = {
         therapistId: therapistInfo.id,
@@ -81,7 +89,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
         onBookingCreated?.(result.booking);
         setTherapistCode('');
         setTherapistInfo(null);
-        setAppointmentDate('');
+        setAppointmentDate(null);
         setAppointmentTime('');
       } else {
         setError(result.error || '预约失败，请重试');
@@ -135,12 +143,16 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
           <label className="block text-sm font-medium text-gray-700 mb-1">
             预约日期 *
           </label>
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            min={format(new Date(), 'yyyy-MM-dd')}
+          <DatePicker
+            selected={appointmentDate}
+            onChange={(date) => {
+              console.log('DatePicker onChange triggered with date:', date);
+              setAppointmentDate(date);
+            }}
+            dateFormat="yyyy-MM-dd"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholderText="选择预约日期"
+            minDate={new Date()}
             required
           />
         </div>
@@ -172,11 +184,16 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
           <BookingAssistant 
             user={user} 
             onBookingAction={(action) => {
+              console.log('BookingForm: Received booking action:', action);
               if (action.type === 'setTherapistCode') {
                 setTherapistCode(action.code);
                 validateTherapist(action.code);
               } else if (action.type === 'setDateTime') {
-                setAppointmentDate(action.date);
+                console.log('BookingForm: AI Assistant triggered setDateTime action');
+                console.log('BookingForm: AI provided date value:', action.date);
+                console.log('BookingForm: AI provided time value:', action.time);
+                const dateObj = action.date ? parseISO(action.date) : null;
+                setAppointmentDate(dateObj);
                 setAppointmentTime(action.time);
               }
             }}
