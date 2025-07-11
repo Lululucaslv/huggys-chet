@@ -10,6 +10,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
   const [therapistInfo, setTherapistInfo] = useState(null);
   const [appointmentDate, setAppointmentDate] = useState(null);
   const [appointmentTime, setAppointmentTime] = useState('');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAssistant, setShowAssistant] = useState(true);
@@ -53,7 +54,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!therapistInfo || !appointmentDate || !appointmentTime) {
+    if (!therapistInfo || !appointmentDate || !appointmentTime || !timezone) {
       setError('请填写所有必填字段');
       return;
     }
@@ -74,6 +75,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
         therapistId: therapistInfo.id,
         therapistCode: therapistCode,
         appointmentDate: appointmentDateTime.toISOString(),
+        timezone: timezone,
         serviceType: '心理咨询',
         duration: 60,
         clientInfo: {
@@ -91,6 +93,7 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
         setTherapistInfo(null);
         setAppointmentDate(null);
         setAppointmentTime('');
+        setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
       } else {
         setError(result.error || '预约失败，请重试');
       }
@@ -168,6 +171,32 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            时区 *
+          </label>
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            required
+          >
+            <option value="Asia/Shanghai">中国标准时间 (UTC+8)</option>
+            <option value="America/New_York">美国东部时间 (UTC-5/-4)</option>
+            <option value="America/Los_Angeles">美国西部时间 (UTC-8/-7)</option>
+            <option value="Europe/London">英国时间 (UTC+0/+1)</option>
+            <option value="Europe/Paris">欧洲中部时间 (UTC+1/+2)</option>
+            <option value="Asia/Tokyo">日本标准时间 (UTC+9)</option>
+            <option value="Australia/Sydney">澳大利亚东部时间 (UTC+10/+11)</option>
+            <option value="Asia/Singapore">新加坡时间 (UTC+8)</option>
+            <option value="Asia/Hong_Kong">香港时间 (UTC+8)</option>
+            <option value="UTC">协调世界时 (UTC+0)</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            当前选择: {timezone} | 本地时区: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+          </p>
         </div>
 
         <button
