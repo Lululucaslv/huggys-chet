@@ -183,16 +183,34 @@ export default function BookingForm({ onBookingCreated, user, bookingData, onBoo
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             required
           >
-            <option value="Asia/Shanghai">中国标准时间 (UTC+8)</option>
-            <option value="America/New_York">美国东部时间 (UTC-5/-4)</option>
-            <option value="America/Los_Angeles">美国西部时间 (UTC-8/-7)</option>
-            <option value="Europe/London">英国时间 (UTC+0/+1)</option>
-            <option value="Europe/Paris">欧洲中部时间 (UTC+1/+2)</option>
-            <option value="Asia/Tokyo">日本标准时间 (UTC+9)</option>
-            <option value="Australia/Sydney">澳大利亚东部时间 (UTC+10/+11)</option>
-            <option value="Asia/Singapore">新加坡时间 (UTC+8)</option>
-            <option value="Asia/Hong_Kong">香港时间 (UTC+8)</option>
-            <option value="UTC">协调世界时 (UTC+0)</option>
+            <optgroup label="美国时区 (US Timezones)">
+              <option value="America/New_York">美国东部时间 - Eastern Time (UTC-5/-4)</option>
+              <option value="America/Chicago">美国中部时间 - Central Time (UTC-6/-5)</option>
+              <option value="America/Denver">美国山地时间 - Mountain Time (UTC-7/-6)</option>
+              <option value="America/Los_Angeles">美国太平洋时间 - Pacific Time (UTC-8/-7)</option>
+              <option value="America/Anchorage">美国阿拉斯加时间 - Alaska Time (UTC-9/-8)</option>
+              <option value="Pacific/Honolulu">美国夏威夷时间 - Hawaii Time (UTC-10)</option>
+              <option value="America/Phoenix">美国亚利桑那时间 - Arizona Time (UTC-7)</option>
+              <option value="America/Indiana/Indianapolis">美国印第安纳时间 - Indiana Time (UTC-5/-4)</option>
+            </optgroup>
+            <optgroup label="加拿大时区 (Canadian Timezones)">
+              <option value="America/Toronto">加拿大东部时间 - Eastern Time (UTC-5/-4)</option>
+              <option value="America/Winnipeg">加拿大中部时间 - Central Time (UTC-6/-5)</option>
+              <option value="America/Edmonton">加拿大山地时间 - Mountain Time (UTC-7/-6)</option>
+              <option value="America/Vancouver">加拿大太平洋时间 - Pacific Time (UTC-8/-7)</option>
+              <option value="America/Halifax">加拿大大西洋时间 - Atlantic Time (UTC-4/-3)</option>
+              <option value="America/St_Johns">加拿大纽芬兰时间 - Newfoundland Time (UTC-3:30/-2:30)</option>
+            </optgroup>
+            <optgroup label="其他国际时区 (International Timezones)">
+              <option value="Asia/Shanghai">中国标准时间 (UTC+8)</option>
+              <option value="Europe/London">英国时间 (UTC+0/+1)</option>
+              <option value="Europe/Paris">欧洲中部时间 (UTC+1/+2)</option>
+              <option value="Asia/Tokyo">日本标准时间 (UTC+9)</option>
+              <option value="Australia/Sydney">澳大利亚东部时间 (UTC+10/+11)</option>
+              <option value="Asia/Singapore">新加坡时间 (UTC+8)</option>
+              <option value="Asia/Hong_Kong">香港时间 (UTC+8)</option>
+              <option value="UTC">协调世界时 (UTC+0)</option>
+            </optgroup>
           </select>
           <p className="text-xs text-gray-500 mt-1">
             当前选择: {timezone} | 本地时区: {Intl.DateTimeFormat().resolvedOptions().timeZone}
