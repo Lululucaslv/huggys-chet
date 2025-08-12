@@ -9,5 +9,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    host: true,
+    allowedHosts: ['digital-therapy-app-tunnel-c3ekjzkg.devinapps.com']
+  },
 })
 
