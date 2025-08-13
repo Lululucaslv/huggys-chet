@@ -96,7 +96,6 @@ export default function AIChat({ session }: AIChatProps) {
 
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
-        session.user.id,
         userProfile,
         true
       )

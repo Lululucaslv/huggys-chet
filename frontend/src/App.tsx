@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import TherapistSchedule from './components/TherapistSchedule'
 import ClientBooking from './components/ClientBooking'
 import CustomAuth from './components/CustomAuth'
-import AIChat from './components/AIChat'
+import ProtectedRoute from './components/ProtectedRoute'
+import ChatPage from './pages/ChatPage'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -61,20 +63,52 @@ function App() {
     }
   }
 
-  if (!session) {
-    return <CustomAuth onAuthSuccess={() => {}} />
-  }
+  return (
+    <Router>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            session ? <Navigate to="/" replace /> : <CustomAuth onAuthSuccess={() => {}} />
+          } 
+        />
+        <Route 
+          path="/chat" 
+          element={
+            <ProtectedRoute 
+              session={session} 
+              userRole={userRole} 
+              requiredRole="client"
+              roleLoading={roleLoading}
+            >
+              <ChatPage session={session!} />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            session ? (
+              roleLoading ? (
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-gray-500">加载用户信息中...</p>
+                  </div>
+                </div>
+              ) : (
+                <MainDashboard session={session} userRole={userRole} />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+      </Routes>
+    </Router>
+  )
+}
 
-  if (roleLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500">加载用户信息中...</p>
-        </div>
-      </div>
-    )
-  }
-
+function MainDashboard({ session, userRole }: { session: Session, userRole: string | null }) {
   const isTherapist = userRole === 'therapist'
   const pageTitle = isTherapist ? '治疗师日程管理' : '预约咨询'
 
@@ -87,6 +121,14 @@ function App() {
               {pageTitle}
             </h1>
             <div className="flex items-center gap-4">
+              {!isTherapist && (
+                <Link 
+                  to="/chat"
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 transform hover:scale-105"
+                >
+                  🤗 AI 心理咨询
+                </Link>
+              )}
               <span className="text-sm text-gray-500">
                 {isTherapist ? '治疗师' : '来访者'}: {session.user.email}
               </span>
@@ -102,18 +144,11 @@ function App() {
       </header>
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            {isTherapist ? (
-              <TherapistSchedule session={session} />
-            ) : (
-              <ClientBooking session={session} />
-            )}
-          </div>
-          <div>
-            <AIChat session={session} />
-          </div>
-        </div>
+        {isTherapist ? (
+          <TherapistSchedule session={session} />
+        ) : (
+          <ClientBooking session={session} />
+        )}
       </main>
     </div>
   )
