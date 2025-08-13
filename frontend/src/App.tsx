@@ -4,6 +4,7 @@ import { Session } from '@supabase/supabase-js'
 import TherapistSchedule from './components/TherapistSchedule'
 import ClientBooking from './components/ClientBooking'
 import CustomAuth from './components/CustomAuth'
+import AIChat from './components/AIChat'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -101,11 +102,18 @@ function App() {
       </header>
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {isTherapist ? (
-          <TherapistSchedule session={session} />
-        ) : (
-          <ClientBooking session={session} />
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            {isTherapist ? (
+              <TherapistSchedule session={session} />
+            ) : (
+              <ClientBooking session={session} />
+            )}
+          </div>
+          <div>
+            <AIChat session={session} />
+          </div>
+        </div>
       </main>
     </div>
   )
