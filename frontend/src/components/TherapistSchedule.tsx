@@ -139,7 +139,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
     setError('')
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('availability')
         .insert([
           {

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import { Auth } from '@supabase/auth-ui-react'
-import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { Session } from '@supabase/supabase-js'
 import TherapistSchedule from './components/TherapistSchedule'
 import ClientBooking from './components/ClientBooking'
+import CustomAuth from './components/CustomAuth'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -49,7 +48,7 @@ function App() {
         setUserRole('client')
       } else if (error) {
         console.error('Error fetching user role:', error)
-        setUserRole('client') // Default to client on error
+        setUserRole('client')
       } else {
         setUserRole(data.life_status || 'client')
       }
@@ -62,21 +61,7 @@ function App() {
   }
 
   if (!session) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
-            MoreThanHugs 疗愈平台
-          </h1>
-          <Auth 
-            supabaseClient={supabase} 
-            appearance={{ theme: ThemeSupa }}
-            providers={[]}
-            redirectTo={window.location.origin}
-          />
-        </div>
-      </div>
-    )
+    return <CustomAuth onAuthSuccess={() => {}} />
   }
 
   if (roleLoading) {
