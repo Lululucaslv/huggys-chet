@@ -3,10 +3,7 @@ import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { ChatAPI } from '../lib/chatApi'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Send, Loader2, ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Send, Loader2, Camera } from 'lucide-react'
 
 interface ChatMessage {
   id: string
@@ -179,71 +176,65 @@ export default function ChatPage({ session }: ChatPageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Animated Background Waves */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/30 to-pink-900/20"></div>
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full animate-spin-slow"></div>
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-l from-purple-500/10 to-pink-500/10 rounded-full animate-spin-slow animation-delay-2000"></div>
-      </div>
+  const handleQuickReply = (message: string) => {
+    setInputMessage(message)
+  }
 
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
       {/* Header */}
-      <header className="relative bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm border-b border-blue-400/30 sticky top-0 z-10">
+      <header style={{ background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(75, 0, 130, 0.8))' }} className="relative backdrop-blur-sm border-b border-purple-400/30 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <Link 
-                to="/" 
-                className="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="text-sm font-medium">返回主页</span>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse">
-                  <span className="text-white text-lg">🤗</span>
-                </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  Huggy AI 心理咨询
-                </h1>
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg">🤗</span>
               </div>
+              <h1 className="text-xl font-bold text-white">
+                Huggy AI
+              </h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-blue-200">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>在线</span>
-              </div>
-              <span className="text-sm text-blue-300">
-                {session.user.email}
-              </span>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-blue-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                退出登录
+              <button className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2">
+                English
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
+              <div className="flex items-center gap-2 text-sm text-white">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>Online</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Chat Container */}
-      <main className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-blue-500/20 h-[calc(100vh-140px)] flex flex-col overflow-hidden">
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex flex-col h-[calc(100vh-140px)]">
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto space-y-6">
             {messages.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <div className="text-center py-8">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-3xl">🤗</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-4">
-                  欢迎来到 Huggy AI
-                </h3>
-                <p className="text-blue-200 max-w-md mx-auto leading-relaxed">
-                  我是您的专属AI心理咨询伙伴，随时准备倾听您的想法和感受。请随意开始我们的对话吧！
-                </p>
+                <div className="message-content text-white">
+                  <h2 className="text-2xl font-bold mb-4">Hey! I'm Huggy AI 👋</h2>
+                  <p className="text-gray-300 mb-6">Nice to meet you! I'm an AI buddy who can grow and remember～</p>
+                  
+                  <div className="memory-info text-left max-w-2xl mx-auto bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                    <p className="text-white font-semibold mb-4">🧠 My superpowers:</p>
+                    <ul className="text-left space-y-2 text-gray-300">
+                      <li>✅ <strong>Super Memory: I remember everything we've talked about</strong></li>
+                      <li>✅ <strong>Personality Adaptation: I learn your communication style to become more like your friend</strong></li>
+                      <li>✅ <strong>Interest Recording: As I get to know you better, I remember your hobbies and thoughts</strong></li>
+                      <li>✅ <strong>Always Online: No matter when you come back, I remember who you are</strong></li>
+                    </ul>
+                    <p className="text-gray-300 mt-6">Here, you can chat freely, share thoughts, and don't worry about anything～ Let's start being friends! 😊</p>
+                  </div>
+                </div>
               </div>
             )}
             
@@ -253,15 +244,15 @@ export default function ChatPage({ session }: ChatPageProps) {
                 className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">🤗</span>
                   </div>
                 )}
                 <div
-                  className={`max-w-[75%] px-6 py-4 rounded-2xl backdrop-blur-sm ${
+                  className={`max-w-[75%] px-6 py-4 rounded-2xl ${
                     message.role === 'user'
-                      ? 'bg-gradient-to-br from-blue-600/80 to-purple-600/80 text-white rounded-br-md border border-blue-400/30'
-                      : 'bg-slate-700/60 text-blue-50 rounded-bl-md border border-slate-600/50'
+                      ? 'bg-blue-600 text-white rounded-br-md'
+                      : 'bg-gray-700 text-white rounded-bl-md'
                   }`}
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
@@ -270,7 +261,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                   {message.content}
                 </div>
                 {message.role === 'user' && (
-                  <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">👤</span>
                   </div>
                 )}
@@ -282,36 +273,82 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 animate-spin">
                   <span className="text-white text-sm">🤗</span>
                 </div>
-                <div className="bg-slate-700/60 backdrop-blur-sm px-6 py-4 rounded-2xl rounded-bl-md border border-slate-600/50 flex items-center gap-3">
+                <div className="bg-gray-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-blue-200">Huggy 正在思考中...</span>
+                  <span className="text-white">Huggy is thinking...</span>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
           
+          {/* Quick Reply Buttons */}
+          {messages.length === 0 && (
+            <div className="px-6 pb-4">
+              <div className="text-center">
+                <small className="text-gray-500 block mb-4">User</small>
+                <div className="flex flex-wrap justify-center gap-3 mb-4">
+                  <button 
+                    onClick={() => handleQuickReply("Feeling tired lately")}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                  >
+                    Feeling tired lately
+                  </button>
+                  <button 
+                    onClick={() => handleQuickReply("Want to chat")}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                  >
+                    Want to chat
+                  </button>
+                  <button 
+                    onClick={() => handleQuickReply("Share about today")}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                  >
+                    Share about today
+                  </button>
+                  <button 
+                    onClick={() => handleQuickReply("A little worried")}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                  >
+                    A little worried
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Input Area */}
-          <div className="border-t border-slate-600/50 bg-slate-800/60 backdrop-blur-sm p-6">
-            <div className="flex gap-4">
-              <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="在这里输入您的想法和感受..."
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                disabled={isTyping}
-                className="flex-1 bg-slate-700/50 border-slate-600/50 text-white placeholder-slate-400 rounded-2xl px-6 py-4 focus:border-blue-400/50 focus:ring-blue-400/20 backdrop-blur-sm"
-                style={{
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                }}
-              />
-              <Button 
+          <div className="border-t border-gray-700 bg-gray-900 p-6">
+            <div className="flex gap-4 items-end">
+              <button className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+                <Camera className="w-5 h-5 text-white" />
+              </button>
+              <div className="flex-1">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Feel free to chat about anything～ You can also send me pictures 📸"
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
+                  disabled={isTyping}
+                  className="w-full bg-gray-800 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 resize-none focus:border-purple-400 focus:ring-purple-400/20 focus:outline-none"
+                  rows={3}
+                  maxLength={2000}
+                  style={{
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                />
+                <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+                  <span>{inputMessage.length}/2000</span>
+                  <span>🔒 Your conversations are private and secure</span>
+                </div>
+              </div>
+              <button 
                 onClick={sendMessage} 
                 disabled={isTyping || !inputMessage.trim()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-2xl px-8 py-4 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                className="p-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 rounded-full transition-colors"
               >
-                <Send className="h-5 w-5" />
-              </Button>
+                <Send className="h-5 w-5 text-white" />
+              </button>
             </div>
           </div>
         </div>
