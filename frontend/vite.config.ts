@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    allowedHosts: ['digital-therapy-app-tunnel-c3ekjzkg.devinapps.com']
+    allowedHosts: ['digital-therapy-app-tunnel-k0suh20y.devinapps.com']
   },
 })
 
