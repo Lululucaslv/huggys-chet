@@ -97,7 +97,8 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
               user_id: data.user.id,
               interest: 'therapy',
               language: 'zh-CN',
-              life_status: userRole
+              life_status: userRole,
+              timezone: 'America/New_York'
             }
           ])
 

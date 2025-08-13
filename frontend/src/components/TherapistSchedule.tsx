@@ -4,7 +4,9 @@ import { supabase } from '../lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Clock, Plus, Trash2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar, Clock, Plus, Trash2, Globe } from 'lucide-react'
+import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 
 interface AvailabilitySlot {
   id: number
@@ -27,6 +29,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userProfile, setUserProfile] = useState<any>(null)
+  const [selectedTimezone, setSelectedTimezone] = useState('America/New_York')
 
   useEffect(() => {
     fetchUserProfile()
@@ -58,6 +61,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       }
 
       setUserProfile(data)
+      setSelectedTimezone(data.timezone || 'America/New_York')
     } catch (err) {
       console.error('Error:', err)
     }
@@ -72,7 +76,8 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             user_id: session.user.id,
             interest: 'therapy',
             language: 'zh-CN',
-            life_status: 'therapist'
+            life_status: 'therapist',
+            timezone: 'America/New_York'
           }
         ])
         .select()
@@ -91,6 +96,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
       console.log('User profile created successfully:', data)
       setUserProfile(data)
+      setSelectedTimezone(data.timezone || 'America/New_York')
     } catch (err) {
       console.error('Error creating user profile:', err)
       setError('创建用户档案失败，请重试')
@@ -139,13 +145,16 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
     setError('')
 
     try {
+      const utcStartTime = convertLocalToUTC(startTime, selectedTimezone)
+      const utcEndTime = convertLocalToUTC(endTime, selectedTimezone)
+      
       const { error } = await supabase
         .from('availability')
         .insert([
           {
             therapist_id: userProfile.id,
-            start_time: startTime,
-            end_time: endTime,
+            start_time: utcStartTime,
+            end_time: utcEndTime,
             is_booked: false
           }
         ])
@@ -193,14 +202,30 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
   }
 
   const formatDateTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString)
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    return formatDisplayDateTime(dateTimeString, selectedTimezone)
+  }
+
+  const updateTimezone = async (newTimezone: string) => {
+    if (!userProfile) return
+    
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ timezone: newTimezone })
+        .eq('id', userProfile.id)
+
+      if (error) {
+        console.error('Error updating timezone:', error)
+        setError('更新时区失败，请重试')
+        return
+      }
+
+      setSelectedTimezone(newTimezone)
+      setUserProfile({ ...userProfile, timezone: newTimezone })
+    } catch (err) {
+      console.error('Error updating timezone:', err)
+      setError('更新时区失败，请重试')
+    }
   }
 
   if (!userProfile) {
@@ -231,6 +256,27 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
               {error}
             </div>
           )}
+          
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
+                <Globe className="inline h-4 w-4 mr-1" />
+                时区设置
+              </label>
+              <Select value={selectedTimezone} onValueChange={updateTimezone}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择时区" />
+                </SelectTrigger>
+                <SelectContent>
+                  {US_CANADA_TIMEZONES.map((tz: TimezoneOption) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
