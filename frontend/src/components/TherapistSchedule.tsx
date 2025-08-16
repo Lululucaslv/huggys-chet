@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Clock, Plus, Trash2, Globe } from 'lucide-react'
+import { Calendar, Clock, Plus, Trash2, Globe, Users, User } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
+import AISummaryModal from './AISummaryModal'
 
 interface AvailabilitySlot {
   id: number
@@ -16,6 +17,15 @@ interface AvailabilitySlot {
   is_booked: boolean
   created_at: string
   updated_at: string
+}
+
+interface Booking {
+  id: string
+  client_user_id: string
+  session_date: string
+  duration_minutes: number
+  status: string
+  client_name?: string
 }
 
 interface TherapistScheduleProps {
@@ -30,6 +40,8 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
   const [error, setError] = useState('')
   const [userProfile, setUserProfile] = useState<any>(null)
   const [selectedTimezone, setSelectedTimezone] = useState('America/New_York')
+  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([])
+  const [bookingsLoading, setBookingsLoading] = useState(false)
 
   useEffect(() => {
     fetchUserProfile()
@@ -38,6 +50,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
   useEffect(() => {
     if (userProfile) {
       fetchAvailabilitySlots()
+      fetchUpcomingBookings()
     }
   }, [userProfile])
 
@@ -122,6 +135,86 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       setAvailabilitySlots(data || [])
     } catch (err) {
       console.error('Error:', err)
+    }
+  }
+
+  const fetchUpcomingBookings = async () => {
+    if (!userProfile) return
+
+    setBookingsLoading(true)
+    try {
+      let { data: therapistData, error: therapistError } = await supabase
+        .from('therapists')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (therapistError || !therapistData) {
+        console.log('No therapist record found, creating one...')
+        const { data: newTherapistData, error: createError } = await supabase
+          .from('therapists')
+          .insert([
+            {
+              user_id: session.user.id,
+              name: userProfile.email?.split('@')[0] || 'Therapist',
+              specialization: 'General Therapy',
+              bio: 'Professional therapist',
+              hourly_rate: 100.00
+            }
+          ])
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Error creating therapist record:', createError)
+          setUpcomingBookings([])
+          return
+        }
+
+        therapistData = newTherapistData
+      }
+
+      if (!therapistData) {
+        console.error('Failed to get or create therapist record')
+        setUpcomingBookings([])
+        return
+      }
+
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('therapist_id', therapistData.id)
+        .gte('session_date', new Date().toISOString())
+        .in('status', ['confirmed', 'pending'])
+        .order('session_date', { ascending: true })
+
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError)
+        return
+      }
+
+      const bookingsWithNames = await Promise.all(
+        (bookingsData || []).map(async (booking) => {
+          try {
+            const { data: userData } = await supabase.auth.admin.getUserById(booking.client_user_id)
+            return {
+              ...booking,
+              client_name: userData?.user?.email?.split('@')[0] || '来访者'
+            }
+          } catch (err) {
+            return {
+              ...booking,
+              client_name: '来访者'
+            }
+          }
+        })
+      )
+
+      setUpcomingBookings(bookingsWithNames)
+    } catch (err) {
+      console.error('Error fetching bookings:', err)
+    } finally {
+      setBookingsLoading(false)
     }
   }
 
@@ -240,6 +333,59 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            即将到来的预约
+          </CardTitle>
+          <CardDescription>
+            查看您即将进行的咨询预约，点击"查看AI摘要"了解来访者的聊天记录分析
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {bookingsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">加载预约信息中...</p>
+            </div>
+          ) : upcomingBookings.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">暂无即将到来的预约</p>
+              <p className="text-sm text-gray-400 mt-1">客户预约后将在此显示</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingBookings.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {booking.client_name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {formatDateTime(booking.session_date)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        时长: {booking.duration_minutes} 分钟 • 状态: {booking.status === 'confirmed' ? '已确认' : '待确认'}
+                      </p>
+                    </div>
+                  </div>
+                  <AISummaryModal
+                    clientUserId={booking.client_user_id}
+                    clientName={booking.client_name || '来访者'}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
