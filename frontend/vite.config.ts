@@ -13,7 +13,8 @@ export default defineConfig({
     host: true,
     allowedHosts: [
       'digital-therapy-app-tunnel-k0suh20y.devinapps.com',
-      'digital-therapy-app-tunnel-kqba4qs7.devinapps.com'
+      'digital-therapy-app-tunnel-kqba4qs7.devinapps.com',
+      'digital-therapy-app-tunnel-qkdfjhu7.devinapps.com'
     ]
   },
 })
