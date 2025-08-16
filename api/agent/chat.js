@@ -1,21 +1,26 @@
 const { createClient } = require('@supabase/supabase-js')
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const openaiApiKey = process.env.OPENAI_API_KEY
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const openaiApiKey = process.env.OPENAI_API_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
+    console.error('Missing required environment variables')
+    return res.status(500).json({ error: 'Server configuration error' })
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
   try {
     const { tool, userId, sessionId } = req.body
 
     if (tool === 'generatePreSessionSummary') {
-      const summary = await generatePreSessionSummary(userId)
+      const summary = await generatePreSessionSummary(userId, supabase, openaiApiKey)
       return res.status(200).json({ success: true, data: summary })
     }
 
@@ -26,7 +31,7 @@ module.exports = async function handler(req, res) {
   }
 }
 
-async function generatePreSessionSummary(userId) {
+async function generatePreSessionSummary(userId, supabase, openaiApiKey) {
   try {
     const { data: chatMessages, error: chatError } = await supabase
       .from('chat_messages')
