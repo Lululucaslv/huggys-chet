@@ -471,6 +471,12 @@ async function getTherapistAvailability(args, supabase) {
     if (availabilityError) {
       console.error('Supabase availability query error:', availabilityError)
       console.error('Error details:', JSON.stringify(availabilityError, null, 2))
+      console.error('Error message:', availabilityError.message)
+      console.error('Error code:', availabilityError.code)
+      console.error('Error hint:', availabilityError.hint)
+      console.error('Error details:', availabilityError.details)
+      console.error('Full error object keys:', Object.keys(availabilityError))
+      console.error('Error stack trace:', availabilityError.stack)
       return {
         success: false,
         error: `查询可预约时间时发生错误: ${availabilityError.message || availabilityError.details || JSON.stringify(availabilityError)}`
