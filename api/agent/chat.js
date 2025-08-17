@@ -387,11 +387,13 @@ async function getTherapistAvailability(args, supabase) {
 
     if (startDate) {
       console.log('Filtering by start date:', startDate)
-      availabilityQuery = availabilityQuery.gte('start_time', startDate + 'T00:00:00Z')
+      const startDateFormatted = startDate.includes('T') ? startDate : startDate + 'T00:00:00Z'
+      availabilityQuery = availabilityQuery.gte('start_time', startDateFormatted)
     }
     if (endDate) {
       console.log('Filtering by end date:', endDate)
-      availabilityQuery = availabilityQuery.lte('start_time', endDate + 'T23:59:59Z')
+      const endDateFormatted = endDate.includes('T') ? endDate : endDate + 'T23:59:59Z'
+      availabilityQuery = availabilityQuery.lte('start_time', endDateFormatted)
     } else if (!startDate && !endDate) {
       const today = new Date().toISOString().split('T')[0]
       console.log('No date filters provided, using today as start:', today)

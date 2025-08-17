@@ -137,7 +137,15 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, assistantChatMessage])
+      console.log('Adding assistant message to state:', assistantChatMessage)
+      
+      setMessages(prev => {
+        const newMessages = [...prev, assistantChatMessage]
+        console.log('Updated messages state length:', newMessages.length)
+        return newMessages
+      })
+      
+      setIsTyping(false)
       
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
@@ -149,6 +157,7 @@ export default function AIChat({ session }: AIChatProps) {
       
     } catch (error) {
       console.error('Error handling response:', error)
+      setIsTyping(false)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
