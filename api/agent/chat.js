@@ -469,9 +469,11 @@ async function getTherapistAvailability(args, supabase) {
     console.log('Availability query result:', { availability, availabilityError })
 
     if (availabilityError) {
+      console.error('Supabase availability query error:', availabilityError)
+      console.error('Error details:', JSON.stringify(availabilityError, null, 2))
       return {
         success: false,
-        error: '查询可预约时间时发生错误'
+        error: `查询可预约时间时发生错误: ${availabilityError.message || availabilityError.details || JSON.stringify(availabilityError)}`
       }
     }
 
@@ -496,9 +498,10 @@ async function getTherapistAvailability(args, supabase) {
 
   } catch (error) {
     console.error('Error in getTherapistAvailability:', error)
+    console.error('Error stack:', error.stack)
     return {
       success: false,
-      error: '查询过程中发生错误'
+      error: `查询过程中发生错误: ${error.message || error.toString()}`
     }
   }
 }
