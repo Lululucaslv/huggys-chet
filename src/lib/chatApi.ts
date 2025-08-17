@@ -16,7 +16,10 @@ export class ChatAPI {
   private apiKey: string
   
   constructor() {
-    this.apiKey = ''
+    this.apiKey = (import.meta as any).env.VITE_OPENAI_API_KEY || ''
+    if (!this.apiKey) {
+      console.error('VITE_OPENAI_API_KEY not found in environment variables')
+    }
   }
 
   async sendMessage(
@@ -41,9 +44,15 @@ export class ChatAPI {
         messages: fullMessages,
         temperature: 0.85,
         max_tokens: 2000,
-        stream: stream
+        stream: stream,
+        prompt_id: 'pmpt_68a1708692b08194a1ec28fe93b801500b9a946aab695970'
       })
     })
+
+    if (!response.ok) {
+      console.error('OpenAI API Error:', response.status, response.statusText)
+      throw new Error(`OpenAI API request failed: ${response.status}`)
+    }
 
     return response
   }
