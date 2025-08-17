@@ -16,7 +16,7 @@ export class ChatAPI {
   private apiKey: string
   
   constructor() {
-    this.apiKey = (import.meta as any).env.VITE_OPENAI_API_KEY || ''
+    this.apiKey = ''
   }
 
   async sendMessage(

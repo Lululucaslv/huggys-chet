@@ -68,7 +68,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
     }
 
     if (userRole === 'therapist') {
-      const validInviteCode = (import.meta as any).env.VITE_THERAPIST_INVITE_CODE
+      const validInviteCode = 'THERAPIST2024'
       if (!inviteCode || inviteCode !== validInviteCode) {
         setError('治疗师邀请码无效')
         return
