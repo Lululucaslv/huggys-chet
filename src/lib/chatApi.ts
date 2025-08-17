@@ -19,6 +19,9 @@ export class ChatAPI {
     this.apiKey = (import.meta as any).env.VITE_OPENAI_API_KEY || ''
     if (!this.apiKey) {
       console.error('VITE_OPENAI_API_KEY not found in environment variables')
+      console.log('Available env vars:', Object.keys((import.meta as any).env))
+    } else {
+      console.log('OpenAI API key loaded successfully')
     }
   }
 
@@ -44,14 +47,15 @@ export class ChatAPI {
         messages: fullMessages,
         temperature: 0.85,
         max_tokens: 2000,
-        stream: stream,
-        prompt_id: 'pmpt_68a1708692b08194a1ec28fe93b801500b9a946aab695970'
+        stream: stream
       })
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
       console.error('OpenAI API Error:', response.status, response.statusText)
-      throw new Error(`OpenAI API request failed: ${response.status}`)
+      console.error('Error response body:', errorText)
+      throw new Error(`OpenAI API request failed: ${response.status} - ${errorText}`)
     }
 
     return response
@@ -59,6 +63,8 @@ export class ChatAPI {
 
   private buildSystemPrompt(userProfile: UserProfile): string {
     const basePrompt = `你是Huggy AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
+
+[Prompt ID: pmpt_68a1708692b08194a1ec28fe93b801500b9a946aab695970]
 
 🧠 **记忆与成长能力**：
 - 你能完整记住与每个用户的所有对话历史
