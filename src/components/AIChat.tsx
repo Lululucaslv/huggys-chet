@@ -119,13 +119,18 @@ export default function AIChat({ session }: AIChatProps) {
       
       if (result.success && result.data && result.data.message) {
         assistantMessage = result.data.message
+        console.log('Using AI Agent response:', assistantMessage.substring(0, 100) + '...')
       }
       else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
+        console.log('Using OpenAI fallback response:', assistantMessage.substring(0, 100) + '...')
       }
       else {
+        console.error('Invalid response structure:', result)
         assistantMessage = 'Sorry, I encountered an error processing your request.'
       }
+      
+      console.log('Creating assistant message with content:', assistantMessage.substring(0, 100) + '...')
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -134,7 +139,12 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, assistantChatMessage])
+      console.log('Adding message to state:', assistantChatMessage)
+      setMessages(prev => {
+        const newMessages = [...prev, assistantChatMessage]
+        console.log('New messages array length:', newMessages.length)
+        return newMessages
+      })
       
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
@@ -143,6 +153,8 @@ export default function AIChat({ session }: AIChatProps) {
         message_type: 'text',
         audio_url: ''
       })
+      
+      console.log('Successfully saved message to database')
       
     } catch (error) {
       console.error('Error handling response:', error)
