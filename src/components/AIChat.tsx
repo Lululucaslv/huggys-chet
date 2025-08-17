@@ -109,9 +109,13 @@ export default function AIChat({ session }: AIChatProps) {
         bodyUsed: response.bodyUsed
       })
       
+      console.log('=== About to check response.ok ===', response.ok, typeof response.ok)
+      
       if (response.ok) {
         console.log('=== Response is OK, calling handleNonStreamingResponse ===')
+        console.log('=== handleNonStreamingResponse function exists? ===', typeof handleNonStreamingResponse)
         try {
+          console.log('=== About to call handleNonStreamingResponse ===')
           await handleNonStreamingResponse(response)
           console.log('=== handleNonStreamingResponse completed successfully ===')
         } catch (error) {
