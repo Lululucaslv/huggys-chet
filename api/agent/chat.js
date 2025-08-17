@@ -1,6 +1,8 @@
 const { createClient } = require('@supabase/supabase-js')
 
 module.exports = async function handler(req, res) {
+  console.log('Agent API called with method:', req.method)
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -9,34 +11,47 @@ module.exports = async function handler(req, res) {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const openaiApiKey = process.env.OPENAI_API_KEY
 
+  console.log('Environment variables check:', {
+    supabaseUrl: !!supabaseUrl,
+    supabaseServiceKey: !!supabaseServiceKey,
+    openaiApiKey: !!openaiApiKey
+  })
+
   if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
     console.error('Missing required environment variables')
     return res.status(500).json({ error: 'Server configuration error' })
   }
 
+  console.log('Creating Supabase client...')
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   try {
+    console.log('Request body:', req.body)
     const { tool, userId, sessionId, messages, userMessage } = req.body
 
     if (tool === 'generatePreSessionSummary') {
+      console.log('Generating pre-session summary for userId:', userId)
       const summary = await generatePreSessionSummary(userId, supabase, openaiApiKey)
       return res.status(200).json({ success: true, data: summary })
     }
 
     if (tool === 'chatWithTools') {
+      console.log('Handling chat with tools for userId:', userId)
       const response = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
       return res.status(200).json({ success: true, data: response })
     }
 
+    console.log('Unknown tool requested:', tool)
     return res.status(400).json({ error: 'Unknown tool requested' })
   } catch (error) {
     console.error('Agent API Error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('Error stack:', error.stack)
+    return res.status(500).json({ error: 'Internal server error', details: error.message })
   }
 }
 
 async function handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey) {
+  console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
   try {
     const tools = [
       {
