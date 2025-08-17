@@ -146,6 +146,7 @@ export default function AIChat({ session }: AIChatProps) {
       } 
       else {
         console.error('=== Unexpected response format ===', result)
+        console.error('=== Full result object ===', JSON.stringify(result, null, 2))
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
