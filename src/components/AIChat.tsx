@@ -138,15 +138,20 @@ export default function AIChat({ session }: AIChatProps) {
       }
       
       console.log('Adding assistant message to state:', assistantChatMessage)
+      console.log('Current messages before update:', messages.length)
       
       setMessages(prev => {
+        console.log('Previous messages in setter:', prev.length)
         const newMessages = [...prev, assistantChatMessage]
-        console.log('Updated messages state length:', newMessages.length)
+        console.log('New messages array:', newMessages.length)
+        console.log('Last message content:', newMessages[newMessages.length - 1]?.content?.substring(0, 50))
         return newMessages
       })
       
+      console.log('setIsTyping(false) called')
       setIsTyping(false)
       
+      console.log('Saving to database...')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -154,6 +159,7 @@ export default function AIChat({ session }: AIChatProps) {
         message_type: 'text',
         audio_url: ''
       })
+      console.log('Database save completed')
       
     } catch (error) {
       console.error('Error handling response:', error)
