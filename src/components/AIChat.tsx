@@ -111,6 +111,7 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔥 Response status type:', typeof response.status)
       console.log('🔥 Response status === 200:', response.status === 200)
       console.log('🔥 Response status == 200:', response.status == 200)
+      console.log('🔥 About to enter if condition check')
       
       // Always call handleNonStreamingResponse for status 200, regardless of response.ok
       if (response.status === 200) {
@@ -128,6 +129,7 @@ export default function AIChat({ session }: AIChatProps) {
         setMessages(prev => [...prev, errorMessage])
         setIsTyping(false)
       }
+      console.log('🔥 Finished if/else condition check')
     } catch (error) {
       console.error('🔥 Error sending message:', error)
       setIsTyping(false)
