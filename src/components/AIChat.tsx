@@ -102,9 +102,22 @@ export default function AIChat({ session }: AIChatProps) {
       )
 
       console.log('=== Response received, calling handleNonStreamingResponse ===', response.ok)
+      console.log('=== Response object details ===', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        bodyUsed: response.bodyUsed
+      })
+      
       if (response.ok) {
         console.log('=== Response is OK, calling handleNonStreamingResponse ===')
-        await handleNonStreamingResponse(response)
+        try {
+          await handleNonStreamingResponse(response)
+          console.log('=== handleNonStreamingResponse completed successfully ===')
+        } catch (error) {
+          console.error('=== Error in handleNonStreamingResponse ===', error)
+          console.error('=== Error stack ===', (error as Error).stack)
+        }
       } else {
         console.error('=== Response not OK ===', response.status, response.statusText)
       }
