@@ -69,7 +69,8 @@ export class ChatAPI {
       
       if (result.success && result.data && result.data.message) {
         console.log('AI Agent response successful, returning message:', result.data.message.substring(0, 100) + '...')
-        const mockResponse = new Response(JSON.stringify(result), {
+        const responseData = JSON.stringify(result)
+        const mockResponse = new Response(responseData, {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         })
