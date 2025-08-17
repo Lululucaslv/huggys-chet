@@ -110,22 +110,23 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
+    console.log('=== handleNonStreamingResponse called ===')
     try {
       const result = await response.json()
-      console.log('Processing AI response:', result)
+      console.log('=== Processing AI response ===', result)
       
       let assistantMessage = ''
       
       if (result.success && result.data && result.data.message) {
         assistantMessage = result.data.message
-        console.log('Using AI Agent message:', assistantMessage.substring(0, 100) + '...')
+        console.log('=== Using AI Agent message ===', assistantMessage.substring(0, 100) + '...')
       } 
       else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
-        console.log('Using OpenAI fallback message:', assistantMessage.substring(0, 100) + '...')
+        console.log('=== Using OpenAI fallback message ===', assistantMessage.substring(0, 100) + '...')
       } 
       else {
-        console.error('Unexpected response format:', result)
+        console.error('=== Unexpected response format ===', result)
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
@@ -136,14 +137,19 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('Adding assistant message to UI:', assistantChatMessage)
+      console.log('=== Adding assistant message to UI ===', assistantChatMessage)
+      console.log('=== Current messages before update ===', messages.length)
+      
       setMessages(prev => {
+        console.log('=== setMessages callback called ===', prev.length, 'existing messages')
         const newMessages = [...prev, assistantChatMessage]
-        console.log('Updated messages array:', newMessages.length, 'messages')
+        console.log('=== New messages array ===', newMessages.length, 'total messages')
+        console.log('=== Last message content ===', newMessages[newMessages.length - 1]?.content?.substring(0, 100))
         return newMessages
       })
       
-      await supabase.from('chat_messages').insert({
+      console.log('=== Saving to database ===')
+      const { data, error } = await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
         message: assistantMessage,
@@ -151,8 +157,14 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
+      if (error) {
+        console.error('=== Database save error ===', error)
+      } else {
+        console.log('=== Database save successful ===', data)
+      }
+      
     } catch (error) {
-      console.error('Error handling response:', error)
+      console.error('=== Error handling response ===', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -161,6 +173,7 @@ export default function AIChat({ session }: AIChatProps) {
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
+      console.log('=== Setting isTyping to false ===')
       setIsTyping(false)
     }
   }
