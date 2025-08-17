@@ -105,7 +105,6 @@ export default function AIChat({ session }: AIChatProps) {
       }
     } catch (error) {
       console.error('Error sending message:', error)
-    } finally {
       setIsTyping(false)
     }
   }
