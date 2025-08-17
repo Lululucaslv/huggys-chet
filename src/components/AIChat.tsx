@@ -100,9 +100,13 @@ export default function AIChat({ session }: AIChatProps) {
         false
       )
 
+      console.log('Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
+      
       if (response.ok) {
+        console.log('Response is OK, calling handleNonStreamingResponse')
         await handleNonStreamingResponse(response)
       } else {
+        console.error('Response not OK, status:', response.status, 'statusText:', response.statusText)
         const errorMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -119,6 +123,13 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
+    console.log('handleNonStreamingResponse called with response:', {
+      status: response.status,
+      statusText: response.statusText,
+      bodyUsed: response.bodyUsed,
+      ok: response.ok
+    })
+    
     try {
       const result = await response.json()
       console.log('Full AI Agent API response:', result)
