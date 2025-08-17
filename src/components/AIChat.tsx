@@ -130,8 +130,6 @@ export default function AIChat({ session }: AIChatProps) {
         assistantMessage = 'Sorry, I encountered an error processing your request.'
       }
       
-      console.log('Creating assistant message with content:', assistantMessage.substring(0, 100) + '...')
-      
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -139,31 +137,15 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('Adding message to state:', assistantChatMessage)
-      setMessages(prev => {
-        const newMessages = [...prev, assistantChatMessage]
-        console.log('New messages array length:', newMessages.length)
-        console.log('Updated messages state:', newMessages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' })))
-        return newMessages
-      })
+      setMessages(prev => [...prev, assistantChatMessage])
       
-      try {
-        const { error: dbError } = await supabase.from('chat_messages').insert({
-          user_id: session.user.id,
-          role: 'assistant',
-          message: assistantMessage,
-          message_type: 'text',
-          audio_url: ''
-        })
-        
-        if (dbError) {
-          console.error('Database save error:', dbError)
-        } else {
-          console.log('Successfully saved message to database')
-        }
-      } catch (dbError) {
-        console.error('Database save exception:', dbError)
-      }
+      await supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'assistant',
+        message: assistantMessage,
+        message_type: 'text',
+        audio_url: ''
+      })
       
     } catch (error) {
       console.error('Error handling response:', error)
