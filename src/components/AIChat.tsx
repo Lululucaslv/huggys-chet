@@ -113,18 +113,19 @@ export default function AIChat({ session }: AIChatProps) {
   const handleNonStreamingResponse = async (response: Response) => {
     try {
       const result = await response.json()
+      console.log('Processing AI response:', result)
       
       let assistantMessage = ''
       
       if (result.success && result.data && result.data.message) {
         assistantMessage = result.data.message
-      }
-      else if (result.choices?.[0]?.message?.content) {
+      } else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
-      }
-      else {
+      } else {
         assistantMessage = 'Sorry, I encountered an error processing your request.'
       }
+      
+      console.log('Assistant message to display:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -133,7 +134,11 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, assistantChatMessage])
+      setMessages(prev => {
+        const newMessages = [...prev, assistantChatMessage]
+        console.log('Updated messages array:', newMessages.length)
+        return newMessages
+      })
       
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
@@ -152,9 +157,9 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsTyping(false)
     }
+    
+    setIsTyping(false)
   }
 
 

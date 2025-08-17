@@ -365,11 +365,13 @@ async function getTherapistAvailability(args, supabase) {
       therapists = knownTherapists.filter(t => 
         t.name.toLowerCase().includes(therapistName.toLowerCase())
       )
+      console.log('Filtered therapists:', therapists)
     }
     
     console.log('Therapist query result:', { therapists })
 
     if (!therapists || therapists.length === 0) {
+      console.log('No therapists found, returning error')
       return {
         success: false,
         error: therapistName ? `未找到名为 "${therapistName}" 的咨询师` : '未找到任何咨询师'
@@ -377,6 +379,7 @@ async function getTherapistAvailability(args, supabase) {
     }
 
     const therapistIds = therapists.map(t => t.id)
+    console.log('Therapist IDs to query:', therapistIds)
     
     let availabilityQuery = supabase
       .from('availability')
@@ -388,12 +391,18 @@ async function getTherapistAvailability(args, supabase) {
     if (startDate) {
       console.log('Filtering by start date:', startDate)
       const startDateFormatted = startDate.includes('T') ? startDate : startDate + 'T00:00:00Z'
+      console.log('Start date formatted:', startDateFormatted)
       availabilityQuery = availabilityQuery.gte('start_time', startDateFormatted)
     }
     if (endDate) {
       console.log('Filtering by end date:', endDate)
       const endDateFormatted = endDate.includes('T') ? endDate : endDate + 'T23:59:59Z'
+      console.log('End date formatted:', endDateFormatted)
       availabilityQuery = availabilityQuery.lte('start_time', endDateFormatted)
+    } else if (startDate && !endDate) {
+      const endOfDay = startDate.includes('T') ? startDate.split('T')[0] + 'T23:59:59Z' : startDate + 'T23:59:59Z'
+      console.log('Only start date provided, adding end of day filter:', endOfDay)
+      availabilityQuery = availabilityQuery.lte('start_time', endOfDay)
     } else if (!startDate && !endDate) {
       const today = new Date().toISOString().split('T')[0]
       console.log('No date filters provided, using today as start:', today)
