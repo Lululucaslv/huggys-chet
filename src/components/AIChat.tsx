@@ -94,26 +94,15 @@ export default function AIChat({ session }: AIChatProps) {
 
       await UserProfileUpdater.updateUserProfile(session.user.id, messageToSend)
 
-      console.log('=== About to call chatAPI.sendMessage ===')
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
         { ...userProfile, id: session.user.id },
         false
       )
 
-      console.log('=== Response received, calling handleNonStreamingResponse ===', response.ok)
-      console.log('=== Response object details ===', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        bodyUsed: response.bodyUsed
-      })
-      
       if (response.ok) {
-        console.log('=== Response is OK, calling handleNonStreamingResponse ===')
         await handleNonStreamingResponse(response)
       } else {
-        console.error('=== Response not OK ===', response.status, response.statusText)
         const errorMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -124,33 +113,15 @@ export default function AIChat({ session }: AIChatProps) {
         setIsTyping(false)
       }
     } catch (error) {
-      console.error('=== Error in sendMessage function ===', error)
-      console.error('=== Error stack trace ===', (error as Error).stack)
+      console.error('Error sending message:', error)
       setIsTyping(false)
     }
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('=== handleNonStreamingResponse called ===')
     try {
       const result = await response.json()
-      console.log('=== Processing AI response ===', result)
-      
-      let assistantMessage = ''
-      
-      if (result.success && result.data && result.data.message) {
-        assistantMessage = result.data.message
-        console.log('=== Using AI Agent message ===', assistantMessage.substring(0, 100) + '...')
-      } 
-      else if (result.choices?.[0]?.message?.content) {
-        assistantMessage = result.choices[0].message.content
-        console.log('=== Using OpenAI fallback message ===', assistantMessage.substring(0, 100) + '...')
-      } 
-      else {
-        console.error('=== Unexpected response format ===', result)
-        console.error('=== Full result object ===', JSON.stringify(result, null, 2))
-        assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
-      }
+      const assistantMessage = result.choices?.[0]?.message?.content || 'Sorry, I encountered an error processing your request.'
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -159,12 +130,9 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('=== Adding assistant message to UI ===', assistantChatMessage)
-      
       setMessages(prev => [...prev, assistantChatMessage])
       
-      console.log('=== Saving to database ===')
-      const { data, error } = await supabase.from('chat_messages').insert({
+      await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
         message: assistantMessage,
@@ -172,14 +140,8 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
-      if (error) {
-        console.error('=== Database save error ===', error)
-      } else {
-        console.log('=== Database save successful ===', data)
-      }
-      
     } catch (error) {
-      console.error('=== Error handling response ===', error)
+      console.error('Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -187,10 +149,9 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
-    } finally {
-      console.log('=== Setting isTyping to false ===')
-      setIsTyping(false)
     }
+    
+    setIsTyping(false)
   }
 
 
