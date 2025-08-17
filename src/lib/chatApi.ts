@@ -6,6 +6,7 @@ interface ChatMessage {
 }
 
 interface UserProfile {
+  id?: string
   total_messages: number
   personality_type: string
   preferences: string[]
@@ -28,37 +29,84 @@ export class ChatAPI {
   async sendMessage(
     messages: ChatMessage[], 
     userProfile: UserProfile,
-    stream: boolean = true
+    stream: boolean = false
   ): Promise<Response> {
-    const systemPrompt = this.buildSystemPrompt(userProfile)
-    const fullMessages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...messages
-    ]
+    try {
+      const userMessage = messages[messages.length - 1]?.content || ''
+      const conversationHistory = messages.slice(0, -1)
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo',
-        messages: fullMessages,
-        temperature: 0.85,
-        max_tokens: 2000,
-        stream: stream
+      const response = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tool: 'chatWithTools',
+          messages: conversationHistory,
+          userMessage: userMessage,
+          userId: userProfile.id || 'anonymous'
+        })
       })
-    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenAI API Error:', response.status, response.statusText)
-      console.error('Error response body:', errorText)
-      throw new Error(`OpenAI API request failed: ${response.status} - ${errorText}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Agent API Error:', response.status, response.statusText)
+        console.error('Error response body:', errorText)
+        throw new Error(`Agent API request failed: ${response.status} - ${errorText}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const mockResponse = new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: result.data.message,
+              role: 'assistant'
+            }
+          }]
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+        return mockResponse
+      } else {
+        throw new Error('Invalid response from agent API')
+      }
+
+    } catch (error) {
+      console.error('Error in sendMessage:', error)
+      
+      const systemPrompt = this.buildSystemPrompt(userProfile)
+      const fullMessages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...messages
+      ]
+
+      const fallbackResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4-turbo',
+          messages: fullMessages,
+          temperature: 0.85,
+          max_tokens: 2000,
+          stream: stream
+        })
+      })
+
+      if (!fallbackResponse.ok) {
+        const errorText = await fallbackResponse.text()
+        console.error('OpenAI API Error:', fallbackResponse.status, fallbackResponse.statusText)
+        console.error('Error response body:', errorText)
+        throw new Error(`OpenAI API request failed: ${fallbackResponse.status} - ${errorText}`)
+      }
+
+      return fallbackResponse
     }
-
-    return response
   }
 
   private buildSystemPrompt(userProfile: UserProfile): string {
