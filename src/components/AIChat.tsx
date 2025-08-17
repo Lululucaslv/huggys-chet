@@ -125,7 +125,7 @@ export default function AIChat({ session }: AIChatProps) {
         assistantMessage = 'Sorry, I encountered an error processing your request.'
       }
       
-      console.log('Assistant message to display:', assistantMessage)
+      console.log('Assistant message to display:', assistantMessage.substring(0, 100) + '...')
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -134,11 +134,7 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      setMessages(prev => {
-        const newMessages = [...prev, assistantChatMessage]
-        console.log('Updated messages array:', newMessages.length)
-        return newMessages
-      })
+      setMessages(prev => [...prev, assistantChatMessage])
       
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,

@@ -351,8 +351,10 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
 async function getTherapistAvailability(args, supabase) {
   try {
-    console.log('getTherapistAvailability called with args:', args)
+    console.log('=== getTherapistAvailability called ===')
+    console.log('Raw args received:', JSON.stringify(args, null, 2))
     const { therapistName, startDate, endDate } = args
+    console.log('Extracted parameters:', { therapistName, startDate, endDate })
     
     const knownTherapists = [
       { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
@@ -390,17 +392,55 @@ async function getTherapistAvailability(args, supabase) {
 
     if (startDate) {
       console.log('Filtering by start date:', startDate)
-      const startDateFormatted = startDate.includes('T') ? startDate : startDate + 'T00:00:00Z'
+      let startDateFormatted
+      if (startDate.includes('T')) {
+        startDateFormatted = startDate
+      } else if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        startDateFormatted = startDate + 'T00:00:00Z'
+      } else {
+        const parsedDate = new Date(startDate)
+        if (!isNaN(parsedDate.getTime())) {
+          startDateFormatted = parsedDate.toISOString().split('T')[0] + 'T00:00:00Z'
+        } else {
+          console.error('Invalid start date format:', startDate)
+          startDateFormatted = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
+        }
+      }
       console.log('Start date formatted:', startDateFormatted)
       availabilityQuery = availabilityQuery.gte('start_time', startDateFormatted)
     }
     if (endDate) {
       console.log('Filtering by end date:', endDate)
-      const endDateFormatted = endDate.includes('T') ? endDate : endDate + 'T23:59:59Z'
+      let endDateFormatted
+      if (endDate.includes('T')) {
+        endDateFormatted = endDate
+      } else if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        endDateFormatted = endDate + 'T23:59:59Z'
+      } else {
+        const parsedDate = new Date(endDate)
+        if (!isNaN(parsedDate.getTime())) {
+          endDateFormatted = parsedDate.toISOString().split('T')[0] + 'T23:59:59Z'
+        } else {
+          console.error('Invalid end date format:', endDate)
+          endDateFormatted = new Date().toISOString().split('T')[0] + 'T23:59:59Z'
+        }
+      }
       console.log('End date formatted:', endDateFormatted)
       availabilityQuery = availabilityQuery.lte('start_time', endDateFormatted)
     } else if (startDate && !endDate) {
-      const endOfDay = startDate.includes('T') ? startDate.split('T')[0] + 'T23:59:59Z' : startDate + 'T23:59:59Z'
+      let endOfDay
+      if (startDate.includes('T')) {
+        endOfDay = startDate.split('T')[0] + 'T23:59:59Z'
+      } else if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        endOfDay = startDate + 'T23:59:59Z'
+      } else {
+        const parsedDate = new Date(startDate)
+        if (!isNaN(parsedDate.getTime())) {
+          endOfDay = parsedDate.toISOString().split('T')[0] + 'T23:59:59Z'
+        } else {
+          endOfDay = new Date().toISOString().split('T')[0] + 'T23:59:59Z'
+        }
+      }
       console.log('Only start date provided, adding end of day filter:', endOfDay)
       availabilityQuery = availabilityQuery.lte('start_time', endOfDay)
     } else if (!startDate && !endDate) {
