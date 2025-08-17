@@ -65,12 +65,12 @@ export class ChatAPI {
       }
 
       const responseClone = response.clone()
-      const result = await response.json()
+      const result = await responseClone.json()
       console.log('AI Agent API result:', result)
       
       if (result.success && result.data && result.data.message) {
         console.log('AI Agent response successful, returning original response')
-        return responseClone
+        return response
       } else {
         console.error('Invalid AI Agent response structure:', result)
         throw new Error('Invalid response from agent API')
