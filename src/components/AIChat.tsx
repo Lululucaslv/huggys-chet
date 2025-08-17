@@ -100,8 +100,11 @@ export default function AIChat({ session }: AIChatProps) {
         false
       )
 
+      console.log('=== Response received, calling handleNonStreamingResponse ===', response.ok)
       if (response.ok) {
         await handleNonStreamingResponse(response)
+      } else {
+        console.error('=== Response not OK ===', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error sending message:', error)
