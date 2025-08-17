@@ -107,7 +107,8 @@ export default function AIChat({ session }: AIChatProps) {
         console.error('=== Response not OK ===', response.status, response.statusText)
       }
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error('=== Error in sendMessage function ===', error)
+      console.error('=== Error stack trace ===', error.stack)
       setIsTyping(false)
     }
   }
