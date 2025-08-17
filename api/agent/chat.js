@@ -108,10 +108,14 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         const today = new Date()
         const availabilitySlots = []
         
+        console.log('Creating test availability data starting from:', today.toISOString())
+        
         for (let i = 1; i <= 14; i++) {
           const futureDate = new Date(today)
           futureDate.setDate(today.getDate() + i)
           const futureDateStr = futureDate.toISOString().split('T')[0]
+          
+          console.log(`Creating availability for day ${i}: ${futureDateStr}`)
           
           const timeSlots = [
             { start: '09:00:00', end: '10:00:00' },
@@ -356,6 +360,7 @@ async function getTherapistAvailability(args, supabase) {
       .eq('role', 'THERAPIST')
     
     if (therapistName) {
+      console.log('Searching for therapist with name containing:', therapistName)
       therapistQuery = therapistQuery.ilike('full_name', `%${therapistName}%`)
     }
     
