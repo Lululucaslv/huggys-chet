@@ -103,6 +103,9 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
       console.log('Response headers:', Object.fromEntries(response.headers.entries()))
       console.log('Response bodyUsed:', response.bodyUsed)
+      console.log('Response status type:', typeof response.status)
+      console.log('Response status === 200:', response.status === 200)
+      console.log('Response status == 200:', response.status == 200)
       
       // Always call handleNonStreamingResponse for status 200, regardless of response.ok
       if (response.status === 200) {
@@ -110,6 +113,7 @@ export default function AIChat({ session }: AIChatProps) {
         await handleNonStreamingResponse(response)
       } else {
         console.error('Response not OK, status:', response.status, 'statusText:', response.statusText)
+        console.error('About to show error message and set isTyping false')
         const errorMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
