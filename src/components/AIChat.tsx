@@ -109,28 +109,9 @@ export default function AIChat({ session }: AIChatProps) {
         bodyUsed: response.bodyUsed
       })
       
-      console.log('=== About to check response.ok ===', response.ok, typeof response.ok)
-      
       if (response.ok) {
         console.log('=== Response is OK, calling handleNonStreamingResponse ===')
-        console.log('=== handleNonStreamingResponse function exists? ===', typeof handleNonStreamingResponse)
-        try {
-          console.log('=== About to call handleNonStreamingResponse ===')
-          await handleNonStreamingResponse(response)
-          console.log('=== handleNonStreamingResponse completed successfully ===')
-        } catch (error) {
-          console.error('=== Error in handleNonStreamingResponse ===', error)
-          console.error('=== Error stack ===', (error as Error).stack)
-          
-          const errorMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '抱歉，处理您的请求时遇到了错误。请稍后再试。',
-            created_at: new Date().toISOString()
-          }
-          setMessages(prev => [...prev, errorMessage])
-          setIsTyping(false)
-        }
+        await handleNonStreamingResponse(response)
       } else {
         console.error('=== Response not OK ===', response.status, response.statusText)
         const errorMessage: ChatMessage = {
@@ -179,15 +160,8 @@ export default function AIChat({ session }: AIChatProps) {
       }
       
       console.log('=== Adding assistant message to UI ===', assistantChatMessage)
-      console.log('=== Current messages before update ===', messages.length)
       
-      setMessages(prev => {
-        console.log('=== setMessages callback called ===', prev.length, 'existing messages')
-        const newMessages = [...prev, assistantChatMessage]
-        console.log('=== New messages array ===', newMessages.length, 'total messages')
-        console.log('=== Last message content ===', newMessages[newMessages.length - 1]?.content?.substring(0, 100))
-        return newMessages
-      })
+      setMessages(prev => [...prev, assistantChatMessage])
       
       console.log('=== Saving to database ===')
       const { data, error } = await supabase.from('chat_messages').insert({
