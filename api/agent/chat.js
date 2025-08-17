@@ -237,6 +237,9 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
     console.log('Making OpenAI API call with tools...')
     console.log('Conversation messages count:', conversationMessages.length)
+    console.log('Tools being sent to OpenAI:', JSON.stringify(tools, null, 2))
+    console.log('System prompt being used:', conversationMessages[0].content)
+    console.log('User message:', userMessage)
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -266,6 +269,8 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('OpenAI API response received:', JSON.stringify(aiResponse, null, 2))
     console.log('AI response choices:', aiResponse.choices?.length || 0)
     console.log('First choice message:', aiResponse.choices?.[0]?.message)
+    console.log('Does message have tool_calls?', !!aiResponse.choices?.[0]?.message?.tool_calls)
+    console.log('Tool calls array:', aiResponse.choices?.[0]?.message?.tool_calls)
     
     const message = aiResponse.choices[0].message
     console.log('AI message:', message)
