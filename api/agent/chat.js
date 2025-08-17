@@ -258,12 +258,16 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
     const aiResponse = await response.json()
     console.log('OpenAI API response received:', JSON.stringify(aiResponse, null, 2))
+    console.log('AI response choices:', aiResponse.choices?.length || 0)
+    console.log('First choice message:', aiResponse.choices?.[0]?.message)
     
     const message = aiResponse.choices[0].message
     console.log('AI message:', message)
 
     if (message.tool_calls) {
-      console.log('Tool calls detected:', message.tool_calls.length)
+      console.log('=== TOOL CALLS DETECTED ===')
+      console.log('Number of tool calls:', message.tool_calls.length)
+      console.log('Tool calls details:', JSON.stringify(message.tool_calls, null, 2))
       const toolResults = []
       
       for (const toolCall of message.tool_calls) {
@@ -335,7 +339,10 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       }
     }
 
-    console.log('No tool calls, returning direct message')
+    console.log('=== NO TOOL CALLS DETECTED ===')
+    console.log('AI message content:', message.content)
+    console.log('Message object keys:', Object.keys(message))
+    console.log('Full message object:', JSON.stringify(message, null, 2))
     return {
       message: message.content,
       toolCalls: null,
@@ -357,7 +364,8 @@ async function getTherapistAvailability(args, supabase) {
     console.log('Extracted parameters:', { therapistName, startDate, endDate })
     
     const knownTherapists = [
-      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
+      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' },
+      { id: 'test-therapist-megan-chang', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
     ]
     
     let therapists = knownTherapists
@@ -493,7 +501,8 @@ async function createBooking(args, userId, supabase) {
     const { therapistName, dateTime, duration = 60 } = args
     
     const knownTherapists = [
-      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
+      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' },
+      { id: 'test-therapist-megan-chang', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
     ]
     
     const therapist = knownTherapists.find(t => 
