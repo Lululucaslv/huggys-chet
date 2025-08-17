@@ -17,10 +17,10 @@ export class ChatAPI {
   private apiKey: string
   
   constructor() {
-    this.apiKey = (import.meta as any).env.VITE_OPENAI_API_KEY || ''
+    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY || ''
     if (!this.apiKey) {
       console.error('VITE_OPENAI_API_KEY not found in environment variables')
-      console.log('Available env vars:', Object.keys((import.meta as any).env))
+      console.log('Available env vars:', Object.keys(import.meta.env))
     } else {
       console.log('OpenAI API key loaded successfully')
     }
@@ -115,7 +115,7 @@ export class ChatAPI {
   }
 
   private buildSystemPrompt(userProfile: UserProfile): string {
-    const systemPromptContent = (import.meta as any).env.VITE_OPENAI_SYSTEM_PROMPT || `你是Huggy AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
+    const systemPromptContent = import.meta.env.VITE_OPENAI_SYSTEM_PROMPT || `你是Huggy AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
 
 🧠 **记忆与成长能力**：
 - 你能完整记住与每个用户的所有对话历史
