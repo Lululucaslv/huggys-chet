@@ -35,6 +35,13 @@ export class ChatAPI {
       const userMessage = messages[messages.length - 1]?.content || ''
       const conversationHistory = messages.slice(0, -1)
 
+      console.log('Calling AI Agent API with:', {
+        tool: 'chatWithTools',
+        messagesCount: conversationHistory.length,
+        userMessage: userMessage.substring(0, 50) + '...',
+        userId: userProfile.id || 'anonymous'
+      })
+
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: {
@@ -48,6 +55,8 @@ export class ChatAPI {
         })
       })
 
+      console.log('AI Agent API response status:', response.status)
+
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Agent API Error:', response.status, response.statusText)
@@ -56,8 +65,10 @@ export class ChatAPI {
       }
 
       const result = await response.json()
+      console.log('AI Agent API result:', result)
       
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.message) {
+        console.log('AI Agent response successful, returning message:', result.data.message.substring(0, 100) + '...')
         const mockResponse = new Response(JSON.stringify({
           choices: [{
             message: {
@@ -71,6 +82,7 @@ export class ChatAPI {
         })
         return mockResponse
       } else {
+        console.error('Invalid AI Agent response structure:', result)
         throw new Error('Invalid response from agent API')
       }
 
