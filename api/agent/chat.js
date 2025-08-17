@@ -1,6 +1,6 @@
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   console.log('Agent API called with method:', req.method)
   
   if (req.method !== 'POST') {
