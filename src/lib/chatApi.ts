@@ -64,15 +64,22 @@ export class ChatAPI {
         throw new Error(`Agent API request failed: ${response.status} - ${errorText}`)
       }
 
-      console.log('AI Agent API response received, cloning response for frontend')
-      console.log('Response details before return:', {
+      console.log('AI Agent API response received, processing response for frontend')
+      console.log('Response details before processing:', {
         status: response.status,
         statusText: response.statusText,
         bodyUsed: response.bodyUsed,
         headers: Object.fromEntries(response.headers.entries())
       })
       
-      return response.clone()
+      const responseData = await response.json()
+      console.log('Response data successfully parsed')
+      
+      return new Response(JSON.stringify(responseData), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
 
     } catch (error) {
       console.error('Error in sendMessage:', error)
