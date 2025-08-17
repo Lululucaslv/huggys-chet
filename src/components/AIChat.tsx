@@ -119,13 +119,16 @@ export default function AIChat({ session }: AIChatProps) {
       
       if (result.success && result.data && result.data.message) {
         assistantMessage = result.data.message
-      } else if (result.choices?.[0]?.message?.content) {
+        console.log('Using AI Agent message:', assistantMessage.substring(0, 100) + '...')
+      } 
+      else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
-      } else {
-        assistantMessage = 'Sorry, I encountered an error processing your request.'
+        console.log('Using OpenAI fallback message:', assistantMessage.substring(0, 100) + '...')
+      } 
+      else {
+        console.error('Unexpected response format:', result)
+        assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
-      
-      console.log('Assistant message to display:', assistantMessage.substring(0, 100) + '...')
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
