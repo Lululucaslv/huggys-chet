@@ -138,7 +138,11 @@ export default function AIChat({ session }: AIChatProps) {
       
       let assistantMessage = ''
       
-      if (result.message) {
+      if (result.data && result.data.message) {
+        console.log('🔥 v6 - Using result.data.message:', result.data.message)
+        assistantMessage = result.data.message
+      }
+      else if (result.message) {
         console.log('🔥 v6 - Using result.message:', result.message)
         assistantMessage = result.message
       }
@@ -147,9 +151,9 @@ export default function AIChat({ session }: AIChatProps) {
         assistantMessage = result.choices[0].message.content
       }
       else if (result.success && result.data && result.data.message) {
-        console.log('🔥 v6 - Using result.data.message:', result.data.message)
+        console.log('🔥 v6 - Using result.data.message (fallback):', result.data.message)
         assistantMessage = result.data.message
-      } 
+      }
       else {
         console.error('🔥 v6 - Unexpected response format:', result)
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
@@ -233,6 +237,31 @@ export default function AIChat({ session }: AIChatProps) {
               </div>
             </div>
           )}
+          
+          <div className="flex justify-center mt-4 mb-2">
+            <button 
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/setup/add-test-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                    alert('测试数据添加成功！');
+                  } else {
+                    alert('添加测试数据失败: ' + (result.error || '未知错误'));
+                  }
+                } catch (error) {
+                  console.error('Error adding test data:', error);
+                  alert('添加测试数据时发生错误');
+                }
+              }}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
+            >
+              添加测试数据
+            </button>
+          </div>
           <div ref={messagesEndRef} />
         </div>
         

@@ -2,6 +2,9 @@
   "functions": {
     "api/agent/chat.js": {
       "maxDuration": 30
+    },
+    "api/setup/add-test-data.js": {
+      "maxDuration": 30
     }
   }
 }
