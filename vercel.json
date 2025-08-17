@@ -1,10 +1,5 @@
 {
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm install",
-  "functions": {
-    "api/agent/chat.js": {
-      "runtime": "20.x"
-    }
-  }
+  "installCommand": "cd frontend && npm install"
 }
