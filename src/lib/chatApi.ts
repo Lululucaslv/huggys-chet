@@ -69,8 +69,12 @@ export class ChatAPI {
       console.log('AI Agent API result:', result)
       
       if (result.success && result.data && result.data.message) {
-        console.log('AI Agent response successful, returning original response')
-        return response
+        console.log('AI Agent response successful, creating new Response with validated data')
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        })
       } else {
         console.error('Invalid AI Agent response structure:', result)
         throw new Error('Invalid response from agent API')
