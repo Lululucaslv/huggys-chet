@@ -143,18 +143,27 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => {
         const newMessages = [...prev, assistantChatMessage]
         console.log('New messages array length:', newMessages.length)
+        console.log('Updated messages state:', newMessages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' })))
         return newMessages
       })
       
-      await supabase.from('chat_messages').insert({
-        user_id: session.user.id,
-        role: 'assistant',
-        message: assistantMessage,
-        message_type: 'text',
-        audio_url: ''
-      })
-      
-      console.log('Successfully saved message to database')
+      try {
+        const { error: dbError } = await supabase.from('chat_messages').insert({
+          user_id: session.user.id,
+          role: 'assistant',
+          message: assistantMessage,
+          message_type: 'text',
+          audio_url: ''
+        })
+        
+        if (dbError) {
+          console.error('Database save error:', dbError)
+        } else {
+          console.log('Successfully saved message to database')
+        }
+      } catch (dbError) {
+        console.error('Database save exception:', dbError)
+      }
       
     } catch (error) {
       console.error('Error handling response:', error)

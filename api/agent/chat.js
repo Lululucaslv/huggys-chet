@@ -105,32 +105,35 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       } else {
         console.log('Test therapist profile created successfully:', profileData)
         
-        const nextWeek = new Date()
-        nextWeek.setDate(nextWeek.getDate() + 7)
-        const nextWeekStr = nextWeek.toISOString().split('T')[0]
+        const today = new Date()
+        const availabilitySlots = []
+        
+        for (let i = 1; i <= 7; i++) {
+          const futureDate = new Date(today)
+          futureDate.setDate(today.getDate() + i)
+          const futureDateStr = futureDate.toISOString().split('T')[0]
+          
+          const timeSlots = [
+            { start: '09:00:00', end: '10:00:00' },
+            { start: '10:00:00', end: '11:00:00' },
+            { start: '14:00:00', end: '15:00:00' },
+            { start: '15:00:00', end: '16:00:00' },
+            { start: '16:00:00', end: '17:00:00' }
+          ]
+          
+          timeSlots.forEach(slot => {
+            availabilitySlots.push({
+              therapist_id: 'test-therapist-megan-chang',
+              start_time: `${futureDateStr}T${slot.start}Z`,
+              end_time: `${futureDateStr}T${slot.end}Z`,
+              is_booked: false
+            })
+          })
+        }
         
         const { data: availabilityData, error: availabilityError } = await supabase
           .from('availability')
-          .upsert([
-            {
-              therapist_id: 'test-therapist-megan-chang',
-              start_time: `${nextWeekStr}T14:00:00Z`,
-              end_time: `${nextWeekStr}T15:00:00Z`,
-              is_booked: false
-            },
-            {
-              therapist_id: 'test-therapist-megan-chang',
-              start_time: `${nextWeekStr}T15:00:00Z`,
-              end_time: `${nextWeekStr}T16:00:00Z`,
-              is_booked: false
-            },
-            {
-              therapist_id: 'test-therapist-megan-chang',
-              start_time: `${nextWeekStr}T16:00:00Z`,
-              end_time: `${nextWeekStr}T17:00:00Z`,
-              is_booked: false
-            }
-          ])
+          .upsert(availabilitySlots)
           .select()
 
         console.log('Availability creation result:', { availabilityData, availabilityError })
