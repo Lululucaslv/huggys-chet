@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE FUNCTION CALLED - DEBUGGING ACTIVE v3')
-    console.log('🔥 DEPLOYMENT VERSION CHECK v3 - LATEST CONDITION FIX - THIS LOG SHOULD APPEAR IN BROWSER CONSOLE')
+    console.log('🚀 SENDMESSAGE FUNCTION CALLED - DEBUGGING ACTIVE v4 - FORCE FRESH DEPLOYMENT')
+    console.log('🔥 DEPLOYMENT VERSION CHECK v4 - FORCE FRESH BUILD - THIS LOG SHOULD APPEAR IN BROWSER CONSOLE')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
