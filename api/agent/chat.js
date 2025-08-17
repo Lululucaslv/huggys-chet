@@ -161,7 +161,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         type: "function",
         function: {
           name: "getTherapistAvailability",
-          description: "查询指定咨询师在特定日期范围内的可预约时间段。当用户提到具体日期如'8月18日'时，请使用2025年的日期格式。",
+          description: "查询指定咨询师在特定日期范围内的可预约时间段。重要：当用户提到具体日期如'8月18日'、'下周'等时，请使用2025年的日期格式，例如2025-08-18。",
           parameters: {
             type: "object",
             properties: {
@@ -171,14 +171,14 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
               },
               startDate: {
                 type: "string",
-                description: "查询开始日期，格式为YYYY-MM-DD，例如2025-08-18。当用户说'8月18日'时，应理解为2025-08-18"
+                description: "查询开始日期，格式为YYYY-MM-DD，例如2025-08-18。当用户说'8月18日'时，应理解为2025-08-18。如果用户没有指定年份，默认使用2025年"
               },
               endDate: {
                 type: "string",
                 description: "查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段"
               }
             },
-            required: ["therapistName", "startDate"]
+            required: ["therapistName"]
           }
         }
       },
@@ -219,12 +219,13 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 2. createBooking - 为用户创建预约
 
 重要提醒：
-- 当前年份是2025年
-- 当用户提到"8月18日"、"下周"等日期时，请理解为2025年的日期
+- 当前年份是2025年，所有日期都应该使用2025年
+- 当用户提到"8月18日"、"下周"、"明天"等日期时，请理解为2025年的日期
 - 用户提到的咨询师"Megan Chang"是可用的
+- 在调用getTherapistAvailability工具时，startDate参数必须使用YYYY-MM-DD格式，例如2025-08-18
 
 当用户表达预约意图时，你应该：
-1. 首先使用getTherapistAvailability工具查询可用时间（注意使用2025年的日期格式）
+1. 首先使用getTherapistAvailability工具查询可用时间（重要：确保使用2025年的日期格式，如2025-08-18）
 2. 向用户展示可选的时间段
 3. 当用户确认时间后，使用createBooking工具创建预约
 
@@ -365,6 +366,7 @@ async function getTherapistAvailability(args, supabase) {
   try {
     console.log('=== getTherapistAvailability called ===')
     console.log('Raw args received:', JSON.stringify(args, null, 2))
+    console.log('Current year should be 2025 for all date operations')
     const { therapistName, startDate, endDate } = args
     console.log('Extracted parameters:', { therapistName, startDate, endDate })
     
