@@ -96,12 +96,12 @@ export default function AIChat({ session }: AIChatProps) {
 
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
-        userProfile,
-        true
+        { ...userProfile, id: session.user.id },
+        false
       )
 
       if (response.ok) {
-        await handleStreamingResponse(response)
+        await handleNonStreamingResponse(response)
       }
     } catch (error) {
       console.error('Error sending message:', error)
@@ -110,70 +110,40 @@ export default function AIChat({ session }: AIChatProps) {
     }
   }
 
-  const handleStreamingResponse = async (response: Response) => {
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    let assistantMessage = ''
-
-    if (!reader) return
-
+  const handleNonStreamingResponse = async (response: Response) => {
     try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
-            if (data === '[DONE]') {
-              await supabase.from('chat_messages').insert({
-                user_id: session.user.id,
-                role: 'assistant',
-                message: assistantMessage,
-                message_type: 'text',
-                audio_url: ''
-              })
-              return
-            }
-
-            try {
-              const parsed = JSON.parse(data)
-              const content = parsed.choices?.[0]?.delta?.content
-              if (content) {
-                assistantMessage += content
-                updateStreamingMessage(assistantMessage)
-              }
-            } catch (e) {
-            }
-          }
-        }
+      const result = await response.json()
+      const assistantMessage = result.choices?.[0]?.message?.content || 'Sorry, I encountered an error processing your request.'
+      
+      const assistantChatMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: assistantMessage,
+        created_at: new Date().toISOString()
       }
-    } finally {
-      reader.releaseLock()
+      
+      setMessages(prev => [...prev, assistantChatMessage])
+      
+      await supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'assistant',
+        message: assistantMessage,
+        message_type: 'text',
+        audio_url: ''
+      })
+      
+    } catch (error) {
+      console.error('Error handling response:', error)
+      const errorMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '抱歉，处理您的请求时遇到了错误。请稍后再试。',
+        created_at: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
     }
   }
 
-  const updateStreamingMessage = (content: string) => {
-    setMessages(prev => {
-      const lastMessage = prev[prev.length - 1]
-      if (lastMessage?.role === 'assistant') {
-        return prev.slice(0, -1).concat({
-          ...lastMessage,
-          content: content
-        })
-      } else {
-        return prev.concat({
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: content,
-          created_at: new Date().toISOString()
-        })
-      }
-    })
-  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -209,7 +179,7 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                正在思考中...
+                Huggy正在思考并可能调用工具查询信息...
               </div>
             </div>
           )}
