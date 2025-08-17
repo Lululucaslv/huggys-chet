@@ -94,6 +94,7 @@ export default function AIChat({ session }: AIChatProps) {
 
       await UserProfileUpdater.updateUserProfile(session.user.id, messageToSend)
 
+      console.log('=== About to call chatAPI.sendMessage ===')
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
         { ...userProfile, id: session.user.id },
@@ -102,6 +103,7 @@ export default function AIChat({ session }: AIChatProps) {
 
       console.log('=== Response received, calling handleNonStreamingResponse ===', response.ok)
       if (response.ok) {
+        console.log('=== Response is OK, calling handleNonStreamingResponse ===')
         await handleNonStreamingResponse(response)
       } else {
         console.error('=== Response not OK ===', response.status, response.statusText)
