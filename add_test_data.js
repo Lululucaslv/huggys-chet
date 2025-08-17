@@ -67,6 +67,18 @@ async function addTestData() {
           start_time: '2025-08-19T15:00:00Z',
           end_time: '2025-08-19T16:00:00Z',
           is_booked: false
+        },
+        {
+          therapist_id: '550e8400-e29b-41d4-a716-446655440000',
+          start_time: '2025-08-20T10:00:00Z',
+          end_time: '2025-08-20T11:00:00Z',
+          is_booked: false
+        },
+        {
+          therapist_id: '550e8400-e29b-41d4-a716-446655440000',
+          start_time: '2025-08-20T14:00:00Z',
+          end_time: '2025-08-20T15:00:00Z',
+          is_booked: false
         }
       ])
       .select()
