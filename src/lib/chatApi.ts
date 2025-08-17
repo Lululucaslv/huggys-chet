@@ -64,13 +64,18 @@ export class ChatAPI {
         throw new Error(`Agent API request failed: ${response.status} - ${errorText}`)
       }
 
-      const responseClone = response.clone()
       const result = await response.json()
       console.log('AI Agent API result:', result)
       
       if (result.success && result.data && result.data.message) {
         console.log('AI Agent response successful, returning message:', result.data.message.substring(0, 100) + '...')
-        return responseClone
+        const responseData = JSON.stringify(result)
+        const mockResponse = new Response(responseData, {
+          status: 200,
+          statusText: 'OK',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        return mockResponse
       } else {
         console.error('Invalid AI Agent response structure:', result)
         throw new Error('Invalid response from agent API')
