@@ -72,6 +72,69 @@ export default async function handler(req, res) {
 
 async function handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey) {
   console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
+  
+  try {
+    const { data: existingTherapists } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('role', 'THERAPIST')
+      .limit(1)
+
+    if (!existingTherapists || existingTherapists.length === 0) {
+      console.log('No therapists found, adding test data...')
+      
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: 'test-therapist-megan-chang',
+          email: 'megan.chang@example.com',
+          full_name: 'Megan Chang',
+          role: 'THERAPIST',
+          total_messages: 0,
+          personality_type: 'professional',
+          preferences: ['cognitive-behavioral', 'mindfulness'],
+          communication_style: 'supportive'
+        })
+
+      if (profileError) {
+        console.error('Error creating test therapist profile:', profileError)
+      } else {
+        console.log('Test therapist profile created successfully')
+        
+        const { error: availabilityError } = await supabase
+          .from('availability')
+          .upsert([
+            {
+              therapist_id: 'test-therapist-megan-chang',
+              start_time: '2025-08-19T14:00:00Z',
+              end_time: '2025-08-19T15:00:00Z',
+              is_booked: false
+            },
+            {
+              therapist_id: 'test-therapist-megan-chang',
+              start_time: '2025-08-19T15:00:00Z',
+              end_time: '2025-08-19T16:00:00Z',
+              is_booked: false
+            },
+            {
+              therapist_id: 'test-therapist-megan-chang',
+              start_time: '2025-08-20T10:00:00Z',
+              end_time: '2025-08-20T11:00:00Z',
+              is_booked: false
+            }
+          ])
+
+        if (availabilityError) {
+          console.error('Error creating test availability:', availabilityError)
+        } else {
+          console.log('Test availability created successfully')
+        }
+      }
+    }
+  } catch (testDataError) {
+    console.error('Error checking/creating test data:', testDataError)
+  }
+
   try {
     const tools = [
       {
