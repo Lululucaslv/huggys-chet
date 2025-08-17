@@ -371,8 +371,7 @@ async function getTherapistAvailability(args, supabase) {
     console.log('Extracted parameters:', { therapistName, startDate, endDate })
     
     const knownTherapists = [
-      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' },
-      { id: 'test-therapist-megan-chang', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
+      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
     ]
     
     let therapists = knownTherapists
@@ -517,8 +516,7 @@ async function createBooking(args, userId, supabase) {
     const { therapistName, dateTime, duration = 60 } = args
     
     const knownTherapists = [
-      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' },
-      { id: 'test-therapist-megan-chang', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
+      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Megan Chang', user_id: 'megan.chang@example.com' }
     ]
     
     const therapist = knownTherapists.find(t => 
