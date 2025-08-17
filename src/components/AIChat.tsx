@@ -121,7 +121,19 @@ export default function AIChat({ session }: AIChatProps) {
   const handleNonStreamingResponse = async (response: Response) => {
     try {
       const result = await response.json()
-      const assistantMessage = result.choices?.[0]?.message?.content || 'Sorry, I encountered an error processing your request.'
+      
+      let assistantMessage = ''
+      
+      if (result.success && result.data && result.data.message) {
+        assistantMessage = result.data.message
+      } 
+      else if (result.choices?.[0]?.message?.content) {
+        assistantMessage = result.choices[0].message.content
+      } 
+      else {
+        console.error('Unexpected response format:', result)
+        assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
+      }
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
