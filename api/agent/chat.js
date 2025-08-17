@@ -108,7 +108,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         const today = new Date()
         const availabilitySlots = []
         
-        for (let i = 1; i <= 7; i++) {
+        for (let i = 1; i <= 14; i++) {
           const futureDate = new Date(today)
           futureDate.setDate(today.getDate() + i)
           const futureDateStr = futureDate.toISOString().split('T')[0]
@@ -391,6 +391,9 @@ async function getTherapistAvailability(args, supabase) {
     }
     if (endDate) {
       availabilityQuery = availabilityQuery.lte('start_time', endDate + 'T23:59:59')
+    } else if (!startDate && !endDate) {
+      const today = new Date().toISOString().split('T')[0]
+      availabilityQuery = availabilityQuery.gte('start_time', today)
     }
 
     const { data: availability, error: availabilityError } = await availabilityQuery
@@ -405,7 +408,7 @@ async function getTherapistAvailability(args, supabase) {
     }
 
     const result = therapists.map(therapist => {
-      const therapistSlots = availability.filter(slot => slot.therapist_id === therapist.id)
+      const therapistSlots = availability ? availability.filter(slot => slot.therapist_id === therapist.id) : []
       return {
         therapistId: therapist.id,
         therapistName: therapist.full_name,
@@ -420,7 +423,7 @@ async function getTherapistAvailability(args, supabase) {
     return {
       success: true,
       therapists: result,
-      totalSlots: availability.length
+      totalSlots: availability ? availability.length : 0
     }
 
   } catch (error) {
