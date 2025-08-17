@@ -68,6 +68,7 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
+    console.log('🚀 SENDMESSAGE FUNCTION CALLED - DEBUGGING ACTIVE')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -84,6 +85,7 @@ export default function AIChat({ session }: AIChatProps) {
     setIsTyping(true)
 
     try {
+      console.log('🔥 About to insert user message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'user',
@@ -92,28 +94,31 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
 
+      console.log('🔥 About to update user profile')
       await UserProfileUpdater.updateUserProfile(session.user.id, messageToSend)
 
+      console.log('🔥 About to call chatAPI.sendMessage')
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
         { ...userProfile, id: session.user.id },
         false
       )
 
-      console.log('Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-      console.log('Response bodyUsed:', response.bodyUsed)
-      console.log('Response status type:', typeof response.status)
-      console.log('Response status === 200:', response.status === 200)
-      console.log('Response status == 200:', response.status == 200)
+      console.log('🔥 RESPONSE RECEIVED - CRITICAL DEBUG POINT')
+      console.log('🔥 Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
+      console.log('🔥 Response headers:', Object.fromEntries(response.headers.entries()))
+      console.log('🔥 Response bodyUsed:', response.bodyUsed)
+      console.log('🔥 Response status type:', typeof response.status)
+      console.log('🔥 Response status === 200:', response.status === 200)
+      console.log('🔥 Response status == 200:', response.status == 200)
       
       // Always call handleNonStreamingResponse for status 200, regardless of response.ok
       if (response.status === 200) {
-        console.log('Status is 200, calling handleNonStreamingResponse')
+        console.log('🔥 Status is 200, calling handleNonStreamingResponse')
         await handleNonStreamingResponse(response)
       } else {
-        console.error('Response not OK, status:', response.status, 'statusText:', response.statusText)
-        console.error('About to show error message and set isTyping false')
+        console.error('🔥 Response not OK, status:', response.status, 'statusText:', response.statusText)
+        console.error('🔥 About to show error message and set isTyping false')
         const errorMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -124,13 +129,14 @@ export default function AIChat({ session }: AIChatProps) {
         setIsTyping(false)
       }
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error('🔥 Error sending message:', error)
       setIsTyping(false)
     }
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('handleNonStreamingResponse called with response:', {
+    console.log('🚀 HANDLENONSTREAMINGRESPONSE FUNCTION CALLED - DEBUGGING ACTIVE')
+    console.log('🔥 handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -138,24 +144,30 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
+      console.log('🔥 About to parse response.json()')
       const result = await response.json()
-      console.log('Full AI Agent API response:', result)
+      console.log('🔥 Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
       if (result.message) {
+        console.log('🔥 Using result.message:', result.message)
         assistantMessage = result.message
       }
       else if (result.choices?.[0]?.message?.content) {
+        console.log('🔥 Using result.choices[0].message.content:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       }
       else if (result.success && result.data && result.data.message) {
+        console.log('🔥 Using result.data.message:', result.data.message)
         assistantMessage = result.data.message
       } 
       else {
-        console.error('Unexpected response format:', result)
+        console.error('🔥 Unexpected response format:', result)
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
+      
+      console.log('🔥 Final assistantMessage:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -164,8 +176,10 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
+      console.log('🔥 About to add message to UI:', assistantChatMessage)
       setMessages(prev => [...prev, assistantChatMessage])
       
+      console.log('🔥 About to save message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -174,8 +188,10 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
+      console.log('🔥 Message saved to database successfully')
+      
     } catch (error) {
-      console.error('Error handling response:', error)
+      console.error('🔥 Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -185,7 +201,9 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => [...prev, errorMessage])
     }
     
+    console.log('🔥 About to set isTyping to false')
     setIsTyping(false)
+    console.log('🔥 handleNonStreamingResponse function completed')
   }
 
 
