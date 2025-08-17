@@ -240,6 +240,14 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('Tools being sent to OpenAI:', JSON.stringify(tools, null, 2))
     console.log('System prompt being used:', conversationMessages[0].content)
     console.log('User message:', userMessage)
+    console.log('Full request body being sent to OpenAI:', JSON.stringify({
+      model: 'gpt-4',
+      messages: conversationMessages,
+      tools: tools,
+      tool_choice: "auto",
+      temperature: 0.7,
+      max_tokens: 1500
+    }, null, 2))
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -354,6 +362,11 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('AI message content:', message.content)
     console.log('Message object keys:', Object.keys(message))
     console.log('Full message object:', JSON.stringify(message, null, 2))
+    console.log('DEBUGGING: Why no tool calls? User message was:', userMessage)
+    console.log('DEBUGGING: System prompt contained tool instructions:', conversationMessages[0].content.includes('getTherapistAvailability'))
+    console.log('DEBUGGING: Tools array length:', tools.length)
+    console.log('DEBUGGING: Model used:', 'gpt-4')
+    console.log('DEBUGGING: Tool choice setting:', 'auto')
     return {
       message: message.content,
       toolCalls: null,
