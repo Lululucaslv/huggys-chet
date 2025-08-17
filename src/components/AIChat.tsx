@@ -156,9 +156,9 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
     }
-    
-    setIsTyping(false)
   }
 
 
