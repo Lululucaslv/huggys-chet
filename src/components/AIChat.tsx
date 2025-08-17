@@ -101,9 +101,12 @@ export default function AIChat({ session }: AIChatProps) {
       )
 
       console.log('Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+      console.log('Response bodyUsed:', response.bodyUsed)
       
-      if (response.ok) {
-        console.log('Response is OK, calling handleNonStreamingResponse')
+      // Always call handleNonStreamingResponse for status 200, regardless of response.ok
+      if (response.status === 200) {
+        console.log('Status is 200, calling handleNonStreamingResponse')
         await handleNonStreamingResponse(response)
       } else {
         console.error('Response not OK, status:', response.status, 'statusText:', response.statusText)
