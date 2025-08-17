@@ -74,16 +74,17 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
   console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
   
   try {
-    const { data: existingTherapists } = await supabase
+    const { data: existingTherapists, error: checkError } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('id, full_name')
       .eq('role', 'THERAPIST')
-      .limit(1)
+
+    console.log('Existing therapists check:', { existingTherapists, checkError })
 
     if (!existingTherapists || existingTherapists.length === 0) {
-      console.log('No therapists found, adding test data...')
+      console.log('No therapists found, creating test therapist data...')
       
-      const { error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .upsert({
           id: 'test-therapist-megan-chang',
@@ -95,41 +96,53 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
           preferences: ['cognitive-behavioral', 'mindfulness'],
           communication_style: 'supportive'
         })
+        .select()
+
+      console.log('Profile creation result:', { profileData, profileError })
 
       if (profileError) {
         console.error('Error creating test therapist profile:', profileError)
       } else {
-        console.log('Test therapist profile created successfully')
+        console.log('Test therapist profile created successfully:', profileData)
         
-        const { error: availabilityError } = await supabase
+        const nextWeek = new Date()
+        nextWeek.setDate(nextWeek.getDate() + 7)
+        const nextWeekStr = nextWeek.toISOString().split('T')[0]
+        
+        const { data: availabilityData, error: availabilityError } = await supabase
           .from('availability')
           .upsert([
             {
               therapist_id: 'test-therapist-megan-chang',
-              start_time: '2025-08-19T14:00:00Z',
-              end_time: '2025-08-19T15:00:00Z',
+              start_time: `${nextWeekStr}T14:00:00Z`,
+              end_time: `${nextWeekStr}T15:00:00Z`,
               is_booked: false
             },
             {
               therapist_id: 'test-therapist-megan-chang',
-              start_time: '2025-08-19T15:00:00Z',
-              end_time: '2025-08-19T16:00:00Z',
+              start_time: `${nextWeekStr}T15:00:00Z`,
+              end_time: `${nextWeekStr}T16:00:00Z`,
               is_booked: false
             },
             {
               therapist_id: 'test-therapist-megan-chang',
-              start_time: '2025-08-20T10:00:00Z',
-              end_time: '2025-08-20T11:00:00Z',
+              start_time: `${nextWeekStr}T16:00:00Z`,
+              end_time: `${nextWeekStr}T17:00:00Z`,
               is_booked: false
             }
           ])
+          .select()
+
+        console.log('Availability creation result:', { availabilityData, availabilityError })
 
         if (availabilityError) {
           console.error('Error creating test availability:', availabilityError)
         } else {
-          console.log('Test availability created successfully')
+          console.log('Test availability created successfully:', availabilityData)
         }
       }
+    } else {
+      console.log('Therapists already exist:', existingTherapists.map(t => t.full_name))
     }
   } catch (testDataError) {
     console.error('Error checking/creating test data:', testDataError)
@@ -331,30 +344,55 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
 async function getTherapistAvailability(args, supabase) {
   try {
+    console.log('getTherapistAvailability called with args:', args)
     const { therapistName, startDate, endDate } = args
     
-    const { data: therapist, error: therapistError } = await supabase
+    let therapistQuery = supabase
       .from('user_profiles')
-      .select('id')
-      .eq('full_name', therapistName)
+      .select('id, full_name')
       .eq('role', 'THERAPIST')
-      .single()
+    
+    if (therapistName) {
+      therapistQuery = therapistQuery.ilike('full_name', `%${therapistName}%`)
+    }
+    
+    const { data: therapists, error: therapistError } = await therapistQuery
 
-    if (therapistError || !therapist) {
+    console.log('Therapist query result:', { therapists, therapistError })
+
+    if (therapistError) {
       return {
         success: false,
-        error: `未找到名为 "${therapistName}" 的咨询师`
+        error: '查询咨询师时发生错误'
       }
     }
 
-    const { data: availability, error: availabilityError } = await supabase
+    if (!therapists || therapists.length === 0) {
+      return {
+        success: false,
+        error: therapistName ? `未找到名为 "${therapistName}" 的咨询师` : '未找到任何咨询师'
+      }
+    }
+
+    const therapistIds = therapists.map(t => t.id)
+    
+    let availabilityQuery = supabase
       .from('availability')
-      .select('id, start_time, end_time')
-      .eq('therapist_id', therapist.id)
+      .select('id, therapist_id, start_time, end_time')
+      .in('therapist_id', therapistIds)
       .eq('is_booked', false)
-      .gte('start_time', startDate)
-      .lte('start_time', endDate + 'T23:59:59')
       .order('start_time', { ascending: true })
+
+    if (startDate) {
+      availabilityQuery = availabilityQuery.gte('start_time', startDate)
+    }
+    if (endDate) {
+      availabilityQuery = availabilityQuery.lte('start_time', endDate + 'T23:59:59')
+    }
+
+    const { data: availability, error: availabilityError } = await availabilityQuery
+
+    console.log('Availability query result:', { availability, availabilityError })
 
     if (availabilityError) {
       return {
@@ -363,14 +401,23 @@ async function getTherapistAvailability(args, supabase) {
       }
     }
 
+    const result = therapists.map(therapist => {
+      const therapistSlots = availability.filter(slot => slot.therapist_id === therapist.id)
+      return {
+        therapistId: therapist.id,
+        therapistName: therapist.full_name,
+        availableSlots: therapistSlots.map(slot => ({
+          id: slot.id,
+          startTime: slot.start_time,
+          endTime: slot.end_time
+        }))
+      }
+    }).filter(t => t.availableSlots.length > 0)
+
     return {
       success: true,
-      therapistName: therapistName,
-      availableSlots: availability.map(slot => ({
-        id: slot.id,
-        startTime: slot.start_time,
-        endTime: slot.end_time
-      }))
+      therapists: result,
+      totalSlots: availability.length
     }
 
   } catch (error) {
