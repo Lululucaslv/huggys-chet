@@ -121,14 +121,18 @@ export default function AIChat({ session }: AIChatProps) {
   const handleNonStreamingResponse = async (response: Response) => {
     try {
       const result = await response.json()
+      console.log('Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
-      if (result.success && result.data && result.data.message) {
-        assistantMessage = result.data.message
-      } 
+      if (result.message) {
+        assistantMessage = result.message
+      }
       else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
+      }
+      else if (result.success && result.data && result.data.message) {
+        assistantMessage = result.data.message
       } 
       else {
         console.error('Unexpected response format:', result)
