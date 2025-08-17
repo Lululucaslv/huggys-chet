@@ -147,7 +147,6 @@ export default function AIChat({ session }: AIChatProps) {
         return newMessages
       })
       
-      
       try {
         const { error: dbError } = await supabase.from('chat_messages').insert({
           user_id: session.user.id,
