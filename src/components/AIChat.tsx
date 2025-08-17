@@ -113,20 +113,16 @@ export default function AIChat({ session }: AIChatProps) {
   const handleNonStreamingResponse = async (response: Response) => {
     try {
       const result = await response.json()
-      console.log('Frontend received response:', result)
       
       let assistantMessage = ''
       
       if (result.success && result.data && result.data.message) {
         assistantMessage = result.data.message
-        console.log('Using AI Agent response:', assistantMessage.substring(0, 100) + '...')
       }
       else if (result.choices?.[0]?.message?.content) {
         assistantMessage = result.choices[0].message.content
-        console.log('Using OpenAI fallback response:', assistantMessage.substring(0, 100) + '...')
       }
       else {
-        console.error('Invalid response structure:', result)
         assistantMessage = 'Sorry, I encountered an error processing your request.'
       }
       
@@ -137,13 +133,8 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('Adding assistant message to state:', assistantChatMessage)
-      
       setMessages(prev => [...prev, assistantChatMessage])
       
-      setIsTyping(false)
-      
-      console.log('Saving to database...')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -151,11 +142,9 @@ export default function AIChat({ session }: AIChatProps) {
         message_type: 'text',
         audio_url: ''
       })
-      console.log('Database save completed')
       
     } catch (error) {
       console.error('Error handling response:', error)
-      setIsTyping(false)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -163,6 +152,8 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
     }
   }
 
