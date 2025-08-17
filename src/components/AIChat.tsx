@@ -147,8 +147,6 @@ export default function AIChat({ session }: AIChatProps) {
         return newMessages
       })
       
-      setIsTyping(false)
-      console.log('Set isTyping to false')
       
       try {
         const { error: dbError } = await supabase.from('chat_messages').insert({
@@ -170,7 +168,6 @@ export default function AIChat({ session }: AIChatProps) {
       
     } catch (error) {
       console.error('Error handling response:', error)
-      setIsTyping(false)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
