@@ -241,7 +241,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('System prompt being used:', conversationMessages[0].content)
     console.log('User message:', userMessage)
     console.log('Full request body being sent to OpenAI:', JSON.stringify({
-      model: 'gpt-4',
+      model: 'gpt-4o',
       messages: conversationMessages,
       tools: tools,
       tool_choice: "auto",
@@ -256,7 +256,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: conversationMessages,
         tools: tools,
         tool_choice: "auto",
@@ -333,7 +333,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o',
           messages: finalMessages,
           temperature: 0.7,
           max_tokens: 1500
