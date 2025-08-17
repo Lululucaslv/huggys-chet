@@ -136,7 +136,12 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      setMessages(prev => [...prev, assistantChatMessage])
+      console.log('Adding assistant message to UI:', assistantChatMessage)
+      setMessages(prev => {
+        const newMessages = [...prev, assistantChatMessage]
+        console.log('Updated messages array:', newMessages.length, 'messages')
+        return newMessages
+      })
       
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
