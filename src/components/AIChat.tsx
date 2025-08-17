@@ -117,9 +117,26 @@ export default function AIChat({ session }: AIChatProps) {
         } catch (error) {
           console.error('=== Error in handleNonStreamingResponse ===', error)
           console.error('=== Error stack ===', (error as Error).stack)
+          
+          const errorMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '抱歉，处理您的请求时遇到了错误。请稍后再试。',
+            created_at: new Date().toISOString()
+          }
+          setMessages(prev => [...prev, errorMessage])
+          setIsTyping(false)
         }
       } else {
         console.error('=== Response not OK ===', response.status, response.statusText)
+        const errorMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '抱歉，处理您的请求时遇到了错误。请稍后再试。',
+          created_at: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, errorMessage])
+        setIsTyping(false)
       }
     } catch (error) {
       console.error('=== Error in sendMessage function ===', error)

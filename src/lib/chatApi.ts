@@ -65,6 +65,12 @@ export class ChatAPI {
       }
 
       console.log('AI Agent API response received, returning original response')
+      console.log('Response details before return:', {
+        status: response.status,
+        statusText: response.statusText,
+        bodyUsed: response.bodyUsed,
+        headers: Object.fromEntries(response.headers.entries())
+      })
       return response
 
     } catch (error) {
