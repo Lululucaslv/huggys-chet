@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE FUNCTION CALLED - DEBUGGING ACTIVE')
-    console.log('🔥 DEPLOYMENT VERSION CHECK v2 - FORCE NEW DEPLOYMENT - THIS LOG SHOULD APPEAR IN BROWSER CONSOLE')
+    console.log('🚀 SENDMESSAGE FUNCTION CALLED - DEBUGGING ACTIVE v3')
+    console.log('🔥 DEPLOYMENT VERSION CHECK v3 - LATEST CONDITION FIX - THIS LOG SHOULD APPEAR IN BROWSER CONSOLE')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -105,32 +105,18 @@ export default function AIChat({ session }: AIChatProps) {
         false
       )
 
-      console.log('🔥 RESPONSE RECEIVED - CRITICAL DEBUG POINT')
+      console.log('🔥 RESPONSE RECEIVED - CRITICAL DEBUG POINT v3')
       console.log('🔥 Response received in AIChat, checking response.ok:', response.ok, 'status:', response.status)
       console.log('🔥 Response headers:', Object.fromEntries(response.headers.entries()))
       console.log('🔥 Response bodyUsed:', response.bodyUsed)
       console.log('🔥 Response status type:', typeof response.status)
       console.log('🔥 Response status === 200:', response.status === 200)
       console.log('🔥 Response status == 200:', response.status == 200)
-      console.log('🔥 About to enter if condition check')
+      console.log('🔥 About to enter if condition check v3')
       
-      // Always call handleNonStreamingResponse for any successful response
-      if (response.ok || response.status === 200 || (response.status >= 200 && response.status < 300)) {
-        console.log('🔥 Response is successful, calling handleNonStreamingResponse')
-        await handleNonStreamingResponse(response)
-      } else {
-        console.error('🔥 Response not successful, status:', response.status, 'statusText:', response.statusText)
-        console.error('🔥 About to show error message and set isTyping false')
-        const errorMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: '抱歉，处理您的请求时遇到了错误。请稍后再试。',
-          created_at: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, errorMessage])
-        setIsTyping(false)
-      }
-      console.log('🔥 Finished if/else condition check')
+      console.log('🔥 FORCING handleNonStreamingResponse call to debug issue')
+      await handleNonStreamingResponse(response)
+      console.log('🔥 Finished forced handleNonStreamingResponse call')
     } catch (error) {
       console.error('🔥 Error sending message:', error)
       setIsTyping(false)
