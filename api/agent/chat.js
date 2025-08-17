@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
   console.log('Agent API called with method:', req.method)
+  console.log('Request headers:', req.headers)
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -14,11 +15,17 @@ export default async function handler(req, res) {
   console.log('Environment variables check:', {
     supabaseUrl: !!supabaseUrl,
     supabaseServiceKey: !!supabaseServiceKey,
-    openaiApiKey: !!openaiApiKey
+    openaiApiKey: !!openaiApiKey,
+    supabaseUrlValue: supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'undefined',
+    openaiKeyValue: openaiApiKey ? 'sk-' + openaiApiKey.substring(3, 8) + '...' : 'undefined'
   })
 
   if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
-    console.error('Missing required environment variables')
+    console.error('Missing required environment variables:', {
+      supabaseUrl: !supabaseUrl,
+      supabaseServiceKey: !supabaseServiceKey,
+      openaiApiKey: !openaiApiKey
+    })
     return res.status(500).json({ error: 'Server configuration error' })
   }
 
@@ -26,8 +33,18 @@ export default async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   try {
-    console.log('Request body:', req.body)
+    console.log('Request body:', JSON.stringify(req.body, null, 2))
     const { tool, userId, sessionId, messages, userMessage } = req.body
+
+    if (!tool) {
+      console.error('No tool specified in request')
+      return res.status(400).json({ error: 'Tool parameter is required' })
+    }
+
+    if (!userId) {
+      console.error('No userId specified in request')
+      return res.status(400).json({ error: 'UserId parameter is required' })
+    }
 
     if (tool === 'generatePreSessionSummary') {
       console.log('Generating pre-session summary for userId:', userId)
@@ -37,7 +54,10 @@ export default async function handler(req, res) {
 
     if (tool === 'chatWithTools') {
       console.log('Handling chat with tools for userId:', userId)
+      console.log('Messages count:', messages?.length || 0)
+      console.log('User message:', userMessage)
       const response = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
+      console.log('Chat with tools response:', response)
       return res.status(200).json({ success: true, data: response })
     }
 
@@ -126,6 +146,9 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       { role: "user", content: userMessage }
     ]
 
+    console.log('Making OpenAI API call with tools...')
+    console.log('Conversation messages count:', conversationMessages.length)
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -142,26 +165,44 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       })
     })
 
+    console.log('OpenAI API response status:', response.status)
+    
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error('OpenAI API error response:', errorText)
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`)
     }
 
     const aiResponse = await response.json()
+    console.log('OpenAI API response received:', JSON.stringify(aiResponse, null, 2))
+    
     const message = aiResponse.choices[0].message
+    console.log('AI message:', message)
 
     if (message.tool_calls) {
+      console.log('Tool calls detected:', message.tool_calls.length)
       const toolResults = []
       
       for (const toolCall of message.tool_calls) {
+        console.log('Processing tool call:', toolCall)
         const functionName = toolCall.function.name
         const functionArgs = JSON.parse(toolCall.function.arguments)
+        console.log('Function name:', functionName)
+        console.log('Function args:', functionArgs)
         
         let toolResult
         if (functionName === 'getTherapistAvailability') {
+          console.log('Calling getTherapistAvailability...')
           toolResult = await getTherapistAvailability(functionArgs, supabase)
         } else if (functionName === 'createBooking') {
+          console.log('Calling createBooking...')
           toolResult = await createBooking(functionArgs, userId, supabase)
+        } else {
+          console.error('Unknown function name:', functionName)
+          toolResult = { success: false, error: 'Unknown function' }
         }
+        
+        console.log('Tool result:', toolResult)
         
         toolResults.push({
           tool_call_id: toolCall.id,
@@ -176,6 +217,9 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         ...toolResults
       ]
 
+      console.log('Making final OpenAI API call with tool results...')
+      console.log('Final messages count:', finalMessages.length)
+      
       const finalResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -190,11 +234,17 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         })
       })
 
+      console.log('Final OpenAI API response status:', finalResponse.status)
+
       if (!finalResponse.ok) {
-        throw new Error(`OpenAI API error: ${finalResponse.status}`)
+        const errorText = await finalResponse.text()
+        console.error('Final OpenAI API error response:', errorText)
+        throw new Error(`OpenAI API error: ${finalResponse.status} - ${errorText}`)
       }
 
       const finalAiResponse = await finalResponse.json()
+      console.log('Final AI response:', finalAiResponse)
+      
       return {
         message: finalAiResponse.choices[0].message.content,
         toolCalls: message.tool_calls,
@@ -202,6 +252,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       }
     }
 
+    console.log('No tool calls, returning direct message')
     return {
       message: message.content,
       toolCalls: null,
@@ -210,6 +261,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
+    console.error('Error stack:', error.stack)
     throw error
   }
 }
