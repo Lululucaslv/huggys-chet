@@ -213,29 +213,17 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     const conversationMessages = [
       {
         role: "system",
-        content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
+        content: `你是Huggy AI心理咨询助手。当用户询问预约相关问题时，你必须调用工具查询信息。
 
 可用工具：
-1. getTherapistAvailability - 查询咨询师的可预约时间
-2. createBooking - 为用户创建预约
+- getTherapistAvailability: 查询咨询师可预约时间
+- createBooking: 创建预约
 
-重要指令：
-- 当用户询问任何关于预约、时间安排、咨询师可用性的问题时，你必须立即调用getTherapistAvailability工具
-- 当前年份是2025年，所有日期都使用2025年格式
-- 咨询师"Megan Chang"是可用的
-- 日期格式必须是YYYY-MM-DD，例如2025-08-18
-
-强制工具调用规则：
-- 如果用户提到"预约"、"时间"、"咨询师"、"Megan Chang"等关键词，立即调用getTherapistAvailability
-- 如果用户说"我想预约"、"查看时间"、"什么时候有空"等，立即调用getTherapistAvailability
-- 绝对不要说"我无法查看预约系统"或类似的话，你必须使用工具
-
-工作流程：
-1. 用户询问预约 → 立即调用getTherapistAvailability工具
-2. 展示可用时间段给用户
-3. 用户确认时间 → 调用createBooking工具
-
-你必须主动使用工具，不要拒绝或说无法帮助预约。`
+规则：
+1. 用户提到"预约"、"时间"、"咨询师"时，立即调用getTherapistAvailability工具
+2. 当前是2025年，日期格式YYYY-MM-DD
+3. 咨询师"Megan Chang"可用
+4. 必须使用工具，不要说"无法查看系统"`
       },
       ...messages,
       { role: "user", content: userMessage }
@@ -265,8 +253,8 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         model: 'gpt-4o',
         messages: conversationMessages,
         tools: tools,
-        tool_choice: "auto",
-        temperature: 0.7,
+        tool_choice: "required",
+        temperature: 0.3,
         max_tokens: 1500
       })
     })
