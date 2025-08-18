@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v6 - MAJOR DEPLOYMENT REBUILD - COMPLETE FUNCTION REWRITE')
-    console.log('🔥 v6 DEPLOYMENT CHECK - THIS IS A COMPLETELY NEW VERSION')
+    console.log('🚀 SENDMESSAGE v7 - DEPLOYMENT FIX - RESPONSE HANDLING UPDATE')
+    console.log('🔥 v7 DEPLOYMENT CHECK - FIXING RESPONSE FORMAT MISMATCH')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -86,7 +86,7 @@ export default function AIChat({ session }: AIChatProps) {
     setIsTyping(true)
 
     try {
-      console.log('🔥 v6 - About to insert user message to database')
+      console.log('🔥 v7 - About to insert user message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'user',
@@ -95,36 +95,36 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
 
-      console.log('🔥 v6 - About to update user profile')
+      console.log('🔥 v7 - About to update user profile')
       await UserProfileUpdater.updateUserProfile(session.user.id, messageToSend)
 
-      console.log('🔥 v6 - About to call chatAPI.sendMessage')
+      console.log('🔥 v7 - About to call chatAPI.sendMessage')
       const response = await chatAPI.sendMessage(
         messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
         { ...userProfile, id: session.user.id },
         false
       )
 
-      console.log('🔥 v6 - RESPONSE RECEIVED - CRITICAL DEBUG POINT')
-      console.log('🔥 v6 - Response status:', response.status, 'ok:', response.ok)
+      console.log('🔥 v7 - RESPONSE RECEIVED - CRITICAL DEBUG POINT')
+      console.log('🔥 v7 - Response status:', response.status, 'ok:', response.ok)
       
       if (response.ok) {
-        console.log('🔥 v6 - Response OK, calling handleNonStreamingResponse')
+        console.log('🔥 v7 - Response OK, calling handleNonStreamingResponse')
         await handleNonStreamingResponse(response)
-        console.log('🔥 v6 - handleNonStreamingResponse completed')
+        console.log('🔥 v7 - handleNonStreamingResponse completed')
       } else {
-        console.error('🔥 v6 - Response NOT OK, status:', response.status)
+        console.error('🔥 v7 - Response NOT OK, status:', response.status)
         throw new Error(`API request failed: ${response.status}`)
       }
     } catch (error) {
-      console.error('🔥 v6 - Error sending message:', error)
+      console.error('🔥 v7 - Error sending message:', error)
       setIsTyping(false)
     }
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v6 - HANDLENONSTREAMINGRESPONSE FUNCTION CALLED - COMPLETE REWRITE')
-    console.log('🔥 v6 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v7 - HANDLENONSTREAMINGRESPONSE FUNCTION CALLED - RESPONSE FORMAT FIX')
+    console.log('🔥 v7 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,34 +132,30 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v6 - About to parse response.json()')
+      console.log('🔥 v7 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v6 - Full AI Agent API response:', result)
+      console.log('🔥 v7 - Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
       if (result.data && result.data.message) {
-        console.log('🔥 v6 - Using result.data.message:', result.data.message)
+        console.log('🔥 v7 - Using result.data.message:', result.data.message)
         assistantMessage = result.data.message
       }
       else if (result.message) {
-        console.log('🔥 v6 - Using result.message:', result.message)
+        console.log('🔥 v7 - Using result.message:', result.message)
         assistantMessage = result.message
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v6 - Using result.choices[0].message.content:', result.choices[0].message.content)
+        console.log('🔥 v7 - Using result.choices[0].message.content:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       }
-      else if (result.success && result.data && result.data.message) {
-        console.log('🔥 v6 - Using result.data.message (fallback):', result.data.message)
-        assistantMessage = result.data.message
-      }
       else {
-        console.error('🔥 v6 - Unexpected response format:', result)
+        console.error('🔥 v7 - Unexpected response format:', result)
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
-      console.log('🔥 v6 - Final assistantMessage:', assistantMessage)
+      console.log('🔥 v7 - Final assistantMessage:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -168,10 +164,10 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('🔥 v6 - About to add message to UI:', assistantChatMessage)
+      console.log('🔥 v7 - About to add message to UI:', assistantChatMessage)
       setMessages(prev => [...prev, assistantChatMessage])
       
-      console.log('🔥 v6 - About to save message to database')
+      console.log('🔥 v7 - About to save message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -180,10 +176,10 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
-      console.log('🔥 v6 - Message saved to database successfully')
+      console.log('🔥 v7 - Message saved to database successfully')
       
     } catch (error) {
-      console.error('🔥 v6 - Error handling response:', error)
+      console.error('🔥 v7 - Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -193,9 +189,9 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => [...prev, errorMessage])
     }
     
-    console.log('🔥 v6 - About to set isTyping to false')
+    console.log('🔥 v7 - About to set isTyping to false')
     setIsTyping(false)
-    console.log('🔥 v6 - handleNonStreamingResponse function completed')
+    console.log('🔥 v7 - handleNonStreamingResponse function completed')
   }
 
 
@@ -233,7 +229,7 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v6完全重写部署)
+                Huggy正在思考并可能调用工具查询信息... (v7修复部署)
               </div>
             </div>
           )}
