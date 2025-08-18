@@ -213,23 +213,29 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     const conversationMessages = [
       {
         role: "system",
-        content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你现在具有以下工具调用能力：
+        content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
 
+可用工具：
 1. getTherapistAvailability - 查询咨询师的可预约时间
 2. createBooking - 为用户创建预约
 
-重要提醒：
-- 当前年份是2025年，所有日期都应该使用2025年
-- 当用户提到"8月18日"、"下周"、"明天"等日期时，请理解为2025年的日期
-- 用户提到的咨询师"Megan Chang"是可用的
-- 在调用getTherapistAvailability工具时，startDate参数必须使用YYYY-MM-DD格式，例如2025-08-18
+重要指令：
+- 当用户询问任何关于预约、时间安排、咨询师可用性的问题时，你必须立即调用getTherapistAvailability工具
+- 当前年份是2025年，所有日期都使用2025年格式
+- 咨询师"Megan Chang"是可用的
+- 日期格式必须是YYYY-MM-DD，例如2025-08-18
 
-当用户表达预约意图时，你应该：
-1. 首先使用getTherapistAvailability工具查询可用时间（重要：确保使用2025年的日期格式，如2025-08-18）
-2. 向用户展示可选的时间段
-3. 当用户确认时间后，使用createBooking工具创建预约
+强制工具调用规则：
+- 如果用户提到"预约"、"时间"、"咨询师"、"Megan Chang"等关键词，立即调用getTherapistAvailability
+- 如果用户说"我想预约"、"查看时间"、"什么时候有空"等，立即调用getTherapistAvailability
+- 绝对不要说"我无法查看预约系统"或类似的话，你必须使用工具
 
-请用温暖、专业的语调与用户交流，并在需要时主动调用相应的工具。`
+工作流程：
+1. 用户询问预约 → 立即调用getTherapistAvailability工具
+2. 展示可用时间段给用户
+3. 用户确认时间 → 调用createBooking工具
+
+你必须主动使用工具，不要拒绝或说无法帮助预约。`
       },
       ...messages,
       { role: "user", content: userMessage }
@@ -365,7 +371,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('DEBUGGING: Why no tool calls? User message was:', userMessage)
     console.log('DEBUGGING: System prompt contained tool instructions:', conversationMessages[0].content.includes('getTherapistAvailability'))
     console.log('DEBUGGING: Tools array length:', tools.length)
-    console.log('DEBUGGING: Model used:', 'gpt-4')
+    console.log('DEBUGGING: Model used:', 'gpt-4o')
     console.log('DEBUGGING: Tool choice setting:', 'auto')
     return {
       message: message.content,
