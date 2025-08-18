@@ -139,19 +139,19 @@ export default function AIChat({ session }: AIChatProps) {
       let assistantMessage = ''
       
       if (result.data && result.data.message) {
-        console.log('🔥 v7 - Using result.data.message:', result.data.message)
+        console.log('🔥 v10 - Using result.data.message:', result.data.message)
         assistantMessage = result.data.message
       }
       else if (result.message) {
-        console.log('🔥 v7 - Using result.message:', result.message)
+        console.log('🔥 v10 - Using result.message:', result.message)
         assistantMessage = result.message
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v7 - Using result.choices[0].message.content:', result.choices[0].message.content)
+        console.log('🔥 v10 - Using result.choices[0].message.content:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
-      }
+      } 
       else {
-        console.error('🔥 v7 - Unexpected response format:', result)
+        console.error('🔥 v10 - Unexpected response format:', result)
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
@@ -229,7 +229,7 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v9强制重新部署)
+                Huggy正在思考并可能调用工具查询信息... (v10修复响应处理)
               </div>
             </div>
           )}
