@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v13 - AI AGENT TOOL CALLING FIX')
-    console.log('🔥 v13 DEPLOYMENT CHECK - FIXING AI TOOL CALLING FUNCTIONALITY')
+    console.log('🚀 SENDMESSAGE v14 - FORCE DEPLOYMENT - AI AGENT TOOL CALLING FIX')
+    console.log('🔥 v14 FORCE DEPLOYMENT - FIXING AI TOOL CALLING FUNCTIONALITY')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -264,7 +264,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (用于测试AI工具调用)
+              🔧 添加测试数据 (v14强制部署-用于测试AI工具调用)
             </button>
           </div>
           <div ref={messagesEndRef} />
