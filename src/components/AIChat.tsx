@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v17 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
-    console.log('🔥 v17 AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - CACHE BUST')
+    console.log('🚀 SENDMESSAGE v19 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
+    console.log('🔥 v19 AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - CACHE BUST')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -123,8 +123,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v17 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
-    console.log('🔥 v17 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v19 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
+    console.log('🔥 v19 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,9 +132,9 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v17 - About to parse response.json()')
+      console.log('🔥 v19 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v17 - Full AI Agent API response:', result)
+      console.log('🔥 v19 - Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
@@ -147,38 +147,38 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
       
       if (result.success !== false && result.data && result.data.message) {
-        console.log('🔥 v17 - SUCCESS: Using AI Agent response data.message:', result.data.message)
+        console.log('🔥 v19 - SUCCESS: Using AI Agent response data.message:', result.data.message)
         assistantMessage = result.data.message
         
         if (result.data.toolCalls && result.data.toolResults) {
-          console.log('🔥 v17 - SUCCESS: Tool calls detected:', result.data.toolCalls.length)
-          console.log('🔥 v17 - SUCCESS: Tool results:', result.data.toolResults)
+          console.log('🔥 v19 - SUCCESS: Tool calls detected:', result.data.toolCalls.length)
+          console.log('🔥 v19 - SUCCESS: Tool results:', result.data.toolResults)
         }
       }
       else if (result.success !== false && result.message) {
-        console.log('🔥 v17 - FALLBACK: Using direct result.message:', result.message)
+        console.log('🔥 v19 - FALLBACK: Using direct result.message:', result.message)
         assistantMessage = result.message
         
         if (result.toolCalls && result.toolResults) {
-          console.log('🔥 v17 - FALLBACK: Tool calls detected:', result.toolCalls.length)
-          console.log('🔥 v17 - FALLBACK: Tool results:', result.toolResults)
+          console.log('🔥 v19 - FALLBACK: Tool calls detected:', result.toolCalls.length)
+          console.log('🔥 v19 - FALLBACK: Tool results:', result.toolResults)
         }
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v17 - FALLBACK: Using OpenAI format:', result.choices[0].message.content)
+        console.log('🔥 v19 - FALLBACK: Using OpenAI format:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       }
       else if (result.success === false && result.error) {
-        console.error('🔥 v17 - ERROR: API returned error:', result.error)
+        console.error('🔥 v19 - ERROR: API returned error:', result.error)
         assistantMessage = `抱歉，处理您的请求时遇到了错误：${result.error}`
       }
       else {
-        console.error('🔥 v17 - ERROR: Unexpected response format:', result)
+        console.error('🔥 v19 - ERROR: Unexpected response format:', result)
         console.error('🔧 DEBUGGING: Available response properties:', Object.keys(result))
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
-      console.log('🔥 v17 - Final assistantMessage:', assistantMessage)
+      console.log('🔥 v19 - Final assistantMessage:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -187,10 +187,10 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('🔥 v17 - About to add message to UI:', assistantChatMessage)
+      console.log('🔥 v19 - About to add message to UI:', assistantChatMessage)
       setMessages(prev => [...prev, assistantChatMessage])
       
-      console.log('🔥 v17 - About to save message to database')
+      console.log('🔥 v19 - About to save message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -199,10 +199,10 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
-      console.log('🔥 v17 - Message saved to database successfully')
+      console.log('🔥 v19 - Message saved to database successfully')
       
     } catch (error) {
-      console.error('🔥 v17 - Error handling response:', error)
+      console.error('🔥 v19 - Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -212,9 +212,9 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => [...prev, errorMessage])
     }
     
-    console.log('🔥 v17 - About to set isTyping to false')
+    console.log('🔥 v19 - About to set isTyping to false')
     setIsTyping(false)
-    console.log('🔥 v17 - handleNonStreamingResponse function completed')
+    console.log('🔥 v19 - handleNonStreamingResponse function completed')
   }
 
 
@@ -280,7 +280,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v18修复响应解析优先级-工具调用结果显示-强制部署-最终修复)
+              🔧 添加测试数据 (v19修复响应解析优先级-工具调用结果显示-强制部署-最终修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
