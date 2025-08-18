@@ -27,14 +27,13 @@ export default async function handler(req, res) {
     const { data: profileData, error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        email: 'megan.chang@example.com',
-        full_name: 'Megan Chang',
-        role: 'THERAPIST',
+        user_id: '550e8400-e29b-41d4-a716-446655440000',
         total_messages: 0,
         personality_type: 'professional',
         preferences: ['cognitive-behavioral', 'mindfulness'],
-        communication_style: 'supportive'
+        interest: 'therapy',
+        language: 'zh-CN',
+        life_status: 'therapist'
       })
       .select()
 
