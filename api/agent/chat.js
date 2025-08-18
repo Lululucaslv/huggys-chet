@@ -76,7 +76,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
   console.log('1. User message:', userMessage)
   console.log('1. User ID:', userId)
   console.log('1. Timestamp:', new Date().toISOString())
-  console.log('1. Deployment test: Quota reset check at', new Date().toISOString())
+  console.log('1. Deployment test: Vercel service upgraded - testing deployment at', new Date().toISOString())
   console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
   
   try {
