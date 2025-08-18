@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v19 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
-    console.log('🔥 v19 AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - CACHE BUST')
+    console.log('🚀 SENDMESSAGE v20 - SUPER AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - ULTIMATE FIX')
+    console.log('🔥 v20 SUPER AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - CACHE BUST')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -123,8 +123,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v19 - AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - FINAL FIX')
-    console.log('🔥 v19 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v20 - SUPER AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - ULTIMATE FIX')
+    console.log('🔥 v20 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,9 +132,9 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v19 - About to parse response.json()')
+      console.log('🔥 v20 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v19 - Full AI Agent API response:', result)
+      console.log('🔥 v20 - Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
@@ -147,7 +147,7 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
       
       if (result.success !== false && result.data && result.data.message) {
-        console.log('🔥 v19 - SUCCESS: Using AI Agent response data.message:', result.data.message)
+        console.log('🔥 v20 - SUCCESS: Using AI Agent response data.message:', result.data.message)
         assistantMessage = result.data.message
         
         if (result.data.toolCalls && result.data.toolResults) {
@@ -280,7 +280,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v19修复响应解析优先级-工具调用结果显示-强制部署-最终修复)
+              🔧 添加测试数据 (v20超级强制部署-AI工具调用响应显示修复-缓存清除-终极修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
