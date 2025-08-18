@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v20 - SUPER AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - ULTIMATE FIX')
-    console.log('🔥 v20 SUPER AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - CACHE BUST')
+    console.log('🚀 SENDMESSAGE v21 - DEFINITIVE RESPONSE PARSING FIX - PRIORITY ORDER IMPLEMENTATION')
+    console.log('🔥 v21 DEFINITIVE FIX - AI AGENT TOOL CALLING RESULTS DISPLAY - PRIORITY ORDER')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -123,8 +123,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v20 - SUPER AGGRESSIVE DEPLOYMENT FORCE CACHE BUST - ULTIMATE FIX')
-    console.log('🔥 v20 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v21 - DEFINITIVE RESPONSE PARSING FIX - PRIORITY ORDER IMPLEMENTATION')
+    console.log('🔥 v21 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,9 +132,9 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v20 - About to parse response.json()')
+      console.log('🔥 v21 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v20 - Full AI Agent API response:', result)
+      console.log('🔥 v21 - Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
@@ -146,39 +146,39 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔧 DEBUGGING: Has toolResults?', !!result.toolResults)
       console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
       
-      if (result.success !== false && result.data && result.data.message) {
-        console.log('🔥 v20 - SUCCESS: Using AI Agent response data.message:', result.data.message)
+      if (result.data && result.data.message) {
+        console.log('🔥 v21 - PRIORITY 1 SUCCESS: Using AI Agent response data.message:', result.data.message)
         assistantMessage = result.data.message
         
         if (result.data.toolCalls && result.data.toolResults) {
-          console.log('🔥 v19 - SUCCESS: Tool calls detected:', result.data.toolCalls.length)
-          console.log('🔥 v19 - SUCCESS: Tool results:', result.data.toolResults)
+          console.log('🔥 v21 - PRIORITY 1 SUCCESS: Tool calls detected:', result.data.toolCalls.length)
+          console.log('🔥 v21 - PRIORITY 1 SUCCESS: Tool results:', result.data.toolResults)
         }
       }
-      else if (result.success !== false && result.message) {
-        console.log('🔥 v19 - FALLBACK: Using direct result.message:', result.message)
+      else if (result.message && typeof result.message === 'string') {
+        console.log('🔥 v21 - PRIORITY 2 FALLBACK: Using direct result.message:', result.message)
         assistantMessage = result.message
         
         if (result.toolCalls && result.toolResults) {
-          console.log('🔥 v19 - FALLBACK: Tool calls detected:', result.toolCalls.length)
-          console.log('🔥 v19 - FALLBACK: Tool results:', result.toolResults)
+          console.log('🔥 v21 - PRIORITY 2 FALLBACK: Tool calls detected:', result.toolCalls.length)
+          console.log('🔥 v21 - PRIORITY 2 FALLBACK: Tool results:', result.toolResults)
         }
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v19 - FALLBACK: Using OpenAI format:', result.choices[0].message.content)
+        console.log('🔥 v21 - PRIORITY 3 FALLBACK: Using OpenAI format:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       }
       else if (result.success === false && result.error) {
-        console.error('🔥 v19 - ERROR: API returned error:', result.error)
+        console.error('🔥 v21 - ERROR: API returned error:', result.error)
         assistantMessage = `抱歉，处理您的请求时遇到了错误：${result.error}`
       }
       else {
-        console.error('🔥 v19 - ERROR: Unexpected response format:', result)
+        console.error('🔥 v21 - ERROR: Unexpected response format:', result)
         console.error('🔧 DEBUGGING: Available response properties:', Object.keys(result))
-        assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
+        assistantMessage = '抱歉，AI助手暂时遇到了一点问题，请稍后再试。'
       }
       
-      console.log('🔥 v19 - Final assistantMessage:', assistantMessage)
+      console.log('🔥 v21 - Final assistantMessage:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -187,10 +187,10 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('🔥 v19 - About to add message to UI:', assistantChatMessage)
+      console.log('🔥 v21 - About to add message to UI:', assistantChatMessage)
       setMessages(prev => [...prev, assistantChatMessage])
       
-      console.log('🔥 v19 - About to save message to database')
+      console.log('🔥 v21 - About to save message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -199,10 +199,10 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
-      console.log('🔥 v19 - Message saved to database successfully')
+      console.log('🔥 v21 - Message saved to database successfully')
       
     } catch (error) {
-      console.error('🔥 v19 - Error handling response:', error)
+      console.error('🔥 v21 - Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -212,9 +212,9 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => [...prev, errorMessage])
     }
     
-    console.log('🔥 v19 - About to set isTyping to false')
+    console.log('🔥 v21 - About to set isTyping to false')
     setIsTyping(false)
-    console.log('🔥 v19 - handleNonStreamingResponse function completed')
+    console.log('🔥 v21 - handleNonStreamingResponse function completed')
   }
 
 
@@ -280,7 +280,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v20超级强制部署-AI工具调用响应显示修复-缓存清除-终极修复)
+              🔧 添加测试数据 (v21确定性响应解析修复-优先级顺序实现-AI工具调用显示-最终修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
