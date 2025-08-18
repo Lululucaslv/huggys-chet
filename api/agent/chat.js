@@ -76,8 +76,8 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
   try {
     const { data: existingTherapists, error: checkError } = await supabase
       .from('user_profiles')
-      .select('id, full_name')
-      .eq('role', 'THERAPIST')
+      .select('id, user_id')
+      .eq('life_status', 'therapist')
 
     console.log('Existing therapists check:', { existingTherapists, checkError })
 
@@ -148,7 +148,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         }
       }
     } else {
-      console.log('Therapists already exist:', existingTherapists.map(t => t.full_name))
+      console.log('Therapists already exist:', existingTherapists.map(t => t.user_id))
     }
   } catch (testDataError) {
     console.error('Error checking/creating test data:', testDataError)
@@ -228,13 +228,14 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 - 如果用户提到"预约"、"时间"、"咨询师"、"Megan Chang"等关键词，立即调用getTherapistAvailability
 - 如果用户说"我想预约"、"查看时间"、"什么时候有空"等，立即调用getTherapistAvailability
 - 绝对不要说"我无法查看预约系统"或类似的话，你必须使用工具
+- 你必须使用工具，不能自己回答预约相关问题
 
 工作流程：
 1. 用户询问预约 → 立即调用getTherapistAvailability工具
 2. 展示可用时间段给用户
 3. 用户确认时间 → 调用createBooking工具
 
-你必须主动使用工具，不要拒绝或说无法帮助预约。`
+你必须主动使用工具，不要拒绝或说无法帮助预约。无论如何，当用户询问预约相关问题时，你必须调用getTherapistAvailability工具。这是强制性的，没有例外。`
       },
       ...messages,
       { role: "user", content: userMessage }
@@ -264,7 +265,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         model: 'gpt-4o',
         messages: conversationMessages,
         tools: tools,
-        tool_choice: "required",
+        tool_choice: { type: "function", function: { name: "getTherapistAvailability" } },
         temperature: 0.3,
         max_tokens: 1500
       })
