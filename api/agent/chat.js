@@ -71,6 +71,10 @@ export default async function handler(req, res) {
 }
 
 async function handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey) {
+  console.log('=== DEBUGGING LOG POINT 1: INCOMING REQUEST ===')
+  console.log('1. Received messages from client:', JSON.stringify(messages, null, 2))
+  console.log('1. User message:', userMessage)
+  console.log('1. User ID:', userId)
   console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
   
   try {
@@ -242,19 +246,25 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       { role: "user", content: userMessage }
     ]
 
+    console.log('=== DEBUGGING LOG POINT 2: PAYLOAD TO OPENAI ===')
+    const apiPayload = {
+      model: 'gpt-4o',
+      messages: conversationMessages,
+      tools: tools,
+      tool_choice: "auto",
+      temperature: 0.3,
+      max_tokens: 1500
+    }
+    console.log('2. Payload being sent to OpenAI:', JSON.stringify(apiPayload, null, 2))
+    console.log('2. System prompt preview:', conversationMessages[0].content.substring(0, 200) + '...')
+    console.log('2. Tools array length:', tools.length)
+    console.log('2. Tool names:', tools.map(t => t.function.name))
     console.log('Making OpenAI API call with tools...')
     console.log('Conversation messages count:', conversationMessages.length)
     console.log('Tools being sent to OpenAI:', JSON.stringify(tools, null, 2))
     console.log('System prompt being used:', conversationMessages[0].content)
     console.log('User message:', userMessage)
-    console.log('Full request body being sent to OpenAI:', JSON.stringify({
-      model: 'gpt-4o',
-      messages: conversationMessages,
-      tools: tools,
-      tool_choice: "auto",
-      temperature: 0.7,
-      max_tokens: 1500
-    }, null, 2))
+    console.log('Full request body being sent to OpenAI:', JSON.stringify(apiPayload, null, 2))
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -262,14 +272,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: conversationMessages,
-        tools: tools,
-        tool_choice: "auto",
-        temperature: 0.3,
-        max_tokens: 1500
-      })
+      body: JSON.stringify(apiPayload)
     })
 
     console.log('OpenAI API response status:', response.status)
@@ -281,6 +284,11 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     }
 
     const aiResponse = await response.json()
+    console.log('=== DEBUGGING LOG POINT 3: RAW OPENAI RESPONSE ===')
+    console.log('3. Raw response received from OpenAI:', JSON.stringify(aiResponse, null, 2))
+    console.log('3. Response status:', response.status)
+    console.log('3. Response choices count:', aiResponse.choices?.length || 0)
+    console.log('3. First choice message keys:', Object.keys(aiResponse.choices?.[0]?.message || {}))
     console.log('OpenAI API response received:', JSON.stringify(aiResponse, null, 2))
     console.log('AI response choices:', aiResponse.choices?.length || 0)
     console.log('First choice message:', aiResponse.choices?.[0]?.message)
@@ -288,6 +296,16 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('Tool calls array:', aiResponse.choices?.[0]?.message?.tool_calls)
     
     const message = aiResponse.choices[0].message
+    console.log('=== DEBUGGING LOG POINT 4: DECISION PATH ===')
+    if (message.tool_calls) {
+      console.log('4. Decision: AI wants to call a tool.')
+      console.log('4. Number of tool calls:', message.tool_calls.length)
+      console.log('4. Tool call details:', JSON.stringify(message.tool_calls, null, 2))
+    } else {
+      console.log('4. Decision: AI provided a direct text answer.')
+      console.log('4. Text response:', message.content)
+      console.log('4. Message object structure:', Object.keys(message))
+    }
     console.log('AI message:', message)
 
     if (message.tool_calls) {
