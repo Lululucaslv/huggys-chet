@@ -164,7 +164,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         type: "function",
         function: {
           name: "getTherapistAvailability",
-          description: "查询指定咨询师在特定日期范围内的可预约时间段。重要：当用户提到具体日期如'8月18日'、'下周'等时，请使用2025年的日期格式，例如2025-08-18。",
+          description: "当用户想要查询、寻找、预订、或询问某位咨询师的空闲时间、可预约时间段或日程安排时，必须使用此工具。",
           parameters: {
             type: "object",
             properties: {
@@ -189,7 +189,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         type: "function",
         function: {
           name: "createBooking",
-          description: "为用户创建新的咨询预约。只有在用户明确确认要预约某个具体时间段后才调用此工具。",
+          description: "当用户在确认了具体的时间和咨询师后，明确表示希望\"确认预约\"、\"就订这个时间\"或\"帮我订一下\"时，使用此工具来最终锁定并创建预约。",
           parameters: {
             type: "object",
             properties: {
@@ -221,6 +221,8 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 可用工具：
 1. getTherapistAvailability - 查询咨询师的可预约时间
 2. createBooking - 为用户创建预约
+
+核心规则：你必须优先使用工具来回答你能回答的问题。严禁自行编造任何关于日程、可用时间或预约状态的信息。在执行任何会修改数据的破坏性操作（如createBooking）之前，必须先向用户进行二次确认。
 
 重要指令：
 - 当用户询问任何关于预约、时间安排、咨询师可用性的问题时，你必须立即调用getTherapistAvailability工具
