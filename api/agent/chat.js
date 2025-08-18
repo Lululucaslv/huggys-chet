@@ -229,6 +229,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 - 如果用户说"我想预约"、"查看时间"、"什么时候有空"等，立即调用getTherapistAvailability
 - 绝对不要说"我无法查看预约系统"或类似的话，你必须使用工具
 - 你必须使用工具，不能自己回答预约相关问题
+- 对于任何预约相关的询问，你的第一反应必须是调用getTherapistAvailability工具
 
 工作流程：
 1. 用户询问预约 → 立即调用getTherapistAvailability工具
@@ -265,7 +266,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         model: 'gpt-4o',
         messages: conversationMessages,
         tools: tools,
-        tool_choice: { type: "function", function: { name: "getTherapistAvailability" } },
+        tool_choice: "auto",
         temperature: 0.3,
         max_tokens: 1500
       })

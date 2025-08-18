@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v7 - DEPLOYMENT FIX - RESPONSE HANDLING UPDATE')
-    console.log('🔥 v7 DEPLOYMENT CHECK - FIXING RESPONSE FORMAT MISMATCH')
+    console.log('🚀 SENDMESSAGE v13 - AI AGENT TOOL CALLING FIX')
+    console.log('🔥 v13 DEPLOYMENT CHECK - FIXING AI TOOL CALLING FUNCTIONALITY')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -138,20 +138,27 @@ export default function AIChat({ session }: AIChatProps) {
       
       let assistantMessage = ''
       
+      console.log('🔧 DEBUGGING: Full API response structure:', JSON.stringify(result, null, 2))
+      console.log('🔧 DEBUGGING: Response keys:', Object.keys(result))
+      console.log('🔧 DEBUGGING: Has data?', !!result.data)
+      console.log('🔧 DEBUGGING: Has message?', !!result.message)
+      console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
+      
       if (result.data && result.data.message) {
-        console.log('🔥 v10 - Using result.data.message:', result.data.message)
+        console.log('🔥 v13 - Using result.data.message:', result.data.message)
         assistantMessage = result.data.message
       }
       else if (result.message) {
-        console.log('🔥 v10 - Using result.message:', result.message)
+        console.log('🔥 v13 - Using result.message:', result.message)
         assistantMessage = result.message
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v10 - Using result.choices[0].message.content:', result.choices[0].message.content)
+        console.log('🔥 v13 - Using result.choices[0].message.content:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       } 
       else {
-        console.error('🔥 v10 - Unexpected response format:', result)
+        console.error('🔥 v13 - Unexpected response format:', result)
+        console.error('🔧 DEBUGGING: Available response properties:', Object.keys(result))
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
@@ -229,33 +236,35 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v12最终部署修复)
+                Huggy正在思考并可能调用工具查询信息... (v13工具调用修复)
               </div>
             </div>
           )}
           
-          <div className="flex justify-center mt-4 mb-2">
+          <div className="flex justify-center mt-4 mb-2 p-2 bg-gray-50 rounded-lg">
             <button 
               onClick={async () => {
                 try {
+                  console.log('🔧 Testing: Clicking Add Test Data button');
                   const response = await fetch('/api/setup/add-test-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                   });
                   const result = await response.json();
+                  console.log('🔧 Testing: Add test data response:', result);
                   if (result.success) {
-                    alert('测试数据添加成功！');
+                    alert('测试数据添加成功！现在可以测试AI Agent工具调用功能了。');
                   } else {
                     alert('添加测试数据失败: ' + (result.error || '未知错误'));
                   }
                 } catch (error) {
                   console.error('Error adding test data:', error);
-                  alert('添加测试数据时发生错误');
+                  alert('添加测试数据时发生错误: ' + (error instanceof Error ? error.message : String(error)));
                 }
               }}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              添加测试数据
+              🔧 添加测试数据 (用于测试AI工具调用)
             </button>
           </div>
           <div ref={messagesEndRef} />
