@@ -280,7 +280,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v17-AGGRESSIVE-DEPLOYMENT-FORCE-CACHE-BUST-FINAL-FIX)
+              🔧 添加测试数据 (v18修复响应解析优先级-工具调用结果显示-强制部署-最终修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
