@@ -28,12 +28,12 @@ export default async function handler(req, res) {
       .from('user_profiles')
       .upsert({
         user_id: '550e8400-e29b-41d4-a716-446655440000',
-        total_messages: 0,
-        personality_type: 'professional',
-        preferences: ['cognitive-behavioral', 'mindfulness'],
         interest: 'therapy',
         language: 'zh-CN',
-        life_status: 'therapist'
+        life_status: 'therapist',
+        total_messages: 0,
+        personality_type: 'professional',
+        preferences: ['cognitive-behavioral', 'mindfulness']
       })
       .select()
 

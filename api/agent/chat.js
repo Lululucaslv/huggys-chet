@@ -87,14 +87,13 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .upsert({
-          id: 'test-therapist-megan-chang',
-          email: 'megan.chang@example.com',
-          full_name: 'Megan Chang',
-          role: 'THERAPIST',
+          user_id: '550e8400-e29b-41d4-a716-446655440000',
+          interest: 'therapy',
+          language: 'zh-CN',
+          life_status: 'therapist',
           total_messages: 0,
           personality_type: 'professional',
-          preferences: ['cognitive-behavioral', 'mindfulness'],
-          communication_style: 'supportive'
+          preferences: ['cognitive-behavioral', 'mindfulness']
         })
         .select()
 
@@ -127,7 +126,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
           
           timeSlots.forEach(slot => {
             availabilitySlots.push({
-              therapist_id: 'test-therapist-megan-chang',
+              therapist_id: '550e8400-e29b-41d4-a716-446655440000',
               start_time: `${futureDateStr}T${slot.start}Z`,
               end_time: `${futureDateStr}T${slot.end}Z`,
               is_booked: false
