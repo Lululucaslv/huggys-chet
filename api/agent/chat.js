@@ -75,6 +75,7 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
   console.log('1. Received messages from client:', JSON.stringify(messages, null, 2))
   console.log('1. User message:', userMessage)
   console.log('1. User ID:', userId)
+  console.log('1. Timestamp:', new Date().toISOString())
   console.log('handleChatWithTools called with:', { messagesCount: messages?.length, userMessage, userId })
   
   try {
