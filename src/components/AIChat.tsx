@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v14 - FORCE DEPLOYMENT - AI AGENT TOOL CALLING FIX')
-    console.log('🔥 v14 FORCE DEPLOYMENT - FIXING AI TOOL CALLING FUNCTIONALITY')
+    console.log('🚀 SENDMESSAGE v15 - FIXED RESPONSE PARSING - TOOL CALLING RESULTS DISPLAY')
+    console.log('🔥 v15 FIXED RESPONSE PARSING - AI AGENT TOOL CALLING RESULTS NOW DISPLAY CORRECTLY')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -123,8 +123,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v7 - HANDLENONSTREAMINGRESPONSE FUNCTION CALLED - RESPONSE FORMAT FIX')
-    console.log('🔥 v7 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v15 - FIXED RESPONSE PARSING - TOOL CALLING RESULTS DISPLAY')
+    console.log('🔥 v15 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,9 +132,9 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v7 - About to parse response.json()')
+      console.log('🔥 v15 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v7 - Full AI Agent API response:', result)
+      console.log('🔥 v15 - Full AI Agent API response:', result)
       
       let assistantMessage = ''
       
@@ -142,27 +142,38 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔧 DEBUGGING: Response keys:', Object.keys(result))
       console.log('🔧 DEBUGGING: Has data?', !!result.data)
       console.log('🔧 DEBUGGING: Has message?', !!result.message)
+      console.log('🔧 DEBUGGING: Has toolCalls?', !!result.toolCalls)
+      console.log('🔧 DEBUGGING: Has toolResults?', !!result.toolResults)
       console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
       
-      if (result.data && result.data.message) {
-        console.log('🔥 v13 - Using result.data.message:', result.data.message)
+      if (result.success !== false && result.message) {
+        console.log('🔥 v15 - SUCCESS: Using AI Agent response message:', result.message)
+        assistantMessage = result.message
+        
+        if (result.toolCalls && result.toolResults) {
+          console.log('🔥 v15 - SUCCESS: Tool calls detected:', result.toolCalls.length)
+          console.log('🔥 v15 - SUCCESS: Tool results:', result.toolResults)
+        }
+      }
+      else if (result.data && result.data.message) {
+        console.log('🔥 v15 - FALLBACK: Using result.data.message:', result.data.message)
         assistantMessage = result.data.message
       }
-      else if (result.message) {
-        console.log('🔥 v13 - Using result.message:', result.message)
-        assistantMessage = result.message
-      }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v13 - Using result.choices[0].message.content:', result.choices[0].message.content)
+        console.log('🔥 v15 - FALLBACK: Using OpenAI format:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
-      } 
+      }
+      else if (result.success === false && result.error) {
+        console.error('🔥 v15 - ERROR: API returned error:', result.error)
+        assistantMessage = `抱歉，处理您的请求时遇到了错误：${result.error}`
+      }
       else {
-        console.error('🔥 v13 - Unexpected response format:', result)
+        console.error('🔥 v15 - ERROR: Unexpected response format:', result)
         console.error('🔧 DEBUGGING: Available response properties:', Object.keys(result))
         assistantMessage = '抱歉，处理您的请求时遇到了错误。请稍后再试。'
       }
       
-      console.log('🔥 v7 - Final assistantMessage:', assistantMessage)
+      console.log('🔥 v15 - Final assistantMessage:', assistantMessage)
       
       const assistantChatMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -171,10 +182,10 @@ export default function AIChat({ session }: AIChatProps) {
         created_at: new Date().toISOString()
       }
       
-      console.log('🔥 v7 - About to add message to UI:', assistantChatMessage)
+      console.log('🔥 v15 - About to add message to UI:', assistantChatMessage)
       setMessages(prev => [...prev, assistantChatMessage])
       
-      console.log('🔥 v7 - About to save message to database')
+      console.log('🔥 v15 - About to save message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
@@ -183,10 +194,10 @@ export default function AIChat({ session }: AIChatProps) {
         audio_url: ''
       })
       
-      console.log('🔥 v7 - Message saved to database successfully')
+      console.log('🔥 v15 - Message saved to database successfully')
       
     } catch (error) {
-      console.error('🔥 v7 - Error handling response:', error)
+      console.error('🔥 v15 - Error handling response:', error)
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -196,9 +207,9 @@ export default function AIChat({ session }: AIChatProps) {
       setMessages(prev => [...prev, errorMessage])
     }
     
-    console.log('🔥 v7 - About to set isTyping to false')
+    console.log('🔥 v15 - About to set isTyping to false')
     setIsTyping(false)
-    console.log('🔥 v7 - handleNonStreamingResponse function completed')
+    console.log('🔥 v15 - handleNonStreamingResponse function completed')
   }
 
 
@@ -264,7 +275,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v14强制部署-用于测试AI工具调用)
+              🔧 添加测试数据 (v15修复响应解析-工具调用结果显示)
             </button>
           </div>
           <div ref={messagesEndRef} />
