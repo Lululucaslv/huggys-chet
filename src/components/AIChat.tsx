@@ -229,7 +229,7 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v10修复响应处理)
+                Huggy正在思考并可能调用工具查询信息... (v11强制重新部署)
               </div>
             </div>
           )}
