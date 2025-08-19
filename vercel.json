@@ -6,6 +6,9 @@
     "api/agent/chat.js": {
       "maxDuration": 30
     },
+    "api/agent/chat-debug.js": {
+      "maxDuration": 30
+    },
     "api/setup/add-test-data.js": {
       "maxDuration": 30
     }
