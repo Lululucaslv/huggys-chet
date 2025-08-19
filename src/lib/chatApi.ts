@@ -78,7 +78,7 @@ export class ChatAPI {
       return new Response(JSON.stringify(responseData), {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers
+        headers: { 'Content-Type': 'application/json' }
       })
 
     } catch (error) {

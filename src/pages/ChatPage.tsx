@@ -98,7 +98,27 @@ export default function ChatPage({ session }: ChatPageProps) {
       )
 
       if (response.ok) {
-        await handleStreamingResponse(response)
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json') || !response.body) {
+          const data = await response.clone().json()
+          const assistantText = data?.content || data?.message || ''
+          if (assistantText) {
+            await supabase.from('chat_messages').insert({
+              user_id: session.user.id,
+              role: 'assistant',
+              message: assistantText,
+              message_type: 'text',
+              audio_url: ''
+            })
+            updateStreamingMessage(assistantText)
+          } else if (data?.error) {
+            updateStreamingMessage('抱歉，我这边遇到了一点问题，请稍后再试。')
+          } else {
+            console.warn('JSON response missing expected content field:', data)
+          }
+        } else {
+          await handleStreamingResponse(response)
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error)
