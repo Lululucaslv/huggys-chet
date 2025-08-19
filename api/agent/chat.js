@@ -4,27 +4,39 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'edge'
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 
   try {
-    const { tool, userMessage, userId } = req.body
+    const { tool, userMessage, userId } = await req.json()
 
     if (!tool || !userMessage || !userId) {
-      return res.status(400).json({ error: 'Missing required parameters' })
+      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     if (tool !== 'chatWithTools') {
-      return res.status(400).json({ error: 'Invalid tool specified' })
+      return new Response(JSON.stringify({ error: 'Invalid tool specified' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      return res.status(500).json({ error: 'Server configuration error' })
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -38,7 +50,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Handler error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }
 
