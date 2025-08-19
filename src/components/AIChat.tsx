@@ -68,8 +68,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v22 - SUPER AGGRESSIVE DEPLOYMENT - DEFINITIVE RESPONSE PARSING FIX')
-    console.log('🔥 v22 SUPER AGGRESSIVE DEPLOYMENT - AI AGENT TOOL CALLING RESULTS DISPLAY - ULTIMATE FIX')
+    console.log('🚀 SENDMESSAGE v23 - FINAL MODIFICATION - EXACT EXTRACTION FIX')
+    console.log('🔥 v23 FINAL MODIFICATION - AI AGENT TOOL CALLING RESULTS DISPLAY - EXACT FIX')
     if (!inputMessage.trim()) return
     if (isTyping) return
 
@@ -123,8 +123,8 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const handleNonStreamingResponse = async (response: Response) => {
-    console.log('🚀 v22 - SUPER AGGRESSIVE DEPLOYMENT - DEFINITIVE RESPONSE PARSING FIX')
-    console.log('🔥 v22 - handleNonStreamingResponse called with response:', {
+    console.log('🚀 v23 - FINAL MODIFICATION - EXACT EXTRACTION FIX')
+    console.log('🔥 v23 - handleNonStreamingResponse called with response:', {
       status: response.status,
       statusText: response.statusText,
       bodyUsed: response.bodyUsed,
@@ -132,11 +132,9 @@ export default function AIChat({ session }: AIChatProps) {
     })
     
     try {
-      console.log('🔥 v22 - About to parse response.json()')
+      console.log('🔥 v23 - About to parse response.json()')
       const result = await response.json()
-      console.log('🔥 v22 - Full AI Agent API response:', result)
-      
-      let assistantMessage = ''
+      console.log('🔥 v23 - Full AI Agent API response:', result)
       
       console.log('🔧 DEBUGGING: Full API response structure:', JSON.stringify(result, null, 2))
       console.log('🔧 DEBUGGING: Response keys:', Object.keys(result))
@@ -146,34 +144,39 @@ export default function AIChat({ session }: AIChatProps) {
       console.log('🔧 DEBUGGING: Has toolResults?', !!result.toolResults)
       console.log('🔧 DEBUGGING: Has choices?', !!result.choices)
       
-      if (result.data && result.data.message) {
-        console.log('🔥 v22 - PRIORITY 1 SUCCESS: Using AI Agent response data.message:', result.data.message)
-        assistantMessage = result.data.message
+      const reply = result.data.message;
+      console.log('Final message to display:', reply);
+      
+      let assistantMessage = ''
+      
+      if (reply && typeof reply === 'string') {
+        console.log('🔥 v23 - SUCCESS: Using extracted reply from result.data.message:', reply)
+        assistantMessage = reply
         
-        if (result.data.toolCalls && result.data.toolResults) {
-          console.log('🔥 v22 - PRIORITY 1 SUCCESS: Tool calls detected:', result.data.toolCalls.length)
-          console.log('🔥 v22 - PRIORITY 1 SUCCESS: Tool results:', result.data.toolResults)
+        if (result.data && result.data.toolCalls && result.data.toolResults) {
+          console.log('🔥 v23 - SUCCESS: Tool calls detected:', result.data.toolCalls.length)
+          console.log('🔥 v23 - SUCCESS: Tool results:', result.data.toolResults)
         }
       }
       else if (result.message && typeof result.message === 'string') {
-        console.log('🔥 v22 - PRIORITY 2 FALLBACK: Using direct result.message:', result.message)
+        console.log('🔥 v23 - FALLBACK: Using direct result.message:', result.message)
         assistantMessage = result.message
         
         if (result.toolCalls && result.toolResults) {
-          console.log('🔥 v22 - PRIORITY 2 FALLBACK: Tool calls detected:', result.toolCalls.length)
-          console.log('🔥 v22 - PRIORITY 2 FALLBACK: Tool results:', result.toolResults)
+          console.log('🔥 v23 - FALLBACK: Tool calls detected:', result.toolCalls.length)
+          console.log('🔥 v23 - FALLBACK: Tool results:', result.toolResults)
         }
       }
       else if (result.choices?.[0]?.message?.content) {
-        console.log('🔥 v22 - PRIORITY 3 FALLBACK: Using OpenAI format:', result.choices[0].message.content)
+        console.log('🔥 v23 - FALLBACK: Using OpenAI format:', result.choices[0].message.content)
         assistantMessage = result.choices[0].message.content
       }
       else if (result.success === false && result.error) {
-        console.error('🔥 v22 - ERROR: API returned error:', result.error)
+        console.error('🔥 v23 - ERROR: API returned error:', result.error)
         assistantMessage = `抱歉，处理您的请求时遇到了错误：${result.error}`
       }
       else {
-        console.error('🔥 v22 - ERROR: Unexpected response format:', result)
+        console.error('🔥 v23 - ERROR: Unexpected response format:', result)
         console.error('🔧 DEBUGGING: Available response properties:', Object.keys(result))
         assistantMessage = '抱歉，AI助手暂时遇到了一点问题，请稍后再试。'
       }
@@ -280,7 +283,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v22超级激进部署-强制缓存清除-确定性响应解析修复-AI工具调用显示-终极修复)
+              🔧 添加测试数据 (v23最终修改-精确提取修复-result.data.message-AI工具调用显示-确定修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
