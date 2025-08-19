@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 export const runtime = 'edge'
 
 export default async function handler(req) {
-  console.log('🔥 v33 - CHAT ENDPOINT WITH TOOL CALLING RESTORED')
+  console.log('🔥 v35 - SIMPLIFIED TOOL CALLING FOR EDGE RUNTIME COMPATIBILITY')
   
   if (req.method !== 'POST') {
     console.log('❌ Method not allowed:', req.method)
@@ -16,9 +16,9 @@ export default async function handler(req) {
   }
 
   try {
-    console.log('🔥 v33 - Parsing request body...')
+    console.log('🔥 v35 - Parsing request body...')
     const body = await req.json()
-    console.log('🔥 v33 - Request body received')
+    console.log('🔥 v35 - Request body received')
     
     const { tool, userMessage, userId } = body
 
@@ -38,7 +38,7 @@ export default async function handler(req) {
       })
     }
 
-    console.log('🔥 v33 - Environment check...')
+    console.log('🔥 v35 - Environment check...')
     if (!process.env.OPENAI_API_KEY) {
       console.error('❌ Missing OpenAI API key')
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -55,21 +55,23 @@ export default async function handler(req) {
       })
     }
 
-    console.log('🔥 v33 - Creating Supabase client...')
+    console.log('🔥 v35 - Creating Supabase client...')
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    console.log('🔥 v33 - Calling handleChatWithTools...')
+    console.log('🔥 v35 - Calling handleChatWithTools...')
     return await handleChatWithTools(userMessage, userId, supabase)
 
   } catch (error) {
-    console.error('❌ v33 Handler error:', error)
+    console.error('❌ v35 Handler error:', error)
     console.error('❌ Error message:', error.message)
+    console.error('❌ Error stack:', error.stack)
     return new Response(JSON.stringify({ 
       error: 'Internal server error', 
-      details: error.message
+      details: error.message,
+      stack: error.stack
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -79,9 +81,9 @@ export default async function handler(req) {
 
 async function handleChatWithTools(userMessage, userId, supabase) {
   try {
-    console.log('🔥 v33 - handleChatWithTools started')
-    console.log('🔥 v33 - Message:', userMessage?.substring(0, 100))
-    console.log('🔥 v33 - UserId:', userId)
+    console.log('🔥 v35 - handleChatWithTools started')
+    console.log('🔥 v35 - Message:', userMessage?.substring(0, 100))
+    console.log('🔥 v35 - UserId:', userId)
 
     const tools = [
       {
@@ -168,12 +170,12 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       }
     ]
 
-    console.log('🔥 v33 - Creating OpenAI client...')
+    console.log('🔥 v35 - Creating OpenAI client...')
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     })
 
-    console.log('🔥 v33 - Step 1: Making non-streaming call to detect tool calls...')
+    console.log('🔥 v35 - Step 1: Making non-streaming call to detect tool calls...')
     const initialResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
@@ -184,31 +186,31 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       stream: false
     })
 
-    console.log('🔥 v33 - Initial response received')
+    console.log('🔥 v35 - Initial response received')
     const message_obj = initialResponse.choices[0].message
     
     if (message_obj.tool_calls && message_obj.tool_calls.length > 0) {
-      console.log('🔥 v33 - TOOL CALLS DETECTED!')
-      console.log('🔥 v33 - Tool calls:', message_obj.tool_calls)
+      console.log('🔥 v35 - TOOL CALLS DETECTED!')
+      console.log('🔥 v35 - Tool calls:', message_obj.tool_calls)
       
       const toolMessages = [...conversationMessages, message_obj]
       
       for (const toolCall of message_obj.tool_calls) {
-        console.log('🔥 v33 - Processing tool call:', toolCall.function.name)
-        console.log('🔥 v33 - Arguments:', toolCall.function.arguments)
+        console.log('🔥 v35 - Processing tool call:', toolCall.function.name)
+        console.log('🔥 v35 - Arguments:', toolCall.function.arguments)
         
         try {
           const parsedArgs = JSON.parse(toolCall.function.arguments)
           let toolResult
           
           if (toolCall.function.name === 'getTherapistAvailability') {
-            console.log('🔥 v33 - Calling getTherapistAvailability...')
+            console.log('🔥 v35 - Calling getTherapistAvailability...')
             toolResult = await getTherapistAvailability(parsedArgs, supabase)
-            console.log('🔥 v33 - getTherapistAvailability result:', toolResult)
+            console.log('🔥 v35 - getTherapistAvailability result:', toolResult)
           } else if (toolCall.function.name === 'createBooking') {
-            console.log('🔥 v33 - Calling createBooking...')
+            console.log('🔥 v35 - Calling createBooking...')
             toolResult = await createBooking(parsedArgs, userId, supabase)
-            console.log('🔥 v33 - createBooking result:', toolResult)
+            console.log('🔥 v35 - createBooking result:', toolResult)
           } else {
             console.error('❌ Unknown function name:', toolCall.function.name)
             toolResult = { success: false, error: 'Unknown function' }
@@ -230,7 +232,7 @@ async function handleChatWithTools(userMessage, userId, supabase) {
         }
       }
       
-      console.log('🔥 v33 - Step 2: Making streaming call with tool results...')
+      console.log('🔥 v35 - Step 2: Making streaming call with tool results...')
       const finalResponse = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: toolMessages,
@@ -239,12 +241,12 @@ async function handleChatWithTools(userMessage, userId, supabase) {
         stream: true
       })
       
-      console.log('🔥 v33 - Creating final stream...')
+      console.log('🔥 v35 - Creating final stream...')
       const finalStream = OpenAIStream(finalResponse)
       return new StreamingTextResponse(finalStream)
     }
     
-    console.log('🔥 v33 - No tool calls detected, making streaming response...')
+    console.log('🔥 v35 - No tool calls detected, making streaming response...')
     const streamingResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
@@ -253,12 +255,12 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       stream: true
     })
     
-    console.log('🔥 v33 - Creating stream for non-tool response...')
+    console.log('🔥 v35 - Creating stream for non-tool response...')
     const stream = OpenAIStream(streamingResponse)
     return new StreamingTextResponse(stream)
 
   } catch (error) {
-    console.error('❌ Error in handleChatWithTools:', error)
+    console.error('❌ v35 Error in handleChatWithTools:', error)
     console.error('❌ Error message:', error.message)
     console.error('❌ Error stack:', error.stack)
     throw error
@@ -267,7 +269,7 @@ async function handleChatWithTools(userMessage, userId, supabase) {
 
 async function getTherapistAvailability(params, supabase) {
   try {
-    console.log('🔥 v33 - getTherapistAvailability called with params:', params)
+    console.log('🔥 v35 - getTherapistAvailability called with params:', params)
     
     const knownTherapists = {
       'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
@@ -287,7 +289,7 @@ async function getTherapistAvailability(params, supabase) {
     const therapistName = therapists[0]
     const therapistId = knownTherapists[therapistName]
     
-    console.log('🔥 v33 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
+    console.log('🔥 v35 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
     
     let availabilityQuery = supabase
       .from('availability')
@@ -344,7 +346,7 @@ async function getTherapistAvailability(params, supabase) {
       }
     }
     
-    console.log('🔥 v33 - Returning availability result:', result)
+    console.log('🔥 v35 - Returning availability result:', result)
     return result
     
   } catch (error) {
@@ -358,7 +360,7 @@ async function getTherapistAvailability(params, supabase) {
 
 async function createBooking(params, userId, supabase) {
   try {
-    console.log('🔥 v33 - createBooking called with params:', params, 'userId:', userId)
+    console.log('🔥 v35 - createBooking called with params:', params, 'userId:', userId)
     
     const knownTherapists = {
       'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'

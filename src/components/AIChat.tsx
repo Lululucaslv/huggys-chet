@@ -185,7 +185,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v34强制部署-修复500错误-工具调用功能恢复)
+              🔧 添加测试数据 (v35简化工具调用-边缘运行时兼容性-修复500错误-最终修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
