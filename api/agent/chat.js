@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js'
 export const runtime = 'edge'
 
 export default async function handler(req) {
+  console.log('🔥 CHAT ENDPOINT HIT - v30 DEPLOYMENT TEST')
+  
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method)
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' }
@@ -13,9 +16,16 @@ export default async function handler(req) {
   }
 
   try {
-    const { tool, userMessage, userId } = await req.json()
+    console.log('🔥 v30 - Parsing request body...')
+    const body = await req.json()
+    console.log('🔥 v30 - Request body:', body)
+    
+    const { tool, userMessage, userId } = body
+
+    console.log('🔥 v30 - Extracted params:', { tool, userMessage: userMessage?.substring(0, 50), userId })
 
     if (!tool || !userMessage || !userId) {
+      console.log('❌ Missing required parameters')
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -23,16 +33,14 @@ export default async function handler(req) {
     }
 
     if (tool !== 'chatWithTools') {
+      console.log('❌ Invalid tool specified:', tool)
       return new Response(JSON.stringify({ error: 'Invalid tool specified' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    console.log('=== DEBUGGING CHAT WITH TOOLS ===')
-    console.log('User message:', userMessage)
-    console.log('User ID:', userId)
-    console.log('Environment check:')
+    console.log('🔥 v30 - Environment check:')
     console.log('- OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY)
     console.log('- SUPABASE_URL exists:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
     console.log('- SUPABASE_SERVICE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -41,22 +49,30 @@ export default async function handler(req) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase configuration')
+      console.error('❌ Missing Supabase configuration')
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
+    console.log('🔥 v30 - Creating Supabase client...')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    console.log('🔥 v30 - Calling handleChatWithTools...')
     const response = await handleChatWithTools(userMessage, userId, supabase)
+    console.log('🔥 v30 - handleChatWithTools completed successfully')
     return response
 
   } catch (error) {
-    console.error('Handler error:', error)
-    console.error('Error stack:', error.stack)
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
+    console.error('❌ Handler error:', error)
+    console.error('❌ Error message:', error.message)
+    console.error('❌ Error stack:', error.stack)
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      details: error.message,
+      stack: error.stack?.substring(0, 500)
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     })
@@ -65,6 +81,10 @@ export default async function handler(req) {
 
 async function handleChatWithTools(message, userId, supabase) {
   try {
+    console.log('🔥 v30 - handleChatWithTools started')
+    console.log('🔥 v30 - Message:', message?.substring(0, 100))
+    console.log('🔥 v30 - UserId:', userId)
+
     const tools = [
       {
         type: "function",
@@ -114,6 +134,8 @@ async function handleChatWithTools(message, userId, supabase) {
       }
     ]
 
+    console.log('🔥 v30 - Tools defined, creating conversation messages...')
+
     const conversationMessages = [
       {
         role: "system",
@@ -133,11 +155,12 @@ async function handleChatWithTools(message, userId, supabase) {
       }
     ]
 
+    console.log('🔥 v30 - Creating OpenAI client...')
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     })
 
-    console.log('Step 1: Making non-streaming call to detect tool calls...')
+    console.log('🔥 v30 - Step 1: Making non-streaming call to detect tool calls...')
     const initialResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
@@ -148,35 +171,36 @@ async function handleChatWithTools(message, userId, supabase) {
       stream: false
     })
 
-    console.log('Initial response received:', initialResponse.choices[0])
+    console.log('🔥 v30 - Initial response received')
+    console.log('🔥 v30 - Response choice:', initialResponse.choices[0])
 
     const message_obj = initialResponse.choices[0].message
     if (message_obj.tool_calls && message_obj.tool_calls.length > 0) {
-      console.log('=== TOOL CALLS DETECTED ===')
-      console.log('Tool calls:', message_obj.tool_calls)
+      console.log('🔥 v30 - TOOL CALLS DETECTED!')
+      console.log('🔥 v30 - Tool calls:', message_obj.tool_calls)
       
       const toolMessages = [...conversationMessages, message_obj]
       
       for (const toolCall of message_obj.tool_calls) {
-        console.log('Processing tool call:', toolCall.function.name)
-        console.log('Arguments:', toolCall.function.arguments)
+        console.log('🔥 v30 - Processing tool call:', toolCall.function.name)
+        console.log('🔥 v30 - Arguments:', toolCall.function.arguments)
         
         try {
           const parsedArgs = JSON.parse(toolCall.function.arguments)
           let toolResult
           
           if (toolCall.function.name === 'getTherapistAvailability') {
-            console.log('Calling getTherapistAvailability...')
+            console.log('🔥 v30 - Calling getTherapistAvailability...')
             toolResult = await getTherapistAvailability(parsedArgs, supabase)
+            console.log('🔥 v30 - getTherapistAvailability result:', toolResult)
           } else if (toolCall.function.name === 'createBooking') {
-            console.log('Calling createBooking...')
+            console.log('🔥 v30 - Calling createBooking...')
             toolResult = await createBooking(parsedArgs, userId, supabase)
+            console.log('🔥 v30 - createBooking result:', toolResult)
           } else {
-            console.error('Unknown function name:', toolCall.function.name)
+            console.error('❌ Unknown function name:', toolCall.function.name)
             toolResult = { success: false, error: 'Unknown function' }
           }
-          
-          console.log('Tool result:', toolResult)
           
           toolMessages.push({
             role: "tool",
@@ -185,7 +209,7 @@ async function handleChatWithTools(message, userId, supabase) {
           })
           
         } catch (parseError) {
-          console.error('Error parsing tool arguments:', parseError)
+          console.error('❌ Error parsing tool arguments:', parseError)
           toolMessages.push({
             role: "tool",
             tool_call_id: toolCall.id,
@@ -194,7 +218,7 @@ async function handleChatWithTools(message, userId, supabase) {
         }
       }
       
-      console.log('Step 2: Making streaming call with tool results...')
+      console.log('🔥 v30 - Step 2: Making streaming call with tool results...')
       const finalResponse = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: toolMessages,
@@ -203,11 +227,12 @@ async function handleChatWithTools(message, userId, supabase) {
         stream: true
       })
       
+      console.log('🔥 v30 - Creating final stream...')
       const finalStream = OpenAIStream(finalResponse)
       return new StreamingTextResponse(finalStream)
     }
     
-    console.log('No tool calls detected, making streaming response...')
+    console.log('🔥 v30 - No tool calls detected, making streaming response...')
     const streamingResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
@@ -216,12 +241,14 @@ async function handleChatWithTools(message, userId, supabase) {
       stream: true
     })
     
+    console.log('🔥 v30 - Creating stream for non-tool response...')
     const stream = OpenAIStream(streamingResponse)
     return new StreamingTextResponse(stream)
 
   } catch (error) {
-    console.error('Error in handleChatWithTools:', error)
-    console.error('Error stack:', error.stack)
+    console.error('❌ Error in handleChatWithTools:', error)
+    console.error('❌ Error message:', error.message)
+    console.error('❌ Error stack:', error.stack)
     throw error
   }
 }
