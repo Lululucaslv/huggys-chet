@@ -29,10 +29,19 @@ export default async function handler(req) {
       })
     }
 
+    console.log('=== DEBUGGING CHAT WITH TOOLS ===')
+    console.log('User message:', userMessage)
+    console.log('User ID:', userId)
+    console.log('Environment check:')
+    console.log('- OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY)
+    console.log('- SUPABASE_URL exists:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('- SUPABASE_SERVICE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration')
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -41,16 +50,13 @@ export default async function handler(req) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('=== CHAT WITH TOOLS - TWO STEP APPROACH ===')
-    console.log('User message:', userMessage)
-    console.log('User ID:', userId)
-
     const response = await handleChatWithTools(userMessage, userId, supabase)
     return response
 
   } catch (error) {
     console.error('Handler error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('Error stack:', error.stack)
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     })
