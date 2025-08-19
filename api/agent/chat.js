@@ -1,4 +1,4 @@
-import { OpenAI } from 'openai'
+import OpenAI from 'openai'
 import { OpenAIStream, StreamingTextResponse } from 'ai'
 import { createClient } from '@supabase/supabase-js'
 
