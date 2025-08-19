@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { OpenAIStream, StreamingTextResponse } from 'ai'
 import OpenAI from 'openai'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export default async function handler(req, res) {
   console.log('Agent API called with method:', req.method)
@@ -11,6 +11,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
+
+  try {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -60,9 +62,25 @@ export default async function handler(req, res) {
       console.log('Handling chat with tools for userId:', userId)
       console.log('Messages count:', messages?.length || 0)
       console.log('User message:', userMessage)
-      const streamingResponse = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
-      console.log('Returning streaming response...')
-      return streamingResponse
+      
+      try {
+        const streamingResponse = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
+        console.log('Streaming response created successfully')
+        return streamingResponse
+      } catch (streamError) {
+        console.error('Error in handleChatWithTools:', streamError)
+        console.error('Stream error stack:', streamError.stack)
+        
+        const fallbackResponse = {
+          success: true,
+          data: {
+            message: '抱歉，AI助手暂时遇到了一点问题，请稍后再试。我们正在努力修复这个问题。',
+            toolCalls: null,
+            toolResults: null
+          }
+        }
+        return res.status(200).json(fallbackResponse)
+      }
     }
 
     console.log('Unknown tool requested:', tool)
@@ -71,6 +89,11 @@ export default async function handler(req, res) {
     console.error('Agent API Error:', error)
     console.error('Error stack:', error.stack)
     return res.status(500).json({ error: 'Internal server error', details: error.message })
+  }
+  } catch (outerError) {
+    console.error('Outer Agent API Error:', outerError)
+    console.error('Outer Error stack:', outerError.stack)
+    return res.status(500).json({ error: 'Critical server error', details: outerError.message })
   }
 }
 
@@ -366,9 +389,14 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
 
       console.log('Creating streaming response...')
       
-      const stream = OpenAIStream(finalResponse)
-      
-      return new StreamingTextResponse(stream)
+      try {
+        const stream = OpenAIStream(finalResponse)
+        console.log('OpenAI stream created successfully')
+        return new StreamingTextResponse(stream)
+      } catch (streamError) {
+        console.error('Error creating OpenAI stream:', streamError)
+        throw new Error(`Failed to create streaming response: ${streamError.message}`)
+      }
     }
 
     console.log('=== NO TOOL CALLS DETECTED - STREAMING DIRECT RESPONSE ===')
@@ -383,16 +411,22 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     
     console.log('Creating streaming response for direct message...')
     
-    const directResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: conversationMessages,
-      temperature: 0.7,
-      max_tokens: 1500,
-      stream: true // Enable streaming for direct response
-    })
-    
-    const stream = OpenAIStream(directResponse)
-    return new StreamingTextResponse(stream)
+    try {
+      const directResponse = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: conversationMessages,
+        temperature: 0.7,
+        max_tokens: 1500,
+        stream: true // Enable streaming for direct response
+      })
+      
+      const stream = OpenAIStream(directResponse)
+      console.log('Direct response stream created successfully')
+      return new StreamingTextResponse(stream)
+    } catch (streamError) {
+      console.error('Error creating direct response stream:', streamError)
+      throw new Error(`Failed to create direct streaming response: ${streamError.message}`)
+    }
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
