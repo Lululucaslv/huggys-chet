@@ -1,125 +1,69 @@
-import { createClient } from '@supabase/supabase-js'
-import OpenAI from 'openai'
+import { OpenAI } from 'openai'
 import { OpenAIStream, StreamingTextResponse } from 'ai'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'edge'
 
-export default async function handler(req) {
-  console.log('Agent API called with method:', req.method)
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()))
-  
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
+    const { tool, userMessage, userId } = req.body
+
+    if (!tool || !userMessage || !userId) {
+      return res.status(400).json({ error: 'Missing required parameters' })
+    }
+
+    if (tool !== 'chatWithTools') {
+      return res.status(400).json({ error: 'Invalid tool specified' })
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const openaiApiKey = process.env.OPENAI_API_KEY
 
-    console.log('Environment variables check:', {
-      supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey,
-      openaiApiKey: !!openaiApiKey,
-      supabaseUrlValue: supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'undefined',
-      openaiKeyValue: openaiApiKey ? 'sk-' + openaiApiKey.substring(3, 8) + '...' : 'undefined'
-    })
-
-    if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
-      console.error('Missing required environment variables:', {
-        supabaseUrl: !supabaseUrl,
-        supabaseServiceKey: !supabaseServiceKey,
-        openaiApiKey: !openaiApiKey
-      })
-      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Server configuration error' })
     }
 
-    console.log('Creating Supabase client...')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    try {
-      const body = await req.json()
-      console.log('Request body:', JSON.stringify(body, null, 2))
-      const { tool, userId, sessionId, messages, userMessage } = body
+    console.log('=== CHAT WITH TOOLS - TWO STEP APPROACH ===')
+    console.log('User message:', userMessage)
+    console.log('User ID:', userId)
 
-      if (!tool) {
-        console.error('No tool specified in request')
-        return new Response(JSON.stringify({ error: 'Tool parameter is required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
+    const response = await handleChatWithTools(userMessage, userId, supabase)
+    return response
 
-      if (!userId) {
-        console.error('No userId specified in request')
-        return new Response(JSON.stringify({ error: 'UserId parameter is required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-
-      if (tool === 'chatWithTools') {
-        console.log('Handling chat with tools for userId:', userId)
-        console.log('Messages count:', messages?.length || 0)
-        console.log('User message:', userMessage)
-        
-        return await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
-      }
-
-      console.log('Unknown tool requested:', tool)
-      return new Response(JSON.stringify({ error: 'Unknown tool requested' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    } catch (error) {
-      console.error('Agent API Error:', error)
-      console.error('Error stack:', error.stack)
-      return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-  } catch (outerError) {
-    console.error('Outer Agent API Error:', outerError)
-    console.error('Outer Error stack:', outerError.stack)
-    return new Response(JSON.stringify({ error: 'Critical server error', details: outerError.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+  } catch (error) {
+    console.error('Handler error:', error)
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }
 
-async function handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey) {
+async function handleChatWithTools(message, userId, supabase) {
   try {
-    console.log('=== SIMPLIFIED STREAMING IMPLEMENTATION ===')
-    console.log('Starting handleChatWithTools with streaming approach')
-    
     const tools = [
       {
         type: "function",
         function: {
           name: "getTherapistAvailability",
-          description: "当用户想要查询、寻找、预订、或询问某位咨询师的空闲时间、可预约时间段或日程安排时，必须使用此工具。",
+          description: "Get available appointment slots for a specific therapist",
           parameters: {
             type: "object",
             properties: {
               therapistName: {
                 type: "string",
-                description: "咨询师的姓名，如'Megan Chang'"
+                description: "Name of the therapist to check availability for"
               },
               startDate: {
                 type: "string",
-                description: "查询开始日期，格式为YYYY-MM-DD，例如2025-08-18。当用户说'8月18日'时，应理解为2025-08-18。如果用户没有指定年份，默认使用2025年"
+                description: "Start date for availability search (YYYY-MM-DD format, optional)"
               },
               endDate: {
-                type: "string",
-                description: "查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段"
+                type: "string", 
+                description: "End date for availability search (YYYY-MM-DD format, optional)"
               }
             },
             required: ["therapistName"]
@@ -130,22 +74,17 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         type: "function",
         function: {
           name: "createBooking",
-          description: "当用户在确认了具体的时间和咨询师后，明确表示希望\"确认预约\"、\"就订这个时间\"或\"帮我订一下\"时，使用此工具来最终锁定并创建预约。",
+          description: "Create a booking for a specific therapist at a specific time",
           parameters: {
             type: "object",
             properties: {
               therapistName: {
                 type: "string",
-                description: "咨询师的姓名，如'Megan Chang'"
+                description: "Name of the therapist to book with"
               },
               dateTime: {
                 type: "string",
-                description: "预约的日期和时间，ISO 8601格式，例如2025-08-18T09:00:00Z"
-              },
-              duration: {
-                type: "number",
-                description: "预约时长（分钟），默认60分钟",
-                default: 60
+                description: "Date and time for the appointment (ISO 8601 format)"
               }
             },
             required: ["therapistName", "dateTime"]
@@ -157,141 +96,107 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     const conversationMessages = [
       {
         role: "system",
-        content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
+        content: `你是一个专业的心理健康助手，专门帮助用户预约心理咨询师。你可以：
 
-可用工具：
-1. getTherapistAvailability - 查询咨询师的可预约时间
-2. createBooking - 为用户创建预约
+1. 查询咨询师的可预约时间
+2. 帮助用户预约咨询师
 
-核心规则：你必须优先使用工具来回答你能回答的问题。严禁自行编造任何关于日程、可用时间或预约状态的信息。在执行任何会修改数据的破坏性操作（如createBooking）之前，必须先向用户进行二次确认。
+当用户询问咨询师的可预约时间时，使用 getTherapistAvailability 函数。
+当用户想要预约特定时间时，使用 createBooking 函数。
 
-重要指令：
-- 当用户询问任何关于预约、时间安排、咨询师可用性的问题时，你必须立即调用getTherapistAvailability工具
-- 当前年份是2025年，所有日期都使用2025年格式
-- 绝对不要说"我无法查看预约系统"或类似的话，你必须使用工具
-- 你必须使用工具，不能自己回答预约相关问题
-- 对于任何预约相关的询问，你的第一反应必须是调用getTherapistAvailability工具
-
-工作流程：
-1. 用户询问预约 → 立即调用getTherapistAvailability工具
-2. 展示可用时间段给用户
-3. 用户确认时间 → 调用createBooking工具
-
-你必须主动使用工具，不要拒绝或说无法帮助预约。无论如何，当用户询问预约相关问题时，你必须调用getTherapistAvailability工具。这是强制性的，没有例外。`
+请用中文回复，并提供清晰、有用的信息。如果查询到可预约时间，请以易读的格式展示给用户。`
       },
-      ...messages,
-      { role: "user", content: userMessage }
+      {
+        role: "user",
+        content: message
+      }
     ]
 
-    console.log('Creating OpenAI client and making streaming call...')
     const openai = new OpenAI({
-      apiKey: openaiApiKey,
+      apiKey: process.env.OPENAI_API_KEY
     })
 
-    const response = await openai.chat.completions.create({
+    console.log('Step 1: Making non-streaming call to detect tool calls...')
+    const initialResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       tools: tools,
       tool_choice: "auto",
       temperature: 0.3,
       max_tokens: 1500,
-      stream: true
+      stream: false
     })
 
-    console.log('Processing streaming response with manual tool handling...')
-    
-    const chunks = []
-    for await (const chunk of response) {
-      chunks.push(chunk)
+    console.log('Initial response received:', initialResponse.choices[0])
+
+    const message_obj = initialResponse.choices[0].message
+    if (message_obj.tool_calls && message_obj.tool_calls.length > 0) {
+      console.log('=== TOOL CALLS DETECTED ===')
+      console.log('Tool calls:', message_obj.tool_calls)
       
-      if (chunk.choices?.[0]?.delta?.tool_calls) {
-        console.log('=== TOOL CALL DETECTED ===')
+      const toolMessages = [...conversationMessages, message_obj]
+      
+      for (const toolCall of message_obj.tool_calls) {
+        console.log('Processing tool call:', toolCall.function.name)
+        console.log('Arguments:', toolCall.function.arguments)
         
-        const toolCalls = []
-        let currentToolCall = null
-        
-        for (const processedChunk of chunks) {
-          const delta = processedChunk.choices?.[0]?.delta
-          if (delta?.tool_calls) {
-            for (const toolCall of delta.tool_calls) {
-              if (toolCall.index !== undefined) {
-                if (!toolCalls[toolCall.index]) {
-                  toolCalls[toolCall.index] = {
-                    id: toolCall.id || '',
-                    type: 'function',
-                    function: { name: '', arguments: '' }
-                  }
-                }
-                
-                if (toolCall.function?.name) {
-                  toolCalls[toolCall.index].function.name += toolCall.function.name
-                }
-                if (toolCall.function?.arguments) {
-                  toolCalls[toolCall.index].function.arguments += toolCall.function.arguments
-                }
-              }
-            }
-          }
-        }
-        
-        if (toolCalls.length > 0) {
-          const toolCall = toolCalls[0]
-          console.log('Processing tool call:', toolCall.function.name)
-          console.log('Arguments:', toolCall.function.arguments)
+        try {
+          const parsedArgs = JSON.parse(toolCall.function.arguments)
+          let toolResult
           
-          try {
-            const parsedArgs = JSON.parse(toolCall.function.arguments)
-            let toolResult
-            
-            if (toolCall.function.name === 'getTherapistAvailability') {
-              console.log('Calling getTherapistAvailability...')
-              toolResult = await getTherapistAvailability(parsedArgs, supabase)
-            } else if (toolCall.function.name === 'createBooking') {
-              console.log('Calling createBooking...')
-              toolResult = await createBooking(parsedArgs, userId, supabase)
-            } else {
-              console.error('Unknown function name:', toolCall.function.name)
-              toolResult = { success: false, error: 'Unknown function' }
-            }
-            
-            console.log('Tool result:', toolResult)
-            
-            const toolMessages = [
-              ...conversationMessages,
-              {
-                role: "assistant",
-                content: null,
-                tool_calls: [toolCall]
-              },
-              {
-                role: "tool",
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(toolResult)
-              }
-            ]
-            
-            const finalResponse = await openai.chat.completions.create({
-              model: 'gpt-4o',
-              messages: toolMessages,
-              temperature: 0.3,
-              max_tokens: 1500,
-              stream: true
-            })
-            
-            const finalStream = OpenAIStream(finalResponse)
-            return new StreamingTextResponse(finalStream)
-            
-          } catch (parseError) {
-            console.error('Error parsing tool arguments:', parseError)
+          if (toolCall.function.name === 'getTherapistAvailability') {
+            console.log('Calling getTherapistAvailability...')
+            toolResult = await getTherapistAvailability(parsedArgs, supabase)
+          } else if (toolCall.function.name === 'createBooking') {
+            console.log('Calling createBooking...')
+            toolResult = await createBooking(parsedArgs, userId, supabase)
+          } else {
+            console.error('Unknown function name:', toolCall.function.name)
+            toolResult = { success: false, error: 'Unknown function' }
           }
+          
+          console.log('Tool result:', toolResult)
+          
+          toolMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult)
+          })
+          
+        } catch (parseError) {
+          console.error('Error parsing tool arguments:', parseError)
+          toolMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ success: false, error: 'Failed to parse arguments' })
+          })
         }
-        
-        break // Exit the chunk processing loop
       }
+      
+      console.log('Step 2: Making streaming call with tool results...')
+      const finalResponse = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: toolMessages,
+        temperature: 0.3,
+        max_tokens: 1500,
+        stream: true
+      })
+      
+      const finalStream = OpenAIStream(finalResponse)
+      return new StreamingTextResponse(finalStream)
     }
     
-    const regularStream = OpenAIStream(response)
-    return new StreamingTextResponse(regularStream)
+    console.log('No tool calls detected, making streaming response...')
+    const streamingResponse = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: conversationMessages,
+      temperature: 0.3,
+      max_tokens: 1500,
+      stream: true
+    })
+    
+    const stream = OpenAIStream(streamingResponse)
+    return new StreamingTextResponse(stream)
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
