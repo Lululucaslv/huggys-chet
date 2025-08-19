@@ -1,98 +1,126 @@
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
+import { OpenAIStream, StreamingTextResponse } from 'ai'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   console.log('Agent API called with method:', req.method)
-  console.log('Request headers:', req.headers)
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()))
   
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  try {
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const openaiApiKey = process.env.OPENAI_API_KEY
-
-  console.log('Environment variables check:', {
-    supabaseUrl: !!supabaseUrl,
-    supabaseServiceKey: !!supabaseServiceKey,
-    openaiApiKey: !!openaiApiKey,
-    supabaseUrlValue: supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'undefined',
-    openaiKeyValue: openaiApiKey ? 'sk-' + openaiApiKey.substring(3, 8) + '...' : 'undefined'
-  })
-
-  if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
-    console.error('Missing required environment variables:', {
-      supabaseUrl: !supabaseUrl,
-      supabaseServiceKey: !supabaseServiceKey,
-      openaiApiKey: !openaiApiKey
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' }
     })
-    return res.status(500).json({ error: 'Server configuration error' })
   }
-
-  console.log('Creating Supabase client...')
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   try {
-    console.log('Request body:', JSON.stringify(req.body, null, 2))
-    const { tool, userId, sessionId, messages, userMessage } = req.body
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const openaiApiKey = process.env.OPENAI_API_KEY
 
-    if (!tool) {
-      console.error('No tool specified in request')
-      return res.status(400).json({ error: 'Tool parameter is required' })
+    console.log('Environment variables check:', {
+      supabaseUrl: !!supabaseUrl,
+      supabaseServiceKey: !!supabaseServiceKey,
+      openaiApiKey: !!openaiApiKey,
+      supabaseUrlValue: supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'undefined',
+      openaiKeyValue: openaiApiKey ? 'sk-' + openaiApiKey.substring(3, 8) + '...' : 'undefined'
+    })
+
+    if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
+      console.error('Missing required environment variables:', {
+        supabaseUrl: !supabaseUrl,
+        supabaseServiceKey: !supabaseServiceKey,
+        openaiApiKey: !openaiApiKey
+      })
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
 
-    if (!userId) {
-      console.error('No userId specified in request')
-      return res.status(400).json({ error: 'UserId parameter is required' })
-    }
+    console.log('Creating Supabase client...')
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    if (tool === 'generatePreSessionSummary') {
-      console.log('Generating pre-session summary for userId:', userId)
-      const summary = await generatePreSessionSummary(userId, supabase, openaiApiKey)
-      return res.status(200).json({ success: true, data: summary })
-    }
+    try {
+      const body = await req.json()
+      console.log('Request body:', JSON.stringify(body, null, 2))
+      const { tool, userId, sessionId, messages, userMessage } = body
 
-    if (tool === 'chatWithTools') {
-      console.log('Handling chat with tools for userId:', userId)
-      console.log('Messages count:', messages?.length || 0)
-      console.log('User message:', userMessage)
-      
-      try {
-        const streamingResponse = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
-        console.log('Streaming response created successfully')
-        return streamingResponse
-      } catch (streamError) {
-        console.error('Error in handleChatWithTools:', streamError)
-        console.error('Stream error stack:', streamError.stack)
-        
-        const fallbackResponse = {
-          success: true,
-          data: {
-            message: '抱歉，AI助手暂时遇到了一点问题，请稍后再试。我们正在努力修复这个问题。',
-            toolCalls: null,
-            toolResults: null
-          }
-        }
-        return res.status(200).json(fallbackResponse)
+      if (!tool) {
+        console.error('No tool specified in request')
+        return new Response(JSON.stringify({ error: 'Tool parameter is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
       }
-    }
 
-    console.log('Unknown tool requested:', tool)
-    return res.status(400).json({ error: 'Unknown tool requested' })
-  } catch (error) {
-    console.error('Agent API Error:', error)
-    console.error('Error stack:', error.stack)
-    return res.status(500).json({ error: 'Internal server error', details: error.message })
-  }
+      if (!userId) {
+        console.error('No userId specified in request')
+        return new Response(JSON.stringify({ error: 'UserId parameter is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (tool === 'generatePreSessionSummary') {
+        console.log('Generating pre-session summary for userId:', userId)
+        const summary = await generatePreSessionSummary(userId, supabase, openaiApiKey)
+        return new Response(JSON.stringify({ success: true, data: summary }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (tool === 'chatWithTools') {
+        console.log('Handling chat with tools for userId:', userId)
+        console.log('Messages count:', messages?.length || 0)
+        console.log('User message:', userMessage)
+        
+        try {
+          const streamingResponse = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
+          console.log('Streaming response created successfully')
+          return streamingResponse
+        } catch (streamError) {
+          console.error('Error in handleChatWithTools:', streamError)
+          console.error('Stream error stack:', streamError.stack)
+          
+          const fallbackResponse = {
+            success: true,
+            data: {
+              message: '抱歉，AI助手暂时遇到了一点问题，请稍后再试。我们正在努力修复这个问题。',
+              toolCalls: null,
+              toolResults: null
+            }
+          }
+          return new Response(JSON.stringify(fallbackResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+      }
+
+      console.log('Unknown tool requested:', tool)
+      return new Response(JSON.stringify({ error: 'Unknown tool requested' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    } catch (error) {
+      console.error('Agent API Error:', error)
+      console.error('Error stack:', error.stack)
+      return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
   } catch (outerError) {
     console.error('Outer Agent API Error:', outerError)
     console.error('Outer Error stack:', outerError.stack)
-    return res.status(500).json({ error: 'Critical server error', details: outerError.message })
+    return new Response(JSON.stringify({ error: 'Critical server error', details: outerError.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }
 
@@ -376,30 +404,20 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       console.log('Making final OpenAI API call with tool results...')
       console.log('Final messages count:', finalMessages.length)
       
-      console.log('Making final non-streaming OpenAI API call with tool results...')
+      console.log('Making final streaming OpenAI API call with tool results using Vercel AI SDK...')
       
       const finalResponse = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: finalMessages,
         temperature: 0.7,
         max_tokens: 1500,
-        stream: false // Disable streaming to avoid execution issues
+        stream: true // Enable streaming for Vercel AI SDK
       })
 
-      console.log('Processing OpenAI response for tool calling result...')
+      console.log('Processing OpenAI streaming response with Vercel AI SDK...')
       
-      const fullResponse = finalResponse.choices?.[0]?.message?.content || 'No response content available'
-      
-      console.log('Full response collected:', fullResponse.substring(0, 100) + '...')
-      
-      return res.status(200).json({
-        success: true,
-        data: {
-          message: fullResponse,
-          toolCalls: message.tool_calls,
-          toolResults: toolResults
-        }
-      })
+      const stream = OpenAIStream(finalResponse)
+      return new StreamingTextResponse(stream)
     }
 
     console.log('=== NO TOOL CALLS DETECTED - STREAMING DIRECT RESPONSE ===')
@@ -412,30 +430,20 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('DEBUGGING: Model used:', 'gpt-4o')
     console.log('DEBUGGING: Tool choice setting:', 'required')
     
-    console.log('Creating non-streaming response for direct message...')
+    console.log('Creating streaming response for direct message using Vercel AI SDK...')
     
     const directResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       temperature: 0.7,
       max_tokens: 1500,
-      stream: false // Disable streaming to avoid execution issues
+      stream: true // Enable streaming for Vercel AI SDK
     })
     
-    console.log('Processing OpenAI response for direct message...')
+    console.log('Processing OpenAI streaming response with Vercel AI SDK...')
     
-    const fullResponse = directResponse.choices?.[0]?.message?.content || 'No response content available'
-    
-    console.log('Full direct response collected:', fullResponse.substring(0, 100) + '...')
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        message: fullResponse,
-        toolCalls: null,
-        toolResults: null
-      }
-    })
+    const stream = OpenAIStream(directResponse)
+    return new StreamingTextResponse(stream)
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
