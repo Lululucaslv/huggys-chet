@@ -1,14 +1,12 @@
-import { streamText } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export default async function handler(req) {
-  console.log('🔥 v35 - SIMPLIFIED TOOL CALLING FOR EDGE RUNTIME COMPATIBILITY')
+  console.log('🔥 v36 - Handler entry point')
   
   if (req.method !== 'POST') {
-    console.log('❌ Method not allowed:', req.method)
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' }
@@ -16,14 +14,12 @@ export default async function handler(req) {
   }
 
   try {
-    console.log('🔥 v35 - Parsing request body...')
     const body = await req.json()
-    console.log('🔥 v35 - Request body received')
+    console.log('🔥 v36 - Request body:', JSON.stringify(body))
     
     const { tool, userMessage, userId } = body
 
     if (!tool || !userMessage || !userId) {
-      console.log('❌ Missing required parameters')
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -31,47 +27,43 @@ export default async function handler(req) {
     }
 
     if (tool !== 'chatWithTools') {
-      console.log('❌ Invalid tool specified:', tool)
       return new Response(JSON.stringify({ error: 'Invalid tool specified' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    console.log('🔥 v35 - Environment check...')
     if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ Missing OpenAI API key')
-      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+      console.error('🔥 v36 - Missing OPENAI_API_KEY')
+      return new Response(JSON.stringify({ error: 'Server configuration error: Missing API key' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('❌ Missing Supabase configuration')
-      return new Response(JSON.stringify({ error: 'Database configuration error' }), {
+      console.error('🔥 v36 - Missing Supabase credentials')
+      return new Response(JSON.stringify({ error: 'Server configuration error: Missing database credentials' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    console.log('🔥 v35 - Creating Supabase client...')
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    console.log('🔥 v35 - Calling handleChatWithTools...')
-    return await handleChatWithTools(userMessage, userId, supabase)
-
+    return await handleChatWithTools(userMessage, userId, openai, supabase)
   } catch (error) {
-    console.error('❌ v35 Handler error:', error)
-    console.error('❌ Error message:', error.message)
-    console.error('❌ Error stack:', error.stack)
+    console.error('🔥 v36 - Handler error:', error)
     return new Response(JSON.stringify({ 
       error: 'Internal server error', 
-      details: error.message,
-      stack: error.stack
+      details: error.message 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -79,70 +71,67 @@ export default async function handler(req) {
   }
 }
 
-async function handleChatWithTools(userMessage, userId, supabase) {
-  try {
-    console.log('🔥 v35 - handleChatWithTools started')
-    console.log('🔥 v35 - Message:', userMessage?.substring(0, 100))
-    console.log('🔥 v35 - UserId:', userId)
-
-    const tools = [
-      {
-        type: "function",
-        function: {
-          name: "getTherapistAvailability",
-          description: "当用户想要查询、寻找、预订、或询问某位咨询师的空闲时间、可预约时间段或日程安排时，必须使用此工具。",
-          parameters: {
-            type: "object",
-            properties: {
-              therapistName: {
-                type: "string",
-                description: "咨询师的姓名，如'Megan Chang'"
-              },
-              startDate: {
-                type: "string",
-                description: "查询开始日期，格式为YYYY-MM-DD，例如2025-08-19。当用户说'明天'时，应理解为2025-08-19。如果用户没有指定年份，默认使用2025年"
-              },
-              endDate: {
-                type: "string",
-                description: "查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段"
-              }
+async function handleChatWithTools(userMessage, userId, openai, supabase) {
+  console.log('🔥 v36 - Handling chat with tools')
+  
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'getTherapistAvailability',
+        description: '当用户想要查询、寻找、预订、或询问某位咨询师的空闲时间、可预约时间段或日程安排时，必须使用此工具。',
+        parameters: {
+          type: 'object',
+          properties: {
+            therapistName: {
+              type: 'string',
+              description: '咨询师的姓名，如"Megan Chang"'
             },
-            required: ["therapistName"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "createBooking",
-          description: "当用户在确认了具体的时间和咨询师后，明确表示希望\"确认预约\"、\"就订这个时间\"或\"帮我订一下\"时，使用此工具来最终锁定并创建预约。",
-          parameters: {
-            type: "object",
-            properties: {
-              therapistName: {
-                type: "string",
-                description: "咨询师的姓名，如'Megan Chang'"
-              },
-              dateTime: {
-                type: "string",
-                description: "预约的日期和时间，ISO 8601格式，例如2025-08-19T09:00:00Z"
-              },
-              duration: {
-                type: "number",
-                description: "预约时长（分钟），默认60分钟",
-                default: 60
-              }
+            startDate: {
+              type: 'string',
+              description: '查询开始日期，格式为YYYY-MM-DD，例如2025-08-19。当用户说"明天"时，应理解为2025-08-19。如果用户没有指定年份，默认使用2025年'
             },
-            required: ["therapistName", "dateTime"]
-          }
+            endDate: {
+              type: 'string',
+              description: '查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段'
+            }
+          },
+          required: ['therapistName']
         }
       }
-    ]
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'createBooking',
+        description: '当用户在确认了具体的时间和咨询师后，明确表示希望"确认预约"、"就订这个时间"或"帮我订一下"时，使用此工具来最终锁定并创建预约。',
+        parameters: {
+          type: 'object',
+          properties: {
+            therapistName: {
+              type: 'string',
+              description: '咨询师的姓名，如"Megan Chang"'
+            },
+            dateTime: {
+              type: 'string',
+              description: '预约的日期和时间，ISO 8601格式，例如2025-08-19T09:00:00Z'
+            },
+            duration: {
+              type: 'number',
+              description: '预约时长（分钟），默认60分钟',
+              default: 60
+            }
+          },
+          required: ['therapistName', 'dateTime']
+        }
+      }
+    }
+  ]
 
-    const conversationMessages = [
-      {
-        role: "system",
-        content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
+  const conversationMessages = [
+    {
+      role: 'system',
+      content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
 
 可用工具：
 1. getTherapistAvailability - 查询咨询师的可预约时间
@@ -163,105 +152,154 @@ async function handleChatWithTools(userMessage, userId, supabase) {
 3. 用户确认时间 → 调用createBooking工具
 
 你必须主动使用工具，不要拒绝或说无法帮助预约。无论如何，当用户询问预约相关问题时，你必须调用getTherapistAvailability工具。这是强制性的，没有例外。`
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ]
+    },
+    {
+      role: 'user',
+      content: userMessage
+    }
+  ]
 
-    console.log('🔥 v35 - Using AI SDK openai provider...')
-
-    console.log('🔥 v35 - Step 1: Making non-streaming call to detect tool calls...')
-    const initialResponse = await openai.chat.completions.create({
+  try {
+    console.log('🔥 v36 - Making OpenAI API call with tool calling...')
+    const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       tools: tools,
-      tool_choice: "auto",
+      tool_choice: 'auto',
       temperature: 0.3,
       max_tokens: 1500
     })
 
-    console.log('🔥 v35 - Initial response received')
-    const message_obj = initialResponse.choices[0].message
-    
-    if (message_obj.tool_calls && message_obj.tool_calls.length > 0) {
-      console.log('🔥 v35 - TOOL CALLS DETECTED!')
-      console.log('🔥 v35 - Tool calls:', message_obj.tool_calls)
+    const responseMessage = completion.choices[0].message
+    console.log('🔥 v36 - Initial response:', JSON.stringify(responseMessage))
+
+    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+      console.log('🔥 v36 - Tool calls detected:', responseMessage.tool_calls.length)
       
-      const toolMessages = [...conversationMessages, message_obj]
+      const toolMessages = [...conversationMessages, responseMessage]
       
-      for (const toolCall of message_obj.tool_calls) {
-        console.log('🔥 v35 - Processing tool call:', toolCall.function.name)
-        console.log('🔥 v35 - Arguments:', toolCall.function.arguments)
-        
+      for (const toolCall of responseMessage.tool_calls) {
         try {
-          const parsedArgs = JSON.parse(toolCall.function.arguments)
+          const functionName = toolCall.function.name
+          const functionArgs = JSON.parse(toolCall.function.arguments)
+          
+          console.log(`🔥 v36 - Processing tool call: ${functionName}`, functionArgs)
+          
           let toolResult
           
-          if (toolCall.function.name === 'getTherapistAvailability') {
-            console.log('🔥 v35 - Calling getTherapistAvailability...')
-            toolResult = await getTherapistAvailability(parsedArgs, supabase)
-            console.log('🔥 v35 - getTherapistAvailability result:', toolResult)
-          } else if (toolCall.function.name === 'createBooking') {
-            console.log('🔥 v35 - Calling createBooking...')
-            toolResult = await createBooking(parsedArgs, userId, supabase)
-            console.log('🔥 v35 - createBooking result:', toolResult)
+          if (functionName === 'getTherapistAvailability') {
+            toolResult = await getTherapistAvailability(functionArgs, supabase)
+          } else if (functionName === 'createBooking') {
+            toolResult = await createBooking(functionArgs, userId, supabase)
           } else {
-            console.error('❌ Unknown function name:', toolCall.function.name)
-            toolResult = { success: false, error: 'Unknown function' }
+            toolResult = { success: false, error: `Unknown function: ${functionName}` }
           }
           
+          console.log(`🔥 v36 - Tool result for ${functionName}:`, JSON.stringify(toolResult))
+          
           toolMessages.push({
-            role: "tool",
+            role: 'tool',
             tool_call_id: toolCall.id,
             content: JSON.stringify(toolResult)
           })
-          
-        } catch (parseError) {
-          console.error('❌ Error parsing tool arguments:', parseError)
+        } catch (toolError) {
+          console.error(`🔥 v36 - Error processing tool call:`, toolError)
           toolMessages.push({
-            role: "tool",
+            role: 'tool',
             tool_call_id: toolCall.id,
-            content: JSON.stringify({ success: false, error: 'Failed to parse arguments' })
+            content: JSON.stringify({ success: false, error: toolError.message })
           })
         }
       }
       
-      console.log('🔥 v35 - Step 2: Making streaming call with tool results...')
-      const stream = streamText({
-        model: openai('gpt-4o'),
+      console.log('🔥 v36 - Making second OpenAI call with tool results...')
+      const secondCompletion = await openai.chat.completions.create({
+        model: 'gpt-4o',
         messages: toolMessages,
         temperature: 0.3,
-        maxTokens: 1500
+        max_tokens: 1500,
+        stream: true
       })
       
-      console.log('🔥 v35 - Creating final stream...')
-      return stream.toTextStreamResponse()
+      const encoder = new TextEncoder()
+      const stream = new TransformStream()
+      const writer = stream.writable.getWriter()
+      
+      ;(async () => {
+        try {
+          for await (const chunk of secondCompletion) {
+            const content = chunk.choices[0]?.delta?.content || ''
+            if (content) {
+              await writer.write(encoder.encode(content))
+            }
+          }
+          await writer.close()
+        } catch (streamError) {
+          console.error('🔥 v36 - Stream processing error:', streamError)
+          await writer.write(encoder.encode(`\n\nError: ${streamError.message}\n\n`))
+          await writer.close()
+        }
+      })()
+      
+      return new Response(stream.readable, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Transfer-Encoding': 'chunked'
+        }
+      })
     }
     
-    console.log('🔥 v35 - No tool calls detected, making streaming response...')
-    const stream = streamText({
-      model: openai('gpt-4o'),
+    console.log('🔥 v36 - No tool calls detected, streaming direct response...')
+    const directCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o',
       messages: conversationMessages,
       temperature: 0.3,
-      maxTokens: 1500
+      max_tokens: 1500,
+      stream: true
     })
     
-    console.log('🔥 v35 - Creating stream for non-tool response...')
-    return stream.toTextStreamResponse()
-
+    const encoder = new TextEncoder()
+    const stream = new TransformStream()
+    const writer = stream.writable.getWriter()
+    
+    ;(async () => {
+      try {
+        for await (const chunk of directCompletion) {
+          const content = chunk.choices[0]?.delta?.content || ''
+          if (content) {
+            await writer.write(encoder.encode(content))
+          }
+        }
+        await writer.close()
+      } catch (streamError) {
+        console.error('🔥 v36 - Stream processing error:', streamError)
+        await writer.write(encoder.encode(`\n\nError: ${streamError.message}\n\n`))
+        await writer.close()
+      }
+    })()
+    
+    return new Response(stream.readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked'
+      }
+    })
   } catch (error) {
-    console.error('❌ v35 Error in handleChatWithTools:', error)
-    console.error('❌ Error message:', error.message)
-    console.error('❌ Error stack:', error.stack)
-    throw error
+    console.error('🔥 v36 - Error in handleChatWithTools:', error)
+    
+    return new Response(JSON.stringify({
+      error: 'Failed to process chat',
+      details: error.message
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }
 
 async function getTherapistAvailability(params, supabase) {
   try {
-    console.log('🔥 v35 - getTherapistAvailability called with params:', params)
+    console.log('🔥 v36 - getTherapistAvailability called with params:', params)
     
     const knownTherapists = {
       'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
@@ -281,7 +319,7 @@ async function getTherapistAvailability(params, supabase) {
     const therapistName = therapists[0]
     const therapistId = knownTherapists[therapistName]
     
-    console.log('🔥 v35 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
+    console.log('🔥 v36 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
     
     let availabilityQuery = supabase
       .from('availability')
@@ -301,7 +339,7 @@ async function getTherapistAvailability(params, supabase) {
     const { data: availability, error } = await availabilityQuery
     
     if (error) {
-      console.error('❌ Database error:', error)
+      console.error('🔥 v36 - Database error:', error)
       return {
         success: false,
         error: '查询可预约时间时发生错误'
@@ -338,11 +376,11 @@ async function getTherapistAvailability(params, supabase) {
       }
     }
     
-    console.log('🔥 v35 - Returning availability result:', result)
+    console.log('🔥 v36 - Returning availability result:', result)
     return result
     
   } catch (error) {
-    console.error('❌ Error in getTherapistAvailability:', error)
+    console.error('🔥 v36 - Error in getTherapistAvailability:', error)
     return {
       success: false,
       error: '获取咨询师可预约时间时发生错误'
@@ -352,7 +390,7 @@ async function getTherapistAvailability(params, supabase) {
 
 async function createBooking(params, userId, supabase) {
   try {
-    console.log('🔥 v35 - createBooking called with params:', params, 'userId:', userId)
+    console.log('🔥 v36 - createBooking called with params:', params, 'userId:', userId)
     
     const knownTherapists = {
       'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
@@ -392,7 +430,7 @@ async function createBooking(params, userId, supabase) {
     })
     
     if (bookingError) {
-      console.error('❌ Booking error:', bookingError)
+      console.error('🔥 v36 - Booking error:', bookingError)
       return {
         success: false,
         error: '创建预约时发生错误'
@@ -410,7 +448,7 @@ async function createBooking(params, userId, supabase) {
     }
     
   } catch (error) {
-    console.error('❌ Error in createBooking:', error)
+    console.error('🔥 v36 - Error in createBooking:', error)
     return {
       success: false,
       error: '创建预约时发生错误'
