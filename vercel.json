@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "installCommand": "pnpm install",
   "functions": {
     "api/agent/chat.js": {
       "maxDuration": 60
@@ -25,7 +25,7 @@
   "rewrites": [
     {
       "source": "/api/agent/chat",
-      "destination": "/api/agent/chat-basic.js"
+      "destination": "/api/agent/chat.js"
     },
     {
       "source": "/((?!api/).*)",
