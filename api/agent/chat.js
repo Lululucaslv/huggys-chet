@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { OpenAIStream, StreamingTextResponse } from 'ai'
 import OpenAI from 'openai'
 
 export const runtime = 'nodejs'
@@ -390,11 +389,26 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       console.log('Creating streaming response...')
       
       try {
-        const stream = OpenAIStream(finalResponse)
-        console.log('OpenAI stream created successfully')
-        return new StreamingTextResponse(stream)
+        console.log('Creating manual streaming response for tool calling result...')
+        
+        let fullResponse = ''
+        for await (const chunk of finalResponse) {
+          const content = chunk.choices[0]?.delta?.content || ''
+          fullResponse += content
+        }
+        
+        console.log('Full streaming response collected:', fullResponse.substring(0, 100) + '...')
+        
+        return res.status(200).json({
+          success: true,
+          data: {
+            message: fullResponse,
+            toolCalls: message.tool_calls,
+            toolResults: toolResults
+          }
+        })
       } catch (streamError) {
-        console.error('Error creating OpenAI stream:', streamError)
+        console.error('Error creating streaming response:', streamError)
         throw new Error(`Failed to create streaming response: ${streamError.message}`)
       }
     }
@@ -420,9 +434,24 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         stream: true // Enable streaming for direct response
       })
       
-      const stream = OpenAIStream(directResponse)
-      console.log('Direct response stream created successfully')
-      return new StreamingTextResponse(stream)
+      console.log('Creating manual streaming response for direct message...')
+      
+      let fullResponse = ''
+      for await (const chunk of directResponse) {
+        const content = chunk.choices[0]?.delta?.content || ''
+        fullResponse += content
+      }
+      
+      console.log('Full direct response collected:', fullResponse.substring(0, 100) + '...')
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          message: fullResponse,
+          toolCalls: null,
+          toolResults: null
+        }
+      })
     } catch (streamError) {
       console.error('Error creating direct response stream:', streamError)
       throw new Error(`Failed to create direct streaming response: ${streamError.message}`)
