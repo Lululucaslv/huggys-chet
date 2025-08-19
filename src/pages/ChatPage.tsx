@@ -101,7 +101,25 @@ export default function ChatPage({ session }: ChatPageProps) {
         const contentType = response.headers.get('content-type') || ''
         if (contentType.includes('application/json') || !response.body) {
           const data = await response.clone().json()
-          const assistantText = data?.content || data?.message || ''
+          let assistantText = data?.content || data?.message || ''
+          if (!assistantText && Array.isArray(data?.toolResults)) {
+            try {
+              const parts: string[] = []
+              for (const tr of data.toolResults) {
+                if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
+                  const d = tr.result.data || {}
+                  const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
+                  parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
+                } else if (tr.name === 'createBooking' && tr.result?.success) {
+                  const d = tr.result.data || {}
+                  parts.push(d.message || `预约已创建：${d.therapistName || ''} - ${d.dateTime || ''}`)
+                } else if (tr.result?.error) {
+                  parts.push(`工具返回错误：${tr.result.error}`)
+                }
+              }
+              if (parts.length > 0) assistantText = parts.join(' ')
+            } catch {}
+          }
           if (assistantText) {
             await supabase.from('chat_messages').insert({
               user_id: session.user.id,

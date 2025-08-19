@@ -192,10 +192,31 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
         max_tokens: 500
       })
 
-      const finalContent = secondCompletion.choices[0]?.message?.content || ''
+      const finalContent = (secondCompletion.choices[0]?.message?.content || '').trim()
+      let synthesized = finalContent
+      if (!synthesized) {
+        try {
+          const parts = []
+          for (const tr of toolResults) {
+            if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
+              const data = tr.result.data || {}
+              const count = Array.isArray(data.availableSlots) ? data.availableSlots.length : 0
+              parts.push(`${data.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${data.message || ''}`)
+            } else if (tr.name === 'createBooking' && tr.result?.success) {
+              const data = tr.result.data || {}
+              parts.push(data.message || `预约已创建：${data.therapistName || ''} - ${data.dateTime || ''}`)
+            } else if (tr.result?.error) {
+              parts.push(`工具返回错误：${tr.result.error}`)
+            }
+          }
+          if (parts.length > 0) {
+            synthesized = parts.join(' ')
+          }
+        } catch {}
+      }
       return {
         success: true,
-        content: finalContent,
+        content: synthesized,
         toolCalls: responseMessage.tool_calls.map(tc => ({ id: tc.id, name: tc.function.name })),
         toolResults
       }
