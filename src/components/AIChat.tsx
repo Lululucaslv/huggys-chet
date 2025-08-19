@@ -21,7 +21,7 @@ export default function AIChat({ session }: AIChatProps) {
   
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
-      api: '/api/agent/chat-simplified',
+      api: '/api/agent/chat',
       body: {
         tool: 'chatWithTools',
         userId: session.user.id
