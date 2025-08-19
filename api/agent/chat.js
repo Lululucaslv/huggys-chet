@@ -389,15 +389,23 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       console.log('Creating streaming response...')
       
       try {
-        console.log('Creating manual streaming response for tool calling result...')
+        console.log('Processing OpenAI streaming response for tool calling result...')
         
         let fullResponse = ''
-        for await (const chunk of finalResponse) {
-          const content = chunk.choices[0]?.delta?.content || ''
-          fullResponse += content
+        
+        if (finalResponse && typeof finalResponse[Symbol.asyncIterator] === 'function') {
+          for await (const chunk of finalResponse) {
+            const content = chunk.choices?.[0]?.delta?.content || ''
+            if (content) {
+              fullResponse += content
+            }
+          }
+        } else {
+          console.log('Non-streaming response detected, extracting content directly')
+          fullResponse = finalResponse.choices?.[0]?.message?.content || 'No response content available'
         }
         
-        console.log('Full streaming response collected:', fullResponse.substring(0, 100) + '...')
+        console.log('Full response collected:', fullResponse.substring(0, 100) + '...')
         
         return res.status(200).json({
           success: true,
@@ -408,8 +416,23 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
           }
         })
       } catch (streamError) {
-        console.error('Error creating streaming response:', streamError)
-        throw new Error(`Failed to create streaming response: ${streamError.message}`)
+        console.error('Error processing streaming response:', streamError)
+        console.error('Stream error details:', streamError.stack)
+        
+        try {
+          const fallbackContent = finalResponse.choices?.[0]?.message?.content || 'Error processing AI response'
+          return res.status(200).json({
+            success: true,
+            data: {
+              message: fallbackContent,
+              toolCalls: message.tool_calls,
+              toolResults: toolResults
+            }
+          })
+        } catch (fallbackError) {
+          console.error('Fallback extraction also failed:', fallbackError)
+          throw new Error(`Failed to process AI response: ${streamError.message}`)
+        }
       }
     }
 
@@ -434,12 +457,20 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
         stream: true // Enable streaming for direct response
       })
       
-      console.log('Creating manual streaming response for direct message...')
+      console.log('Processing OpenAI streaming response for direct message...')
       
       let fullResponse = ''
-      for await (const chunk of directResponse) {
-        const content = chunk.choices[0]?.delta?.content || ''
-        fullResponse += content
+      
+      if (directResponse && typeof directResponse[Symbol.asyncIterator] === 'function') {
+        for await (const chunk of directResponse) {
+          const content = chunk.choices?.[0]?.delta?.content || ''
+          if (content) {
+            fullResponse += content
+          }
+        }
+      } else {
+        console.log('Non-streaming response detected, extracting content directly')
+        fullResponse = directResponse.choices?.[0]?.message?.content || 'No response content available'
       }
       
       console.log('Full direct response collected:', fullResponse.substring(0, 100) + '...')
