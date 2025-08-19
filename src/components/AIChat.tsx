@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -16,18 +17,22 @@ export default function AIChat({ session }: AIChatProps) {
   const [userProfile, setUserProfile] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: '/api/agent/chat',
-    body: {
-      tool: 'chatWithTools',
-      userId: session.user.id
-    },
+  const [inputMessage, setInputMessage] = useState('')
+  
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/agent/chat',
+      body: {
+        tool: 'chatWithTools',
+        userId: session.user.id
+      }
+    }),
     onFinish: async (message: any) => {
       console.log('🔥 STREAMING - Message finished:', message)
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'assistant',
-        message: message.content,
+        message: message.parts.map((part: any) => part.type === 'text' ? part.text : '').join(''),
         message_type: 'text',
         audio_url: ''
       })
@@ -69,33 +74,37 @@ export default function AIChat({ session }: AIChatProps) {
     }
   }
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log('🚀 STREAMING v26 - VERCEL AI SDK IMPLEMENTATION')
-    console.log('🔥 v26 STREAMING - AI AGENT TOOL CALLING WITH STREAMING RESPONSES')
-    console.log('🔥 v26 - DEPLOYMENT TIMESTAMP:', new Date().toISOString())
+  const handleSendMessage = async () => {
+    console.log('🚀 STREAMING v28 - VERCEL AI SDK IMPLEMENTATION')
+    console.log('🔥 v28 STREAMING - AI AGENT TOOL CALLING WITH STREAMING RESPONSES')
+    console.log('🔥 v28 - DEPLOYMENT TIMESTAMP:', new Date().toISOString())
     
-    if (!input.trim()) return
-    if (isLoading) return
+    if (!inputMessage.trim()) return
+    if (status === 'streaming' || status === 'submitted') return
 
     try {
       console.log('🔥 STREAMING - About to insert user message to database')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'user',
-        message: input,
+        message: inputMessage,
         message_type: 'text',
         audio_url: ''
       })
 
       console.log('🔥 STREAMING - About to update user profile')
-      await UserProfileUpdater.updateUserProfile(session.user.id, input)
+      await UserProfileUpdater.updateUserProfile(session.user.id, inputMessage)
+      
+      if (userProfile) {
+        console.log('🔥 STREAMING - User profile loaded:', userProfile)
+      }
 
-      console.log('🔥 STREAMING - About to submit to useChat hook')
-      handleSubmit(e)
+      console.log('🔥 STREAMING - About to send message via useChat')
+      sendMessage({ text: inputMessage })
+      setInputMessage('')
       
     } catch (error) {
-      console.error('🔥 STREAMING - Error in onSubmit:', error)
+      console.error('🔥 STREAMING - Error in handleSendMessage:', error)
     }
   }
 
@@ -127,15 +136,28 @@ export default function AIChat({ session }: AIChatProps) {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {message.content}
+                {message.parts ? 
+                  message.parts.map((part: any, index: number) => 
+                    part.type === 'text' ? <span key={index}>{part.text}</span> : null
+                  ) : 
+                  message.content
+                }
               </div>
             </div>
           ))}
-          {isLoading && (
+          {(status === 'streaming' || status === 'submitted') && (
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v26流式响应实现)
+                Huggy正在思考并可能调用工具查询信息... (v28流式响应实现)
+              </div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="flex justify-start">
+              <div className="bg-red-100 p-3 rounded-lg text-red-700">
+                抱歉，AI助手暂时遇到了一点问题，请稍后再试。错误: {error.message}
               </div>
             </div>
           )}
@@ -163,23 +185,27 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v26流式响应-Vercel AI SDK-工具调用流式实现)
+              🔧 添加测试数据 (v28流式响应-Vercel AI SDK-正确API实现)
             </button>
           </div>
           <div ref={messagesEndRef} />
         </div>
         
-        <form onSubmit={onSubmit} className="flex gap-2">
+        <div className="flex gap-2">
           <Input
-            value={input}
-            onChange={handleInputChange}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
             placeholder="在这里输入您的想法和感受..."
-            disabled={isLoading}
+            disabled={status === 'streaming' || status === 'submitted'}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button 
+            onClick={handleSendMessage} 
+            disabled={status === 'streaming' || status === 'submitted' || !inputMessage.trim()}
+          >
             <Send className="h-4 w-4" />
           </Button>
-        </form>
+        </div>
       </CardContent>
     </Card>
   )
