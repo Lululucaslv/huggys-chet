@@ -1,5 +1,5 @@
-import OpenAI from 'openai'
-import { OpenAIStream, StreamingTextResponse } from 'ai'
+import { streamText } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'edge'
@@ -170,10 +170,7 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       }
     ]
 
-    console.log('🔥 v35 - Creating OpenAI client...')
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    })
+    console.log('🔥 v35 - Using AI SDK openai provider...')
 
     console.log('🔥 v35 - Step 1: Making non-streaming call to detect tool calls...')
     const initialResponse = await openai.chat.completions.create({
@@ -182,8 +179,7 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       tools: tools,
       tool_choice: "auto",
       temperature: 0.3,
-      max_tokens: 1500,
-      stream: false
+      max_tokens: 1500
     })
 
     console.log('🔥 v35 - Initial response received')
@@ -233,31 +229,27 @@ async function handleChatWithTools(userMessage, userId, supabase) {
       }
       
       console.log('🔥 v35 - Step 2: Making streaming call with tool results...')
-      const finalResponse = await openai.chat.completions.create({
-        model: 'gpt-4o',
+      const stream = streamText({
+        model: openai('gpt-4o'),
         messages: toolMessages,
         temperature: 0.3,
-        max_tokens: 1500,
-        stream: true
+        maxTokens: 1500
       })
       
       console.log('🔥 v35 - Creating final stream...')
-      const finalStream = OpenAIStream(finalResponse)
-      return new StreamingTextResponse(finalStream)
+      return stream.toTextStreamResponse()
     }
     
     console.log('🔥 v35 - No tool calls detected, making streaming response...')
-    const streamingResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const stream = streamText({
+      model: openai('gpt-4o'),
       messages: conversationMessages,
       temperature: 0.3,
-      max_tokens: 1500,
-      stream: true
+      maxTokens: 1500
     })
     
     console.log('🔥 v35 - Creating stream for non-tool response...')
-    const stream = OpenAIStream(streamingResponse)
-    return new StreamingTextResponse(stream)
+    return stream.toTextStreamResponse()
 
   } catch (error) {
     console.error('❌ v35 Error in handleChatWithTools:', error)

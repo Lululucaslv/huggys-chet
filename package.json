@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.15",
     "@ai-sdk/react": "^2.0.15",
     "@date-fns/tz": "^1.4.1",
     "@hookform/resolvers": "^5.2.1",
