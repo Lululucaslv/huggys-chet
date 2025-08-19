@@ -376,64 +376,30 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       console.log('Making final OpenAI API call with tool results...')
       console.log('Final messages count:', finalMessages.length)
       
-      console.log('Making final streaming OpenAI API call with tool results...')
+      console.log('Making final non-streaming OpenAI API call with tool results...')
       
       const finalResponse = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: finalMessages,
         temperature: 0.7,
         max_tokens: 1500,
-        stream: true // Enable streaming for final response
+        stream: false // Disable streaming to avoid execution issues
       })
 
-      console.log('Creating streaming response...')
+      console.log('Processing OpenAI response for tool calling result...')
       
-      try {
-        console.log('Processing OpenAI streaming response for tool calling result...')
-        
-        let fullResponse = ''
-        
-        if (finalResponse && typeof finalResponse[Symbol.asyncIterator] === 'function') {
-          for await (const chunk of finalResponse) {
-            const content = chunk.choices?.[0]?.delta?.content || ''
-            if (content) {
-              fullResponse += content
-            }
-          }
-        } else {
-          console.log('Non-streaming response detected, extracting content directly')
-          fullResponse = finalResponse.choices?.[0]?.message?.content || 'No response content available'
+      const fullResponse = finalResponse.choices?.[0]?.message?.content || 'No response content available'
+      
+      console.log('Full response collected:', fullResponse.substring(0, 100) + '...')
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          message: fullResponse,
+          toolCalls: message.tool_calls,
+          toolResults: toolResults
         }
-        
-        console.log('Full response collected:', fullResponse.substring(0, 100) + '...')
-        
-        return res.status(200).json({
-          success: true,
-          data: {
-            message: fullResponse,
-            toolCalls: message.tool_calls,
-            toolResults: toolResults
-          }
-        })
-      } catch (streamError) {
-        console.error('Error processing streaming response:', streamError)
-        console.error('Stream error details:', streamError.stack)
-        
-        try {
-          const fallbackContent = finalResponse.choices?.[0]?.message?.content || 'Error processing AI response'
-          return res.status(200).json({
-            success: true,
-            data: {
-              message: fallbackContent,
-              toolCalls: message.tool_calls,
-              toolResults: toolResults
-            }
-          })
-        } catch (fallbackError) {
-          console.error('Fallback extraction also failed:', fallbackError)
-          throw new Error(`Failed to process AI response: ${streamError.message}`)
-        }
-      }
+      })
     }
 
     console.log('=== NO TOOL CALLS DETECTED - STREAMING DIRECT RESPONSE ===')
@@ -446,47 +412,30 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('DEBUGGING: Model used:', 'gpt-4o')
     console.log('DEBUGGING: Tool choice setting:', 'required')
     
-    console.log('Creating streaming response for direct message...')
+    console.log('Creating non-streaming response for direct message...')
     
-    try {
-      const directResponse = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: conversationMessages,
-        temperature: 0.7,
-        max_tokens: 1500,
-        stream: true // Enable streaming for direct response
-      })
-      
-      console.log('Processing OpenAI streaming response for direct message...')
-      
-      let fullResponse = ''
-      
-      if (directResponse && typeof directResponse[Symbol.asyncIterator] === 'function') {
-        for await (const chunk of directResponse) {
-          const content = chunk.choices?.[0]?.delta?.content || ''
-          if (content) {
-            fullResponse += content
-          }
-        }
-      } else {
-        console.log('Non-streaming response detected, extracting content directly')
-        fullResponse = directResponse.choices?.[0]?.message?.content || 'No response content available'
+    const directResponse = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: conversationMessages,
+      temperature: 0.7,
+      max_tokens: 1500,
+      stream: false // Disable streaming to avoid execution issues
+    })
+    
+    console.log('Processing OpenAI response for direct message...')
+    
+    const fullResponse = directResponse.choices?.[0]?.message?.content || 'No response content available'
+    
+    console.log('Full direct response collected:', fullResponse.substring(0, 100) + '...')
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: fullResponse,
+        toolCalls: null,
+        toolResults: null
       }
-      
-      console.log('Full direct response collected:', fullResponse.substring(0, 100) + '...')
-      
-      return res.status(200).json({
-        success: true,
-        data: {
-          message: fullResponse,
-          toolCalls: null,
-          toolResults: null
-        }
-      })
-    } catch (streamError) {
-      console.error('Error creating direct response stream:', streamError)
-      throw new Error(`Failed to create direct streaming response: ${streamError.message}`)
-    }
+    })
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
