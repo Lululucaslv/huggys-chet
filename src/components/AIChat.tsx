@@ -21,7 +21,7 @@ export default function AIChat({ session }: AIChatProps) {
   
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
-      api: '/api/agent/chat',
+      api: '/api/agent/chat-simplified',
       body: {
         tool: 'chatWithTools',
         userId: session.user.id
@@ -185,7 +185,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v28流式响应-Vercel AI SDK-正确API实现)
+              🔧 添加测试数据 (v29修复响应解析优先级-工具调用结果显示-强制部署-最终修复)
             </button>
           </div>
           <div ref={messagesEndRef} />
