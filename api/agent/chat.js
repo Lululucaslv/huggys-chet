@@ -198,65 +198,9 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       stream: true
     })
 
-    console.log('Processing streaming response with tool handling...')
+    console.log('Processing streaming response...')
     
-    const stream = OpenAIStream(response, {
-      experimental_onFunctionCall: async (functionCall, createFunctionCallMessages) => {
-        console.log('=== TOOL CALL DETECTED IN STREAM ===')
-        console.log('Function name:', functionCall.name)
-        console.log('Function arguments type:', typeof functionCall.arguments)
-        console.log('Function arguments:', functionCall.arguments)
-        
-        try {
-          let parsedArgs
-          if (typeof functionCall.arguments === 'string') {
-            parsedArgs = JSON.parse(functionCall.arguments)
-          } else {
-            parsedArgs = functionCall.arguments
-          }
-          
-          console.log('Parsed arguments:', parsedArgs)
-          
-          let toolResult
-          if (functionCall.name === 'getTherapistAvailability') {
-            console.log('Calling getTherapistAvailability...')
-            toolResult = await getTherapistAvailability(parsedArgs, supabase)
-          } else if (functionCall.name === 'createBooking') {
-            console.log('Calling createBooking...')
-            toolResult = await createBooking(parsedArgs, userId, supabase)
-          } else {
-            console.error('Unknown function name:', functionCall.name)
-            toolResult = { success: false, error: 'Unknown function' }
-          }
-          
-          console.log('Tool result:', toolResult)
-          
-          const newMessages = createFunctionCallMessages(toolResult)
-          
-          return openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [...conversationMessages, ...newMessages],
-            temperature: 0.7,
-            max_tokens: 1500,
-            stream: true
-          })
-        } catch (parseError) {
-          console.error('Error parsing function arguments:', parseError)
-          console.error('Raw arguments:', functionCall.arguments)
-          
-          const errorResult = { success: false, error: 'Failed to parse function arguments' }
-          const newMessages = createFunctionCallMessages(errorResult)
-          
-          return openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [...conversationMessages, ...newMessages],
-            temperature: 0.7,
-            max_tokens: 1500,
-            stream: true
-          })
-        }
-      }
-    })
+    const stream = OpenAIStream(response)
     
     return new StreamingTextResponse(stream)
 
