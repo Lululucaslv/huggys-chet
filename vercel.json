@@ -6,6 +6,9 @@
     "api/agent/chat.js": {
       "maxDuration": 60
     },
+    "api/agent/chat-simple.js": {
+      "maxDuration": 60
+    },
     "api/agent/chat-minimal.js": {
       "maxDuration": 60
     },
@@ -22,7 +25,7 @@
   "rewrites": [
     {
       "source": "/api/agent/chat",
-      "destination": "/api/agent/chat-minimal.js"
+      "destination": "/api/agent/chat-simple.js"
     },
     {
       "source": "/((?!api/).*)",
