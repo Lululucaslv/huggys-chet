@@ -3,54 +3,39 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
-export default async function handler(req) {
-  console.log('🔥 v36 - Handler entry point')
-  
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    })
-  }
-
+export default async function handler(req, res) {
   try {
-    const body = await req.json()
-    console.log('🔥 v36 - Request body:', JSON.stringify(body))
-    
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' })
+      return
+    }
+
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const { tool, userMessage, userId } = body
 
     if (!tool || !userMessage || !userId) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      res.status(400).json({ error: 'Missing required parameters' })
+      return
     }
 
     if (tool !== 'chatWithTools') {
-      return new Response(JSON.stringify({ error: 'Invalid tool specified' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      res.status(400).json({ error: 'Invalid tool specified' })
+      return
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      console.error('🔥 v36 - Missing OPENAI_API_KEY')
-      return new Response(JSON.stringify({ error: 'Server configuration error: Missing API key' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      res.status(500).json({ error: 'Server configuration error: Missing API key' })
+      return
     }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('🔥 v36 - Missing Supabase credentials')
-      return new Response(JSON.stringify({ error: 'Server configuration error: Missing database credentials' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      res.status(500).json({ error: 'Server configuration error: Missing database credentials' })
+      return
     }
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      timeout: 20000
     })
 
     const supabase = createClient(
@@ -58,16 +43,10 @@ export default async function handler(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    return await handleChatWithTools(userMessage, userId, openai, supabase)
+    const result = await handleChatWithTools(userMessage, userId, openai, supabase)
+    res.status(200).json(result)
   } catch (error) {
-    console.error('🔥 v36 - Handler error:', error)
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error', 
-      details: error.message 
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    res.status(500).json({ error: 'Internal server error', details: error.message })
   }
 }
 
@@ -160,33 +139,27 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
   ]
 
   try {
-    console.log('🔥 v36 - Making OpenAI API call with tool calling...')
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       tools: tools,
       tool_choice: 'auto',
       temperature: 0.3,
-      max_tokens: 1500
+      max_tokens: 500
     })
 
     const responseMessage = completion.choices[0].message
-    console.log('🔥 v36 - Initial response:', JSON.stringify(responseMessage))
 
     if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      console.log('🔥 v36 - Tool calls detected:', responseMessage.tool_calls.length)
-      
       const toolMessages = [...conversationMessages, responseMessage]
-      
+      const toolResults = []
+
       for (const toolCall of responseMessage.tool_calls) {
         try {
           const functionName = toolCall.function.name
           const functionArgs = JSON.parse(toolCall.function.arguments)
-          
-          console.log(`🔥 v36 - Processing tool call: ${functionName}`, functionArgs)
-          
+
           let toolResult
-          
           if (functionName === 'getTherapistAvailability') {
             toolResult = await getTherapistAvailability(functionArgs, supabase)
           } else if (functionName === 'createBooking') {
@@ -194,16 +167,16 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
           } else {
             toolResult = { success: false, error: `Unknown function: ${functionName}` }
           }
-          
-          console.log(`🔥 v36 - Tool result for ${functionName}:`, JSON.stringify(toolResult))
-          
+
+          toolResults.push({ id: toolCall.id, name: functionName, result: toolResult })
+
           toolMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
             content: JSON.stringify(toolResult)
           })
         } catch (toolError) {
-          console.error(`🔥 v36 - Error processing tool call:`, toolError)
+          toolResults.push({ id: toolCall.id, error: toolError.message })
           toolMessages.push({
             role: 'tool',
             tool_call_id: toolCall.id,
@@ -211,89 +184,38 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
           })
         }
       }
-      
-      console.log('🔥 v36 - Making second OpenAI call with tool results...')
+
       const secondCompletion = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: toolMessages,
         temperature: 0.3,
-        max_tokens: 1500,
-        stream: true
+        max_tokens: 500
       })
-      
-      const encoder = new TextEncoder()
-      const stream = new TransformStream()
-      const writer = stream.writable.getWriter()
-      
-      ;(async () => {
-        try {
-          for await (const chunk of secondCompletion) {
-            const content = chunk.choices[0]?.delta?.content || ''
-            if (content) {
-              await writer.write(encoder.encode(content))
-            }
-          }
-          await writer.close()
-        } catch (streamError) {
-          console.error('🔥 v36 - Stream processing error:', streamError)
-          await writer.write(encoder.encode(`\n\nError: ${streamError.message}\n\n`))
-          await writer.close()
-        }
-      })()
-      
-      return new Response(stream.readable, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Transfer-Encoding': 'chunked'
-        }
-      })
+
+      const finalContent = secondCompletion.choices[0]?.message?.content || ''
+      return {
+        success: true,
+        content: finalContent,
+        toolCalls: responseMessage.tool_calls.map(tc => ({ id: tc.id, name: tc.function.name })),
+        toolResults
+      }
     }
-    
-    console.log('🔥 v36 - No tool calls detected, streaming direct response...')
+
     const directCompletion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       temperature: 0.3,
-      max_tokens: 1500,
-      stream: true
+      max_tokens: 500
     })
-    
-    const encoder = new TextEncoder()
-    const stream = new TransformStream()
-    const writer = stream.writable.getWriter()
-    
-    ;(async () => {
-      try {
-        for await (const chunk of directCompletion) {
-          const content = chunk.choices[0]?.delta?.content || ''
-          if (content) {
-            await writer.write(encoder.encode(content))
-          }
-        }
-        await writer.close()
-      } catch (streamError) {
-        console.error('🔥 v36 - Stream processing error:', streamError)
-        await writer.write(encoder.encode(`\n\nError: ${streamError.message}\n\n`))
-        await writer.close()
-      }
-    })()
-    
-    return new Response(stream.readable, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked'
-      }
-    })
+
+    const directContent = directCompletion.choices[0]?.message?.content || ''
+    return { success: true, content: directContent }
   } catch (error) {
-    console.error('🔥 v36 - Error in handleChatWithTools:', error)
-    
-    return new Response(JSON.stringify({
+    return {
+      success: false,
       error: 'Failed to process chat',
       details: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    }
   }
 }
 
