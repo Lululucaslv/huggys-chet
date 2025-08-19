@@ -68,8 +68,9 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   const sendMessage = async () => {
-    console.log('🚀 SENDMESSAGE v23 - FINAL MODIFICATION - EXACT EXTRACTION FIX')
-    console.log('🔥 v23 FINAL MODIFICATION - AI AGENT TOOL CALLING RESULTS DISPLAY - EXACT FIX')
+    console.log('🚀 SENDMESSAGE v25 - ULTIMATE DEPLOYMENT FORCE - EXACT EXTRACTION FIX')
+    console.log('🔥 v25 ULTIMATE DEPLOYMENT FORCE - AI AGENT TOOL CALLING RESULTS DISPLAY - EXACT FIX')
+    console.log('🔥 v25 - DEPLOYMENT TIMESTAMP:', new Date().toISOString())
     if (!inputMessage.trim()) return
     if (isTyping) return
 
