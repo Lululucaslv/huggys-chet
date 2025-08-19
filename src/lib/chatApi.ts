@@ -7,10 +7,10 @@ interface ChatMessage {
 
 interface UserProfile {
   id?: string
-  total_messages: number
-  personality_type: string
-  preferences: string[]
-  timezone: string
+  total_messages?: number
+  personality_type?: string
+  preferences?: string[]
+  timezone?: string
 }
 
 export class ChatAPI {
@@ -28,7 +28,7 @@ export class ChatAPI {
 
   async sendMessage(
     messages: ChatMessage[], 
-    userProfile: UserProfile,
+    userProfile: UserProfile | null | undefined,
     stream: boolean = false
   ): Promise<Response> {
     try {
@@ -39,7 +39,7 @@ export class ChatAPI {
         tool: 'chatWithTools',
         messagesCount: conversationHistory.length,
         userMessage: userMessage.substring(0, 50) + '...',
-        userId: userProfile.id || 'anonymous'
+        userId: (userProfile?.id) || 'anonymous'
       })
 
       const response = await fetch('/api/agent/chat', {
@@ -51,7 +51,7 @@ export class ChatAPI {
           tool: 'chatWithTools',
           messages: conversationHistory,
           userMessage: userMessage,
-          userId: userProfile.id || 'anonymous'
+          userId: (userProfile?.id) || 'anonymous'
         })
       })
 
@@ -84,7 +84,7 @@ export class ChatAPI {
     } catch (error) {
       console.error('Error in sendMessage:', error)
       
-      const systemPrompt = this.buildSystemPrompt(userProfile)
+      const systemPrompt = this.buildSystemPrompt(userProfile || {})
       const fullMessages = [
         { role: 'system' as const, content: systemPrompt },
         ...messages
@@ -116,7 +116,7 @@ export class ChatAPI {
     }
   }
 
-  private buildSystemPrompt(userProfile: UserProfile): string {
+  private buildSystemPrompt(userProfile: Partial<UserProfile> | null | undefined): string {
     const systemPromptContent = import.meta.env.VITE_OPENAI_SYSTEM_PROMPT || `你是Huggy AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
 
 🧠 **记忆与成长能力**：
@@ -136,14 +136,14 @@ export class ChatAPI {
 
     const basePrompt = systemPromptContent
 
-    if (userProfile.total_messages > 0) {
+    if ((userProfile?.total_messages || 0) > 0) {
       return basePrompt + `
-
+ 
 👤 **用户档案**：
-- 我们已经进行了 ${userProfile.total_messages} 次对话
-- 用户性格特点：${userProfile.personality_type}
-- 用户关注领域：${userProfile.preferences.join(', ') || '正在了解中'}
-
+- 我们已经进行了 ${userProfile?.total_messages || 0} 次对话
+- 用户性格特点：${userProfile?.personality_type || '正在了解中'}
+- 用户关注领域：${(userProfile?.preferences || []).join(', ') || '正在了解中'}
+ 
 请基于这些信息提供个性化的回复。`
     }
     
