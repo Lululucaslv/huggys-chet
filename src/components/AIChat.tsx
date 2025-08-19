@@ -283,7 +283,7 @@ export default function AIChat({ session }: AIChatProps) {
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
             >
-              🔧 添加测试数据 (v23最终修改-精确提取修复-result.data.message-AI工具调用显示-确定修复)
+              🔧 添加测试数据 (v24强制重建-vercel配置修改-缓存清除-精确提取修复-终极部署)
             </button>
           </div>
           <div ref={messagesEndRef} />
