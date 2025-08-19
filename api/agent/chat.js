@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { OpenAIStream, StreamingTextResponse } from 'ai'
+import OpenAI from 'openai'
+
+export const runtime = 'edge'
 
 export default async function handler(req, res) {
   console.log('Agent API called with method:', req.method)
@@ -56,9 +60,9 @@ export default async function handler(req, res) {
       console.log('Handling chat with tools for userId:', userId)
       console.log('Messages count:', messages?.length || 0)
       console.log('User message:', userMessage)
-      const response = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
-      console.log('Chat with tools response:', response)
-      return res.status(200).json({ success: true, data: response })
+      const streamingResponse = await handleChatWithTools(messages, userMessage, userId, supabase, openaiApiKey)
+      console.log('Returning streaming response...')
+      return streamingResponse
     }
 
     console.log('Unknown tool requested:', tool)
@@ -271,24 +275,18 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('User message:', userMessage)
     console.log('Full request body being sent to OpenAI:', JSON.stringify(apiPayload, null, 2))
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(apiPayload)
+    const openai = new OpenAI({
+      apiKey: openaiApiKey,
     })
 
-    console.log('OpenAI API response status:', response.status)
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenAI API error response:', errorText)
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`)
-    }
+    const response = await openai.chat.completions.create({
+      ...apiPayload,
+      stream: false // First call for tool detection, not streaming yet
+    })
 
-    const aiResponse = await response.json()
+    console.log('OpenAI API response received')
+    
+    const aiResponse = response
     console.log('=== DEBUGGING LOG POINT 3: RAW OPENAI RESPONSE ===')
     console.log('3. Raw response received from OpenAI:', JSON.stringify(aiResponse, null, 2))
     console.log('3. Response status:', response.status)
@@ -356,39 +354,24 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       console.log('Making final OpenAI API call with tool results...')
       console.log('Final messages count:', finalMessages.length)
       
-      const finalResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: finalMessages,
-          temperature: 0.7,
-          max_tokens: 1500
-        })
+      console.log('Making final streaming OpenAI API call with tool results...')
+      
+      const finalResponse = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: finalMessages,
+        temperature: 0.7,
+        max_tokens: 1500,
+        stream: true // Enable streaming for final response
       })
 
-      console.log('Final OpenAI API response status:', finalResponse.status)
-
-      if (!finalResponse.ok) {
-        const errorText = await finalResponse.text()
-        console.error('Final OpenAI API error response:', errorText)
-        throw new Error(`OpenAI API error: ${finalResponse.status} - ${errorText}`)
-      }
-
-      const finalAiResponse = await finalResponse.json()
-      console.log('Final AI response:', finalAiResponse)
+      console.log('Creating streaming response...')
       
-      return {
-        message: finalAiResponse.choices[0].message.content,
-        toolCalls: message.tool_calls,
-        toolResults: toolResults
-      }
+      const stream = OpenAIStream(finalResponse)
+      
+      return new StreamingTextResponse(stream)
     }
 
-    console.log('=== NO TOOL CALLS DETECTED ===')
+    console.log('=== NO TOOL CALLS DETECTED - STREAMING DIRECT RESPONSE ===')
     console.log('AI message content:', message.content)
     console.log('Message object keys:', Object.keys(message))
     console.log('Full message object:', JSON.stringify(message, null, 2))
@@ -397,11 +380,19 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
     console.log('DEBUGGING: Tools array length:', tools.length)
     console.log('DEBUGGING: Model used:', 'gpt-4o')
     console.log('DEBUGGING: Tool choice setting:', 'required')
-    return {
-      message: message.content,
-      toolCalls: null,
-      toolResults: null
-    }
+    
+    console.log('Creating streaming response for direct message...')
+    
+    const directResponse = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: conversationMessages,
+      temperature: 0.7,
+      max_tokens: 1500,
+      stream: true // Enable streaming for direct response
+    })
+    
+    const stream = OpenAIStream(directResponse)
+    return new StreamingTextResponse(stream)
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
@@ -671,28 +662,20 @@ ${conversationHistory}
 
 请确保分析客观、专业，保护来访者隐私，避免过度解读。`
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: systemPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1000
-      })
+    const openai = new OpenAI({
+      apiKey: openaiApiKey,
     })
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`)
-    }
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: systemPrompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 1000
+    })
 
-    const aiResponse = await response.json()
-    const summaryText = aiResponse.choices[0].message.content
+    const summaryText = response.choices[0].message.content
 
     try {
       const summaryData = JSON.parse(summaryText)
