@@ -198,11 +198,100 @@ async function handleChatWithTools(messages, userMessage, userId, supabase, open
       stream: true
     })
 
-    console.log('Processing streaming response...')
+    console.log('Processing streaming response with manual tool handling...')
     
-    const stream = OpenAIStream(response)
+    const chunks = []
+    for await (const chunk of response) {
+      chunks.push(chunk)
+      
+      if (chunk.choices?.[0]?.delta?.tool_calls) {
+        console.log('=== TOOL CALL DETECTED ===')
+        
+        const toolCalls = []
+        let currentToolCall = null
+        
+        for (const processedChunk of chunks) {
+          const delta = processedChunk.choices?.[0]?.delta
+          if (delta?.tool_calls) {
+            for (const toolCall of delta.tool_calls) {
+              if (toolCall.index !== undefined) {
+                if (!toolCalls[toolCall.index]) {
+                  toolCalls[toolCall.index] = {
+                    id: toolCall.id || '',
+                    type: 'function',
+                    function: { name: '', arguments: '' }
+                  }
+                }
+                
+                if (toolCall.function?.name) {
+                  toolCalls[toolCall.index].function.name += toolCall.function.name
+                }
+                if (toolCall.function?.arguments) {
+                  toolCalls[toolCall.index].function.arguments += toolCall.function.arguments
+                }
+              }
+            }
+          }
+        }
+        
+        if (toolCalls.length > 0) {
+          const toolCall = toolCalls[0]
+          console.log('Processing tool call:', toolCall.function.name)
+          console.log('Arguments:', toolCall.function.arguments)
+          
+          try {
+            const parsedArgs = JSON.parse(toolCall.function.arguments)
+            let toolResult
+            
+            if (toolCall.function.name === 'getTherapistAvailability') {
+              console.log('Calling getTherapistAvailability...')
+              toolResult = await getTherapistAvailability(parsedArgs, supabase)
+            } else if (toolCall.function.name === 'createBooking') {
+              console.log('Calling createBooking...')
+              toolResult = await createBooking(parsedArgs, userId, supabase)
+            } else {
+              console.error('Unknown function name:', toolCall.function.name)
+              toolResult = { success: false, error: 'Unknown function' }
+            }
+            
+            console.log('Tool result:', toolResult)
+            
+            const toolMessages = [
+              ...conversationMessages,
+              {
+                role: "assistant",
+                content: null,
+                tool_calls: [toolCall]
+              },
+              {
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(toolResult)
+              }
+            ]
+            
+            const finalResponse = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: toolMessages,
+              temperature: 0.3,
+              max_tokens: 1500,
+              stream: true
+            })
+            
+            const finalStream = OpenAIStream(finalResponse)
+            return new StreamingTextResponse(finalStream)
+            
+          } catch (parseError) {
+            console.error('Error parsing tool arguments:', parseError)
+          }
+        }
+        
+        break // Exit the chunk processing loop
+      }
+    }
     
-    return new StreamingTextResponse(stream)
+    const regularStream = OpenAIStream(response)
+    return new StreamingTextResponse(regularStream)
 
   } catch (error) {
     console.error('Error in handleChatWithTools:', error)
