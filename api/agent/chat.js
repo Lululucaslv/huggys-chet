@@ -352,11 +352,22 @@ async function createBooking(params, userId, supabase) {
     
     const therapistId = knownTherapists[therapist]
     
+    const targetDate = new Date(params.dateTime)
+    if (isNaN(targetDate.getTime())) {
+      return {
+        success: false,
+        error: '无效的时间格式，请提供有效的 ISO 时间'
+      }
+    }
+    const isoStart = targetDate.toISOString()
+    const isoEnd = new Date(targetDate.getTime() + 60 * 1000).toISOString()
+
     const { data: availability, error: availabilityError } = await supabase
       .from('availability')
       .select('*')
       .eq('therapist_id', therapistId)
-      .eq('start_time', params.dateTime)
+      .gte('start_time', isoStart)
+      .lt('start_time', isoEnd)
       .eq('is_booked', false)
       .single()
     
