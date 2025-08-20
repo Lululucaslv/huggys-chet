@@ -388,24 +388,66 @@ async function createBooking(params, userId, supabase) {
     const isoStart = targetDate.toISOString()
     const isoEnd = new Date(targetDate.getTime() + 60 * 1000).toISOString()
 
-    const { data: availability, error: availabilityError } = await supabase
-      .from('availability')
-      .select('*')
-      .eq('therapist_id', therapistId)
-      .gte('start_time', isoStart)
-      .lt('start_time', isoEnd)
-      .eq('is_booked', false)
-      .single()
-    
-    if (availabilityError || !availability) {
+    let chosenAvailability = null
+    {
+      const { data, error } = await supabase
+        .from('availability')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .gte('start_time', isoStart)
+        .lt('start_time', isoEnd)
+        .eq('is_booked', false)
+        .maybeSingle?.() || await supabase
+        .from('availability')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .gte('start_time', isoStart)
+        .lt('start_time', isoEnd)
+        .eq('is_booked', false)
+        .single()
+
+      if (!error && data) {
+        chosenAvailability = data
+      }
+    }
+
+    if (!chosenAvailability) {
+      const dayStart = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0)).toISOString()
+      const dayEnd = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59)).toISOString()
+      const { data: dayAvail, error: dayErr } = await supabase
+        .from('availability')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .gte('start_time', dayStart)
+        .lte('start_time', dayEnd)
+        .eq('is_booked', false)
+        .order('start_time', { ascending: true })
+
+      if (!dayErr && Array.isArray(dayAvail) && dayAvail.length > 0) {
+        let minDiff = Number.POSITIVE_INFINITY
+        for (const a of dayAvail) {
+          const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
+          if (diff < minDiff) {
+            minDiff = diff
+            chosenAvailability = a
+          }
+        }
+        const threeHours = 3 * 60 * 60 * 1000
+        if (minDiff > threeHours) {
+          chosenAvailability = null
+        }
+      }
+    }
+
+    if (!chosenAvailability) {
       return {
         success: false,
         error: '该时间段不可预约或已被预订'
       }
     }
-    
+
     const { data: booking, error: bookingError } = await supabase.rpc('create_booking', {
-      availability_id_to_book: availability.id,
+      availability_id_to_book: chosenAvailability.id,
       client_id_to_book: userId
     })
     
