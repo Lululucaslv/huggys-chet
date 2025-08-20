@@ -479,7 +479,7 @@ async function createBooking(params, userId, supabase) {
       console.error('🔥 v36 - Booking error:', bookingError)
       return {
         success: false,
-        error: '创建预约时发生错误'
+        error: bookingError?.message || '创建预约时发生错误'
       }
     }
     
