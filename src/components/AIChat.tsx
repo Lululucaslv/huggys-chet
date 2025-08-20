@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
+import { ChatAPI } from '../lib/chatApi'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -19,31 +18,11 @@ export default function AIChat({ session }: AIChatProps) {
   const { t } = useTranslation()
   const [userProfile, setUserProfile] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  
   const [inputMessage, setInputMessage] = useState('')
-  
-  const { messages, sendMessage, status, error } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/agent/chat',
-      body: {
-        tool: 'chatWithTools',
-        userId: session.user.id
-      }
-    }),
-    onFinish: async (message: any) => {
-      console.log('🔥 STREAMING - Message finished:', message)
-      await supabase.from('chat_messages').insert({
-        user_id: session.user.id,
-        role: 'assistant',
-        message: message.parts.map((part: any) => part.type === 'text' ? part.text : '').join(''),
-        message_type: 'text',
-        audio_url: ''
-      })
-    },
-    onError: (error: any) => {
-      console.error('🔥 STREAMING - Error:', error)
-    }
-  })
+  const [messages, setMessages] = useState<Array<{ id: string, role: 'user' | 'assistant', content: string }>>([])
+  const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle')
+  const [error, setError] = useState<Error | null>(null)
+  const chatApi = new ChatAPI()
 
   useEffect(() => {
     fetchUserProfile()
@@ -71,22 +50,22 @@ export default function AIChat({ session }: AIChatProps) {
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: true })
       .limit(50)
-    
     if (data) {
-      console.log('🔥 STREAMING - Loaded chat history:', data.length, 'messages')
+      const formatted = data.map((m: any, idx: number) => ({
+        id: String(idx),
+        role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+        content: m.message || ''
+      }))
+      setMessages(formatted)
     }
   }
 
   const handleSendMessage = async () => {
-    console.log('🚀 STREAMING v28 - VERCEL AI SDK IMPLEMENTATION')
-    console.log('🔥 v28 STREAMING - AI AGENT TOOL CALLING WITH STREAMING RESPONSES')
-    console.log('🔥 v28 - DEPLOYMENT TIMESTAMP:', new Date().toISOString())
-    
     if (!inputMessage.trim()) return
     if (status === 'streaming' || status === 'submitted') return
-
+    setError(null)
     try {
-      console.log('🔥 STREAMING - About to insert user message to database')
+      setStatus('submitted')
       await supabase.from('chat_messages').insert({
         user_id: session.user.id,
         role: 'user',
@@ -94,20 +73,35 @@ export default function AIChat({ session }: AIChatProps) {
         message_type: 'text',
         audio_url: ''
       })
-
-      console.log('🔥 STREAMING - About to update user profile')
       await UserProfileUpdater.updateUserProfile(session.user.id, inputMessage)
-      
-      if (userProfile) {
-        console.log('🔥 STREAMING - User profile loaded:', userProfile)
-      }
-
-      console.log('🔥 STREAMING - About to send message via useChat')
-      sendMessage({ text: inputMessage })
+      const newItem = { id: String(Date.now()), role: 'user' as const, content: inputMessage }
+      const nextMessages: Array<{ id: string; role: 'user' | 'assistant'; content: string }> = [...messages, newItem]
+      setMessages(prev => [...prev, newItem])
       setInputMessage('')
-      
-    } catch (error) {
-      console.error('🔥 STREAMING - Error in handleSendMessage:', error)
+      const resp = await chatApi.sendMessage(
+        nextMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        userProfile,
+        false
+      )
+      const data = await resp.json()
+      if (data && data.success) {
+        const content = (data.content || '').toString()
+        setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content }])
+        await supabase.from('chat_messages').insert({
+          user_id: session.user.id,
+          role: 'assistant',
+          message: content,
+          message_type: 'text',
+          audio_url: ''
+        })
+      } else {
+        const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
+        setError(new Error(errMsg))
+      }
+    } catch (e: any) {
+      setError(e instanceof Error ? e : new Error(String(e)))
+    } finally {
+      setStatus('idle')
     }
   }
 
@@ -139,12 +133,7 @@ export default function AIChat({ session }: AIChatProps) {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {message.parts ? 
-                  message.parts.map((part: any, index: number) => 
-                    part.type === 'text' ? <span key={index}>{part.text}</span> : null
-                  ) : 
-                  message.content
-                }
+                {message.content}
               </div>
             </div>
           ))}
