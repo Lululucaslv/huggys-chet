@@ -256,7 +256,7 @@ export default function ChatPage({ session }: ChatPageProps) {
     try {
       const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
       const whenLocal = new Date(slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
-      const text = `我确认预约 ${therapistName} 在 ${whenLocal}（ISO: ${slot.startTime}）的时间。`
+      const text = t('chat_confirm_booking', { therapistName, whenLocal, iso: slot.startTime })
       setSlotOptions(null)
       await sendTextMessage(text)
     } catch (e) {

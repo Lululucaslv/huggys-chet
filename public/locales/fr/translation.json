@@ -82,5 +82,6 @@
   "sched_start_time_label": "Heure de début",
   "sched_end_time_label": "Heure de fin",
   "sched_adding": "Ajout...",
-  "sched_add_time_slot": "Ajouter un créneau"
+  "sched_add_time_slot": "Ajouter un créneau",
+  "chat_confirm_booking": "Je confirme la réservation avec {{therapistName}} à {{whenLocal}} (ISO : {{iso}})."
 }

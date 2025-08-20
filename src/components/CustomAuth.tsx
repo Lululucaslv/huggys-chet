@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group'
 import { Label } from './ui/label'
 import { UserPlus, LogIn, Shield, User } from 'lucide-react'
 
+import { useTranslation } from 'react-i18next'
 interface CustomAuthProps {
   onAuthSuccess: () => void
 }
@@ -19,6 +20,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   const [userRole, setUserRole] = useState<'client' | 'therapist'>('client')
   const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const { i18n } = useTranslation()
   const [error, setError] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -96,7 +98,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
             {
               user_id: data.user.id,
               interest: 'therapy',
-              language: 'zh-CN',
+              language: (i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage) || 'en',
               life_status: userRole,
               timezone: 'America/New_York'
             }

@@ -78,5 +78,6 @@
   "sched_start_time_label": "Start time",
   "sched_end_time_label": "End time",
   "sched_adding": "Adding...",
-  "sched_add_time_slot": "Add time slot"
+  "sched_add_time_slot": "Add time slot",
+  "chat_confirm_booking": "I confirm booking {{therapistName}} at {{whenLocal}} (ISO: {{iso}})."
 }
