@@ -109,11 +109,13 @@ export default function ChatPage({ session }: ChatPageProps) {
                   const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
                   parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
                   if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                    console.log('[ChatPage] setting slotOptions', d.therapistName, d.availableSlots.length)
                     setSlotOptions({
                       therapistName: d.therapistName || '该咨询师',
                       slots: d.availableSlots.slice(0, 8)
                     })
                   } else {
+                    console.log('[ChatPage] clearing slotOptions (no slots)')
                     setSlotOptions(null)
                   }
                 } else if (tr.name === 'createBooking' && tr.result?.success) {
@@ -200,11 +202,13 @@ export default function ChatPage({ session }: ChatPageProps) {
                   const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
                   parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
                   if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                    console.log('[ChatPage] setting slotOptions', d.therapistName, d.availableSlots.length)
                     setSlotOptions({
                       therapistName: d.therapistName || '该咨询师',
                       slots: d.availableSlots.slice(0, 8)
                     })
                   } else {
+                    console.log('[ChatPage] clearing slotOptions (no slots)')
                     setSlotOptions(null)
                   }
                 } else if (tr.name === 'createBooking' && tr.result?.success) {
