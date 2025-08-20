@@ -4,8 +4,8 @@ import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId
 export const runtime = 'nodejs'
 
 const schema = z.object({
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  startTime: z.string(),
+  endTime: z.string(),
   isRecurring: z.boolean().optional()
 })
 
