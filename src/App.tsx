@@ -7,8 +7,11 @@ import ClientBooking from './components/ClientBooking'
 import CustomAuth from './components/CustomAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 import ChatPage from './pages/ChatPage'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './components/LanguageSwitcher'
 
 function App() {
+  const { t } = useTranslation()
   const [session, setSession] = useState<Session | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
@@ -92,7 +95,7 @@ function App() {
               roleLoading ? (
                 <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                   <div className="text-center">
-                    <p className="text-gray-500">加载用户信息中...</p>
+                    <p className="text-gray-500">{t('loading_user')}</p>
                   </div>
                 </div>
               ) : (
@@ -109,8 +112,9 @@ function App() {
 }
 
 function MainDashboard({ session, userRole }: { session: Session, userRole: string | null }) {
+  const { t } = useTranslation()
   const isTherapist = userRole === 'therapist'
-  const pageTitle = isTherapist ? '治疗师日程管理' : '预约咨询'
+  const pageTitle = isTherapist ? t('app_title_therapist') : t('app_title_client')
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,17 +130,18 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
                   to="/chat"
                   className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 transform hover:scale-105"
                 >
-                  🤗 AI 心理咨询
+                  {t('nav_chat')}
                 </Link>
               )}
               <span className="text-sm text-gray-500">
-                {isTherapist ? '治疗师' : '来访者'}: {session.user.email}
+                {pageTitle}: {session.user.email}
               </span>
+              <LanguageSwitcher />
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
-                退出登录
+                {t('sign_out')}
               </button>
             </div>
           </div>

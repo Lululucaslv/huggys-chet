@@ -8,12 +8,15 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { MessageCircle, Send, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface AIChatProps {
   session: Session
 }
 
+
 export default function AIChat({ session }: AIChatProps) {
+  const { t } = useTranslation()
   const [userProfile, setUserProfile] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -119,7 +122,7 @@ export default function AIChat({ session }: AIChatProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
-          Huggy AI 心理咨询
+          {t('nav_chat')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
@@ -149,7 +152,7 @@ export default function AIChat({ session }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Huggy正在思考并可能调用工具查询信息... (v28流式响应实现)
+                {t('chat_thinking')}
               </div>
             </div>
           )}
@@ -157,7 +160,7 @@ export default function AIChat({ session }: AIChatProps) {
           {error && (
             <div className="flex justify-start">
               <div className="bg-red-100 p-3 rounded-lg text-red-700">
-                抱歉，AI助手暂时遇到了一点问题，请稍后再试。错误: {error.message}
+                {t('chat_error_generic')} 错误: {error.message}
               </div>
             </div>
           )}
@@ -195,7 +198,7 @@ export default function AIChat({ session }: AIChatProps) {
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="在这里输入您的想法和感受..."
+            placeholder={t('chat_input_placeholder')}
             disabled={status === 'streaming' || status === 'submitted'}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           />

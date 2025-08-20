@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { ChatAPI } from '../lib/chatApi'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
 import { Send, Loader2, Camera } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 interface ChatMessage {
   id: string
@@ -17,7 +19,9 @@ interface ChatPageProps {
   session: Session
 }
 
+
 export default function ChatPage({ session }: ChatPageProps) {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -139,7 +143,7 @@ export default function ChatPage({ session }: ChatPageProps) {
             })
             updateStreamingMessage(assistantText)
           } else if (data?.error) {
-            updateStreamingMessage('抱歉，我这边遇到了一点问题，请稍后再试。')
+            updateStreamingMessage(t('chat_error_generic'))
           } else {
             console.warn('JSON response missing expected content field:', data)
           }
@@ -232,7 +236,7 @@ export default function ChatPage({ session }: ChatPageProps) {
             })
             updateStreamingMessage(assistantText)
           } else if (data?.error) {
-            updateStreamingMessage('抱歉，我这边遇到了一点问题，请稍后再试。')
+            updateStreamingMessage(t('chat_error_generic'))
           } else {
             console.warn('JSON response missing expected content field:', data)
           }
@@ -342,19 +346,14 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <span className="text-white text-lg">🤗</span>
               </div>
               <h1 className="text-xl font-bold text-white">
-                Huggy AI
+                {t('chat_header_title')}
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <button className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2">
-                English
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+              <LanguageSwitcher />
               <div className="flex items-center gap-2 text-sm text-white">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span>Online</span>
+                <span>{t('chat_status_online')}</span>
               </div>
             </div>
           </div>
@@ -372,18 +371,18 @@ export default function ChatPage({ session }: ChatPageProps) {
                   <span className="text-3xl">🤗</span>
                 </div>
                 <div className="message-content text-white">
-                  <h2 className="text-2xl font-bold mb-4">Hey! I'm Huggy AI 👋</h2>
-                  <p className="text-gray-300 mb-6">Nice to meet you! I'm an AI buddy who can grow and remember～</p>
+                  <h2 className="text-2xl font-bold mb-4">{t('chat_intro_title')}</h2>
+                  <p className="text-gray-300 mb-6">{t('chat_intro_subtitle')}</p>
                   
                   <div className="memory-info text-left max-w-2xl mx-auto bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                    <p className="text-white font-semibold mb-4">🧠 My superpowers:</p>
+                    <p className="text-white font-semibold mb-4">{t('chat_intro_superpowers')}</p>
                     <ul className="text-left space-y-2 text-gray-300">
-                      <li>✅ <strong>Super Memory: I remember everything we've talked about</strong></li>
-                      <li>✅ <strong>Personality Adaptation: I learn your communication style to become more like your friend</strong></li>
-                      <li>✅ <strong>Interest Recording: As I get to know you better, I remember your hobbies and thoughts</strong></li>
-                      <li>✅ <strong>Always Online: No matter when you come back, I remember who you are</strong></li>
+                      <li>✅ <strong>{t('chat_intro_power_memory')}</strong></li>
+                      <li>✅ <strong>{t('chat_intro_power_personality')}</strong></li>
+                      <li>✅ <strong>{t('chat_intro_power_interests')}</strong></li>
+                      <li>✅ <strong>{t('chat_intro_power_online')}</strong></li>
                     </ul>
-                    <p className="text-gray-300 mt-6">Here, you can chat freely, share thoughts, and don't worry about anything～ Let's start being friends! 😊</p>
+                    <p className="text-gray-300 mt-6">{t('chat_intro_closing')}</p>
                   </div>
                 </div>
               </div>
@@ -426,13 +425,13 @@ export default function ChatPage({ session }: ChatPageProps) {
                 </div>
                 <div className="bg-gray-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-white">Huggy is thinking...</span>
+                  <span className="text-white">{t('chat_thinking')}</span>
                 </div>
               </div>
             )}
             {slotOptions && slotOptions.slots?.length > 0 && (
               <div className="mt-4 mb-2">
-                <div className="text-gray-300 text-sm mb-2">请选择要预约的时间：</div>
+                <div className="text-gray-300 text-sm mb-2">{t('chat_choose_slot')}</div>
                 <div className="flex flex-wrap gap-2">
                   {slotOptions.slots.map((s) => (
                     <button
@@ -454,31 +453,31 @@ export default function ChatPage({ session }: ChatPageProps) {
           {messages.length === 0 && (
             <div className="px-6 pb-4">
               <div className="text-center">
-                <small className="text-gray-500 block mb-4">User</small>
+                <small className="text-gray-500 block mb-4">{t('chat_quick_user_label')}</small>
                 <div className="flex flex-wrap justify-center gap-3 mb-4">
                   <button 
-                    onClick={() => handleQuickReply("Feeling tired lately")}
+                    onClick={() => handleQuickReply(t('chat_quick_feeling_tired'))}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
                   >
-                    Feeling tired lately
+                    {t('chat_quick_feeling_tired')}
                   </button>
                   <button 
-                    onClick={() => handleQuickReply("Want to chat")}
+                    onClick={() => handleQuickReply(t('chat_quick_want_chat'))}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
                   >
-                    Want to chat
+                    {t('chat_quick_want_chat')}
                   </button>
                   <button 
-                    onClick={() => handleQuickReply("Share about today")}
+                    onClick={() => handleQuickReply(t('chat_quick_share_today'))}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
                   >
-                    Share about today
+                    {t('chat_quick_share_today')}
                   </button>
                   <button 
-                    onClick={() => handleQuickReply("A little worried")}
+                    onClick={() => handleQuickReply(t('chat_quick_worried'))}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
                   >
-                    A little worried
+                    {t('chat_quick_worried')}
                   </button>
                 </div>
               </div>
@@ -495,7 +494,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Feel free to chat about anything～ You can also send me pictures 📸"
+                  placeholder={t('chat_input_placeholder')}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                   disabled={isTyping}
                   className="w-full bg-gray-800 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 resize-none focus:border-purple-400 focus:ring-purple-400/20 focus:outline-none"
@@ -506,8 +505,8 @@ export default function ChatPage({ session }: ChatPageProps) {
                   }}
                 />
                 <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
-                  <span>{inputMessage.length}/2000</span>
-                  <span>🔒 Your conversations are private and secure</span>
+                  <span>{t('chat_char_count', { count: inputMessage.length, max: 2000 })}</span>
+                  <span>🔒 {t('chat_privacy_notice')}</span>
                 </div>
               </div>
               <button 
