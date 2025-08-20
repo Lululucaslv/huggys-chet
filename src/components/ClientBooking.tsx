@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Calendar, Clock, User, CheckCircle, Globe } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, TimezoneOption } from '../lib/timezone'
+import { useTranslation } from 'react-i18next'
 
 interface AvailabilitySlot {
   id: number
@@ -23,6 +24,7 @@ interface ClientBookingProps {
 }
 
 export default function ClientBooking({ session }: ClientBookingProps) {
+  const { t, i18n } = useTranslation()
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(false)
   const [bookingLoading, setBookingLoading] = useState<number | null>(null)
@@ -75,7 +77,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
           {
             user_id: session.user.id,
             interest: 'therapy',
-            language: 'zh-CN',
+            language: (i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage) || 'en',
             life_status: 'client',
             timezone: 'America/New_York'
           }
@@ -90,7 +92,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
           return
         }
         console.error('Error creating user profile:', error)
-        setError('创建用户档案失败，请重试')
+        setError(t('err_create_profile'))
         return
       }
 
@@ -99,7 +101,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
       setSelectedTimezone(data.timezone || 'America/New_York')
     } catch (err) {
       console.error('Error creating user profile:', err)
-      setError('创建用户档案失败，请重试')
+      setError(t('err_create_profile'))
     }
   }
 
@@ -121,7 +123,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
 
       if (error) {
         console.error('Error fetching available slots:', error)
-        setError('获取可预约时间失败')
+        setError(t('err_fetch_slots'))
         return
       }
 
@@ -134,12 +136,12 @@ export default function ClientBooking({ session }: ClientBookingProps) {
             
             return {
               ...slot,
-              therapist_name: userData?.user?.email?.split('@')[0] || '治疗师'
+              therapist_name: userData?.user?.email?.split('@')[0] || t('therapist_fallback')
             }
           } catch (err) {
             return {
               ...slot,
-              therapist_name: '治疗师'
+              therapist_name: t('therapist_fallback')
             }
           }
         })
@@ -156,7 +158,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
 
   const bookSlot = async (slotId: number) => {
     if (!userProfile) {
-      setError('用户信息未加载完成')
+      setError(t('err_user_not_loaded'))
       return
     }
 
@@ -172,20 +174,20 @@ export default function ClientBooking({ session }: ClientBookingProps) {
 
       if (error) {
         console.error('Error booking slot:', error)
-        setError('预约失败，请重试')
+        setError(t('err_booking_failed'))
         return
       }
 
       if (data && !data.success) {
-        setError(data.error || '预约失败')
+        setError(data.error || t('err_booking_generic'))
         return
       }
 
-      setSuccess('预约成功！')
-      fetchAvailableSlots() // Refresh the list
+      setSuccess(t('booking_success'))
+      fetchAvailableSlots()
     } catch (err) {
       console.error('Error:', err)
-      setError('预约失败，请重试')
+      setError(t('err_booking_failed'))
     } finally {
       setBookingLoading(null)
     }
@@ -206,7 +208,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
 
       if (error) {
         console.error('Error updating timezone:', error)
-        setError('更新时区失败，请重试')
+        setError(t('err_update_timezone'))
         return
       }
 
@@ -214,7 +216,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
       setUserProfile({ ...userProfile, timezone: newTimezone })
     } catch (err) {
       console.error('Error updating timezone:', err)
-      setError('更新时区失败，请重试')
+      setError(t('err_update_timezone'))
     }
   }
 
@@ -228,7 +230,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <p className="text-gray-500">加载用户信息中...</p>
+          <p className="text-gray-500">{t('loading_user')}</p>
         </div>
       </div>
     )
@@ -240,21 +242,21 @@ export default function ClientBooking({ session }: ClientBookingProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            可预约时间
+            {t('booking_available_times')}
           </CardTitle>
           <CardDescription>
-            选择您希望预约的咨询时间段，点击"预约"按钮即可完成预约
+            {t('booking_instructions')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
               <Globe className="inline h-4 w-4 mr-1" />
-              时区设置
+              {t('booking_timezone_label')}
             </label>
             <Select value={selectedTimezone} onValueChange={updateTimezone}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="选择时区" />
+                <SelectValue placeholder={t('booking_select_timezone')} />
               </SelectTrigger>
               <SelectContent>
                 {US_CANADA_TIMEZONES.map((tz: TimezoneOption) => (
@@ -281,13 +283,13 @@ export default function ClientBooking({ session }: ClientBookingProps) {
 
           {loading ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">加载可预约时间中...</p>
+              <p className="text-gray-500">{t('booking_loading_slots')}</p>
             </div>
           ) : availableSlots.length === 0 ? (
             <div className="text-center py-8">
               <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">暂无可预约时间</p>
-              <p className="text-sm text-gray-400 mt-1">请稍后再试或联系治疗师</p>
+              <p className="text-gray-500">{t('booking_no_slots')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('booking_try_later_or_contact')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -306,7 +308,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
                         {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        时长: {getDuration(slot.start_time, slot.end_time)} 分钟
+                        {t('booking_duration_minutes', { minutes: getDuration(slot.start_time, slot.end_time) })}
                       </p>
                     </div>
                   </div>
@@ -315,7 +317,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
                     disabled={bookingLoading === slot.id}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    {bookingLoading === slot.id ? '预约中...' : '预约'}
+                    {bookingLoading === slot.id ? t('booking_in_progress') : t('book')}
                   </Button>
                 </div>
               ))}

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar, Clock, Plus, Trash2, Globe, Users, User } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 import AISummaryModal from './AISummaryModal'
+import { useTranslation } from 'react-i18next'
 
 interface AvailabilitySlot {
   id: number
@@ -33,6 +34,7 @@ interface TherapistScheduleProps {
 }
 
 export default function TherapistSchedule({ session }: TherapistScheduleProps) {
+  const { t, i18n } = useTranslation()
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
@@ -88,7 +90,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
           {
             user_id: session.user.id,
             interest: 'therapy',
-            language: 'zh-CN',
+            language: (i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage) || 'en',
             life_status: 'therapist',
             timezone: 'America/New_York'
           }
@@ -103,7 +105,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
           return
         }
         console.error('Error creating user profile:', error)
-        setError('创建用户档案失败，请重试')
+        setError(t('err_create_profile'))
         return
       }
 
@@ -112,7 +114,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       setSelectedTimezone(data.timezone || 'America/New_York')
     } catch (err) {
       console.error('Error creating user profile:', err)
-      setError('创建用户档案失败，请重试')
+      setError(t('err_create_profile'))
     }
   }
 
@@ -199,12 +201,12 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             const { data: userData } = await supabase.auth.admin.getUserById(booking.client_user_id)
             return {
               ...booking,
-              client_name: userData?.user?.email?.split('@')[0] || '来访者'
+              client_name: userData?.user?.email?.split('@')[0] || t('client_fallback')
             }
           } catch (err) {
             return {
               ...booking,
-              client_name: '来访者'
+              client_name: t('client_fallback')
             }
           }
         })
@@ -220,17 +222,17 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
   const addAvailabilitySlot = async () => {
     if (!startTime || !endTime || !userProfile) {
-      setError('请填写开始时间和结束时间')
+      setError(t('sched_fill_start_end'))
       return
     }
 
     if (new Date(startTime) >= new Date(endTime)) {
-      setError('结束时间必须晚于开始时间')
+      setError(t('sched_end_after_start'))
       return
     }
 
     if (new Date(startTime) <= new Date()) {
-      setError('开始时间必须是未来时间')
+      setError(t('sched_future_time'))
       return
     }
 
@@ -255,7 +257,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
       if (error) {
         console.error('Error adding availability slot:', error)
-        setError('添加时间段失败，请重试')
+        setError(t('sched_add_slot_failed'))
         return
       }
 
@@ -264,7 +266,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       fetchAvailabilitySlots()
     } catch (err) {
       console.error('Error:', err)
-      setError('添加时间段失败，请重试')
+      setError(t('sched_add_slot_failed'))
     } finally {
       setLoading(false)
     }
@@ -281,14 +283,14 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
       if (error) {
         console.error('Error deleting availability slot:', error)
-        setError('删除时间段失败，请重试')
+        setError(t('sched_delete_slot_failed'))
         return
       }
 
       fetchAvailabilitySlots()
     } catch (err) {
       console.error('Error:', err)
-      setError('删除时间段失败，请重试')
+      setError(t('sched_delete_slot_failed'))
     } finally {
       setLoading(false)
     }
@@ -309,7 +311,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
 
       if (error) {
         console.error('Error updating timezone:', error)
-        setError('更新时区失败，请重试')
+        setError(t('err_update_timezone'))
         return
       }
 
@@ -317,7 +319,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       setUserProfile({ ...userProfile, timezone: newTimezone })
     } catch (err) {
       console.error('Error updating timezone:', err)
-      setError('更新时区失败，请重试')
+      setError(t('err_update_timezone'))
     }
   }
 
@@ -325,7 +327,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <p className="text-gray-500">加载用户信息中...</p>
+          <p className="text-gray-500">{t('loading_user')}</p>
         </div>
       </div>
     )
@@ -337,22 +339,22 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            即将到来的预约
+            {t('sched_upcoming_bookings')}
           </CardTitle>
           <CardDescription>
-            查看您即将进行的咨询预约，点击"查看AI摘要"了解来访者的聊天记录分析
+            {t('sched_upcoming_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {bookingsLoading ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">加载预约信息中...</p>
+              <p className="text-gray-500">{t('sched_loading')}</p>
             </div>
           ) : upcomingBookings.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">暂无即将到来的预约</p>
-              <p className="text-sm text-gray-400 mt-1">客户预约后将在此显示</p>
+              <p className="text-gray-500">{t('sched_no_bookings')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('sched_no_bookings_hint')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -371,7 +373,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
                         {formatDateTime(booking.session_date)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        时长: {booking.duration_minutes} 分钟 • 状态: {booking.status === 'confirmed' ? '已确认' : '待确认'}
+                        {t('duration')}: {booking.duration_minutes} {t('minutes')} • {t('status')}: {booking.status === 'confirmed' ? t('status_confirmed') : t('status_pending')}
                       </p>
                     </div>
                   </div>
@@ -390,10 +392,10 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            添加可预约时间
+            {t('sched_add_availability')}
           </CardTitle>
           <CardDescription>
-            设置您的可预约时间段，客户将能够在这些时间预约咨询
+            {t('sched_add_availability_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -407,11 +409,11 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             <div>
               <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
                 <Globe className="inline h-4 w-4 mr-1" />
-                时区设置
+                {t('booking_timezone_label')}
               </label>
               <Select value={selectedTimezone} onValueChange={updateTimezone}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择时区" />
+                  <SelectValue placeholder={t('booking_select_timezone')} />
                 </SelectTrigger>
                 <SelectContent>
                   {US_CANADA_TIMEZONES.map((tz: TimezoneOption) => (

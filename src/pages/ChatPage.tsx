@@ -21,7 +21,7 @@ interface ChatPageProps {
 
 
 export default function ChatPage({ session }: ChatPageProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -111,11 +111,11 @@ export default function ChatPage({ session }: ChatPageProps) {
                 if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
                   const d = tr.result.data || {}
                   const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
-                  parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
+                  parts.push(t('tool_availability_count', { name: d.therapistName || t('tool_therapist_fallback'), count, extra: d.message || '' }))
                   if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
                     console.log('[ChatPage] setting slotOptions', d.therapistName, d.availableSlots.length)
                     setSlotOptions({
-                      therapistName: d.therapistName || '该咨询师',
+                      therapistName: d.therapistName || t('tool_therapist_fallback'),
                       slots: d.availableSlots.slice(0, 8)
                     })
                   } else {
@@ -124,10 +124,10 @@ export default function ChatPage({ session }: ChatPageProps) {
                   }
                 } else if (tr.name === 'createBooking' && tr.result?.success) {
                   const d = tr.result.data || {}
-                  parts.push(d.message || `预约已创建：${d.therapistName || ''} - ${d.dateTime || ''}`)
+                  parts.push(d.message || t('tool_booking_created', { name: d.therapistName || '', dateTime: d.dateTime || '' }))
                   setSlotOptions(null)
                 } else if (tr.result?.error) {
-                  parts.push(`工具返回错误：${tr.result.error}`)
+                  parts.push(t('tool_error', { error: tr.result.error }))
                 }
               }
               if (parts.length > 0) assistantText = parts.join(' ')
@@ -204,11 +204,11 @@ export default function ChatPage({ session }: ChatPageProps) {
                 if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
                   const d = tr.result.data || {}
                   const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
-                  parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
+                  parts.push(t('tool_availability_count', { name: d.therapistName || t('tool_therapist_fallback'), count, extra: d.message || '' }))
                   if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
                     console.log('[ChatPage] setting slotOptions', d.therapistName, d.availableSlots.length)
                     setSlotOptions({
-                      therapistName: d.therapistName || '该咨询师',
+                      therapistName: d.therapistName || t('tool_therapist_fallback'),
                       slots: d.availableSlots.slice(0, 8)
                     })
                   } else {
@@ -217,10 +217,10 @@ export default function ChatPage({ session }: ChatPageProps) {
                   }
                 } else if (tr.name === 'createBooking' && tr.result?.success) {
                   const d = tr.result.data || {}
-                  parts.push(d.message || `预约已创建：${d.therapistName || ''} - ${d.dateTime || ''}`)
+                  parts.push(d.message || t('tool_booking_created', { name: d.therapistName || '', dateTime: d.dateTime || '' }))
                   setSlotOptions(null)
                 } else if (tr.result?.error) {
-                  parts.push(`工具返回错误：${tr.result.error}`)
+                  parts.push(t('tool_error', { error: tr.result.error }))
                 }
               }
               if (parts.length > 0) assistantText = parts.join(' ')
@@ -254,7 +254,8 @@ export default function ChatPage({ session }: ChatPageProps) {
   const handleBookSlot = async (therapistName: string, slot: any) => {
     if (isTyping) return
     try {
-      const whenLocal = new Date(slot.startTime).toLocaleString('zh-CN', { hour12: false })
+      const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
+      const whenLocal = new Date(slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
       const text = `我确认预约 ${therapistName} 在 ${whenLocal}（ISO: ${slot.startTime}）的时间。`
       setSlotOptions(null)
       await sendTextMessage(text)
@@ -440,7 +441,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                       disabled={isTyping}
                       className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md text-sm transition-colors"
                     >
-                      {new Date(s.startTime).toLocaleString('zh-CN', { hour12: false })}
+                      {new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
                     </button>
                   ))}
                 </div>
