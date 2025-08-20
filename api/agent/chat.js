@@ -412,6 +412,30 @@ async function createBooking(params, userId, supabase) {
     }
 
     if (!chosenAvailability) {
+      const rangeStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000).toISOString()
+      const rangeEnd = new Date(targetDate.getTime() + 12 * 60 * 60 * 1000).toISOString()
+      const { data: nearAvail, error: nearErr } = await supabase
+        .from('availability')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .gte('start_time', rangeStart)
+        .lte('start_time', rangeEnd)
+        .eq('is_booked', false)
+        .order('start_time', { ascending: true })
+
+      if (!nearErr && Array.isArray(nearAvail) && nearAvail.length > 0) {
+        let minDiff = Number.POSITIVE_INFINITY
+        for (const a of nearAvail) {
+          const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
+          if (diff < minDiff) {
+            minDiff = diff
+            chosenAvailability = a
+          }
+        }
+      }
+    }
+
+    if (!chosenAvailability) {
       const dayStart = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0)).toISOString()
       const dayEnd = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59)).toISOString()
       const { data: dayAvail, error: dayErr } = await supabase
