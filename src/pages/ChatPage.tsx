@@ -199,9 +199,18 @@ export default function ChatPage({ session }: ChatPageProps) {
                   const d = tr.result.data || {}
                   const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
                   parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
+                  if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                    setSlotOptions({
+                      therapistName: d.therapistName || '该咨询师',
+                      slots: d.availableSlots.slice(0, 8)
+                    })
+                  } else {
+                    setSlotOptions(null)
+                  }
                 } else if (tr.name === 'createBooking' && tr.result?.success) {
                   const d = tr.result.data || {}
                   parts.push(d.message || `预约已创建：${d.therapistName || ''} - ${d.dateTime || ''}`)
+                  setSlotOptions(null)
                 } else if (tr.result?.error) {
                   parts.push(`工具返回错误：${tr.result.error}`)
                 }
