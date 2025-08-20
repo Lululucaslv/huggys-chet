@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId } from '../_utils/supabaseServer'
+import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId } from '../_utils/supabaseServer.js'
 
 export const runtime = 'nodejs'
 
