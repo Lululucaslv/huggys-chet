@@ -61,10 +61,12 @@ export default async function handler(req, res) {
       .eq('user_id', userId)
       .single()
     if (profErr || !profile) {
+      console.log('[agent/chat] profile lookup failed', { userId, profErr })
       res.status(403).json({ error: 'Profile not found' })
       return
     }
     const isTherapist = String(profile.life_status || '').toLowerCase() === 'therapist'
+    console.log('[agent/chat] auth resolved', { userId, life_status: profile.life_status, isTherapist })
 
     const isoMatch = /ISO:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.\d+)?(?:Z|[+\-][0-9]{2}:[0-9]{2}))/.exec(userMessage || '')
     const explicitConfirm = /确认预约/.test(userMessage || '')
