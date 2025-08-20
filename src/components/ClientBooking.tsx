@@ -136,12 +136,12 @@ export default function ClientBooking({ session }: ClientBookingProps) {
             
             return {
               ...slot,
-              therapist_name: userData?.user?.email?.split('@')[0] || t('therapist_fallback')
+              therapist_name: userData?.user?.email?.split('@')[0] || ''
             }
           } catch (err) {
             return {
               ...slot,
-              therapist_name: t('therapist_fallback')
+              therapist_name: ''
             }
           }
         })
@@ -302,7 +302,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
                     <User className="h-4 w-4 text-gray-400" />
                     <div>
                       <p className="font-medium text-gray-900">
-                        {slot.therapist_name}
+                        {slot.therapist_name || t('therapist_fallback')}
                       </p>
                       <p className="text-sm text-gray-600">
                         {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
