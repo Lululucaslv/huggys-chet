@@ -10,6 +10,7 @@ const querySchema = z.object({
 
 export default async function handler(req, res) {
   try {
+    console.log('[tools/get-availability] start')
     if (req.method !== 'GET') {
       res.status(405).json({ error: 'Method not allowed' })
       return
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
 
     const parsed = querySchema.safeParse(req.query || {})
     if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid query parameters' })
+      res.status(400).json({ error: 'Invalid query parameters', details: parsed.error?.errors || null })
       return
     }
     const { startDate, endDate } = parsed.data
@@ -44,7 +45,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, data: data || [] })
   } catch (e) {
-    const code = e.code || 400
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error' })
+    console.error('[tools/get-availability] error', e)
+    const code = e.code || 500
+    res.status(code).json({ success: false, error: e.message || 'Unexpected error', details: e.stack || null })
   }
 }

@@ -11,6 +11,7 @@ const schema = z.object({
 
 export default async function handler(req, res) {
   try {
+    console.log('[tools/set-availability] start')
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' })
       return
@@ -20,7 +21,12 @@ export default async function handler(req, res) {
     const therapistProfileId = await requireTherapistProfileId(supabase, userId)
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const { startTime, endTime } = schema.parse(body)
+    const parsed = schema.safeParse(body)
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid payload', details: parsed.error?.errors || null })
+      return
+    }
+    const { startTime, endTime } = parsed.data
 
     if (new Date(startTime) >= new Date(endTime)) {
       res.status(400).json({ error: 'endTime must be after startTime' })
@@ -40,7 +46,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, data })
   } catch (e) {
-    const code = e.code || 400
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error' })
+    console.error('[tools/set-availability] error', e)
+    const code = e.code || 500
+    res.status(code).json({ success: false, error: e.message || 'Unexpected error', details: e.stack || null })
   }
 }

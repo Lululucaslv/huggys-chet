@@ -36,7 +36,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, data })
   } catch (e) {
-    const code = e.code || 400
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error' })
+    console.error('[tools/delete-availability] error', e)
+    const code = e.code || 500
+    res.status(code).json({ success: false, error: e.message || 'Unexpected error', details: e.stack || null })
   }
 }
