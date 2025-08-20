@@ -475,11 +475,52 @@ async function createBooking(params, userId, supabase) {
       client_id_to_book: userId
     })
     
-    if (bookingError) {
-      console.error('🔥 v36 - Booking error:', bookingError)
+    if (bookingError || !booking) {
+      console.warn('🔥 v36 - RPC create_booking failed, attempting direct fallback...', bookingError)
+      const { data: updatedAvail, error: updErr } = await supabase
+        .from('availability')
+        .update({ is_booked: true, updated_at: new Date().toISOString() })
+        .eq('id', chosenAvailability.id)
+        .eq('is_booked', false)
+        .select('id, therapist_id, start_time, end_time')
+        .single()
+      
+      if (updErr || !updatedAvail) {
+        console.error('🔥 v36 - Fallback update availability failed:', updErr)
+        return {
+          success: false,
+          error: (updErr && updErr.message) || '创建预约时发生错误'
+        }
+      }
+      
+      const { data: inserted, error: insErr } = await supabase
+        .from('bookings')
+        .insert({
+          client_user_id: String(userId),
+          therapist_id: updatedAvail.therapist_id,
+          session_date: updatedAvail.start_time,
+          duration_minutes: 60,
+          status: 'confirmed'
+        })
+        .select('id')
+        .single()
+      
+      if (insErr || !inserted) {
+        console.error('🔥 v36 - Fallback insert booking failed:', insErr)
+        return {
+          success: false,
+          error: (insErr && insErr.message) || '创建预约时发生错误'
+        }
+      }
+      
       return {
-        success: false,
-        error: bookingError?.message || '创建预约时发生错误'
+        success: true,
+        data: {
+          bookingId: inserted.id,
+          therapistName: therapist,
+          dateTime: params.dateTime,
+          message: `预约成功！您已预约 ${therapist} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
+        }
       }
     }
     
