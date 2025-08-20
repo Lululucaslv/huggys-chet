@@ -80,7 +80,7 @@ export default function AIChat({ session }: AIChatProps) {
       setInputMessage('')
       const resp = await chatApi.sendMessage(
         nextMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        userProfile,
+        { ...(userProfile || {}), id: session.user.id },
         false
       )
       const data = await resp.json()
