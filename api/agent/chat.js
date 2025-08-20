@@ -493,11 +493,47 @@ async function createBooking(params, userId, supabase) {
         }
       }
       
+      let therapistIdForBookings = null
+      const { data: tByName, error: tNameErr } = await supabase
+        .from('therapists')
+        .select('id')
+        .ilike('name', therapist)
+        .maybeSingle?.() || await supabase
+        .from('therapists')
+        .select('id')
+        .ilike('name', therapist)
+        .single()
+      if (!tNameErr && tByName && tByName.id) {
+        therapistIdForBookings = tByName.id
+      } else {
+        const { data: up, error: upErr } = await supabase
+          .from('user_profiles')
+          .select('user_id')
+          .eq('id', updatedAvail.therapist_id)
+          .single()
+        if (!upErr && up && up.user_id) {
+          const { data: tByUser, error: tUserErr } = await supabase
+            .from('therapists')
+            .select('id')
+            .eq('user_id', String(up.user_id))
+            .single()
+          if (!tUserErr && tByUser && tByUser.id) {
+            therapistIdForBookings = tByUser.id
+          }
+        }
+      }
+      if (!therapistIdForBookings) {
+        return {
+          success: false,
+          error: '创建预约失败：未找到对应咨询师记录'
+        }
+      }
+
       const { data: inserted, error: insErr } = await supabase
         .from('bookings')
         .insert({
           client_user_id: String(userId),
-          therapist_id: updatedAvail.therapist_id,
+          therapist_id: therapistIdForBookings,
           session_date: updatedAvail.start_time,
           duration_minutes: 60,
           status: 'confirmed'
