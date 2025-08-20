@@ -42,6 +42,31 @@ export default async function handler(req, res) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
+    const isoMatch = /ISO:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.\d+)?(?:Z|[+\-][0-9]{2}:[0-9]{2}))/.exec(userMessage || '')
+    const explicitConfirm = /确认预约/.test(userMessage || '')
+    if (isoMatch && explicitConfirm) {
+      const iso = isoMatch[1]
+      const tMatch = /(Megan\s+Chang)/i.exec(userMessage || '')
+      const therapistName = tMatch ? tMatch[1] : 'Megan Chang'
+      const directResult = await createBooking({ therapistName, dateTime: iso }, userId, supabase)
+      if (directResult && directResult.success) {
+        res.status(200).json({
+          success: true,
+          content: directResult.data.message,
+          toolCalls: [{ id: 'direct-createBooking', name: 'createBooking' }],
+          toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }]
+        })
+        return
+      }
+      res.status(200).json({
+        success: false,
+        error: (directResult && directResult.error) || '创建预约失败',
+        toolCalls: [{ id: 'direct-createBooking', name: 'createBooking' }],
+        toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }]
+      })
+      return
+    }
+
 
     const result = await handleChatWithTools(userMessage, userId, openai, supabase)
     res.status(200).json(result)
