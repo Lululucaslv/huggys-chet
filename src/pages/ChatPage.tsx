@@ -23,6 +23,7 @@ export default function ChatPage({ session }: ChatPageProps) {
   const [isTyping, setIsTyping] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: any[] } | null>(null)
   const chatAPI = new ChatAPI()
 
   useEffect(() => {
@@ -63,6 +64,94 @@ export default function ChatPage({ session }: ChatPageProps) {
       setMessages(formattedMessages)
     }
   }
+  const sendTextMessage = async (text: string) => {
+    if (!text.trim()) return
+    if (isTyping) return
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: text,
+      created_at: new Date().toISOString()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setIsTyping(true)
+
+    try {
+      await supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'user',
+        message: text,
+        message_type: 'text',
+        audio_url: ''
+      })
+
+      await UserProfileUpdater.updateUserProfile(session.user.id, text)
+
+      const response = await chatAPI.sendMessage(
+        messages.concat(userMessage).map(m => ({ role: m.role, content: m.content })),
+        userProfile,
+        true
+      )
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json') || !response.body) {
+          const data = await response.clone().json()
+          let assistantText = data?.content || data?.message || ''
+          if (!assistantText && Array.isArray(data?.toolResults)) {
+            try {
+              const parts: string[] = []
+              for (const tr of data.toolResults) {
+                if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
+                  const d = tr.result.data || {}
+                  const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
+                  parts.push(`${d.therapistName || '该咨询师'} 可预约时段共 ${count} 个。${d.message || ''}`)
+                  if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                    setSlotOptions({
+                      therapistName: d.therapistName || '该咨询师',
+                      slots: d.availableSlots.slice(0, 8)
+                    })
+                  } else {
+                    setSlotOptions(null)
+                  }
+                } else if (tr.name === 'createBooking' && tr.result?.success) {
+                  const d = tr.result.data || {}
+                  parts.push(d.message || `预约已创建：${d.therapistName || ''} - ${d.dateTime || ''}`)
+                  setSlotOptions(null)
+                } else if (tr.result?.error) {
+                  parts.push(`工具返回错误：${tr.result.error}`)
+                }
+              }
+              if (parts.length > 0) assistantText = parts.join(' ')
+            } catch {}
+          }
+          if (assistantText) {
+            await supabase.from('chat_messages').insert({
+              user_id: session.user.id,
+              role: 'assistant',
+              message: assistantText,
+              message_type: 'text',
+              audio_url: ''
+            })
+            updateStreamingMessage(assistantText)
+          } else if (data?.error) {
+            updateStreamingMessage('抱歉，我这边遇到了一点问题，请稍后再试。')
+          } else {
+            console.warn('JSON response missing expected content field:', data)
+          }
+        } else {
+          await handleStreamingResponse(response)
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
 
   const sendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -142,6 +231,17 @@ export default function ChatPage({ session }: ChatPageProps) {
       console.error('Error sending message:', error)
     } finally {
       setIsTyping(false)
+    }
+  }
+
+  const handleBookSlot = async (therapistName: string, slot: any) => {
+    if (isTyping) return
+    try {
+      const whenLocal = new Date(slot.startTime).toLocaleString('zh-CN', { hour12: false })
+      const text = `我确认预约 ${therapistName} 在 ${whenLocal}（ISO: ${slot.startTime}）的时间。`
+      setSlotOptions(null)
+      await sendTextMessage(text)
+    } catch (e) {
     }
   }
 
@@ -314,6 +414,23 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <div className="bg-gray-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                   <span className="text-white">Huggy is thinking...</span>
+                </div>
+              </div>
+            )}
+            {slotOptions && slotOptions.slots?.length > 0 && (
+              <div className="mt-4 mb-2">
+                <div className="text-gray-300 text-sm mb-2">请选择要预约的时间：</div>
+                <div className="flex flex-wrap gap-2">
+                  {slotOptions.slots.map((s) => (
+                    <button
+                      key={s.id || s.startTime}
+                      onClick={() => handleBookSlot(slotOptions.therapistName, s)}
+                      disabled={isTyping}
+                      className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md text-sm transition-colors"
+                    >
+                      {new Date(s.startTime).toLocaleString('zh-CN', { hour12: false })}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
