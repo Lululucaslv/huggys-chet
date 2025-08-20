@@ -379,7 +379,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
                   </div>
                   <AISummaryModal
                     clientUserId={booking.client_user_id}
-                    clientName={booking.client_name || '来访者'}
+                    clientName={booking.client_name || t('client_fallback')}
                   />
                 </div>
               ))}
@@ -429,7 +429,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="start-time" className="block text-sm font-medium text-gray-700 mb-1">
-                开始时间
+                {t('sched_start_time_label')}
               </label>
               <Input
                 id="start-time"
@@ -441,7 +441,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             </div>
             <div>
               <label htmlFor="end-time" className="block text-sm font-medium text-gray-700 mb-1">
-                结束时间
+                {t('sched_end_time_label')}
               </label>
               <Input
                 id="end-time"
@@ -458,7 +458,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             disabled={loading || !startTime || !endTime}
             className="w-full md:w-auto"
           >
-            {loading ? '添加中...' : '添加时间段'}
+            {loading ? t('sched_adding') : t('sched_add_time_slot')}
           </Button>
         </CardContent>
       </Card>
@@ -467,18 +467,18 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            我的可预约时间
+            {t('sched_my_availability')}
           </CardTitle>
           <CardDescription>
-            管理您的可预约时间段，已被预约的时间段不会显示在此列表中
+            {t('sched_my_availability_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {availabilitySlots.length === 0 ? (
             <div className="text-center py-8">
               <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">暂无可预约时间段</p>
-              <p className="text-sm text-gray-400 mt-1">添加您的第一个可预约时间段</p>
+              <p className="text-gray-500">{t('sched_no_availability_slots')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('sched_add_first_slot_hint')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -494,7 +494,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
                         {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        时长: {Math.round((new Date(slot.end_time).getTime() - new Date(slot.start_time).getTime()) / (1000 * 60))} 分钟
+                        {t('booking_duration_minutes', { minutes: Math.round((new Date(slot.end_time).getTime() - new Date(slot.start_time).getTime()) / (1000 * 60)) })}
                       </p>
                     </div>
                   </div>

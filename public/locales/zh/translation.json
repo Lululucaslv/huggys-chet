@@ -74,5 +74,13 @@
   "tool_availability_count": "{{name}} 可预约时段共 {{count}} 个。{{extra}}",
   "tool_booking_created": "预约已创建：{{name}} - {{dateTime}}",
   "tool_error": "工具返回错误：{{error}}",
-  "auth_app_title": "MoreThanHugs 疗愈平台"
+  "auth_app_title": "MoreThanHugs 疗愈平台",
+  "sched_my_availability": "我的可预约时间",
+  "sched_my_availability_desc": "管理您的可预约时间段，已被预约的时间段不会显示在此列表中",
+  "sched_no_availability_slots": "暂无可预约时间段",
+  "sched_add_first_slot_hint": "添加您的第一个可预约时间段",
+  "sched_start_time_label": "开始时间",
+  "sched_end_time_label": "结束时间",
+  "sched_adding": "添加中...",
+  "sched_add_time_slot": "添加时间段"
 }

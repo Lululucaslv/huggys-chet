@@ -70,5 +70,13 @@
   "tool_availability_count": "{{name}} tiene {{count}} horarios disponibles. {{extra}}",
   "tool_booking_created": "Reserva creada: {{name}} - {{dateTime}}",
   "tool_error": "Error de herramienta: {{error}}",
-  "auth_app_title": "Plataforma MoreThanHugs"
+  "auth_app_title": "Plataforma MoreThanHugs",
+  "sched_my_availability": "Mi disponibilidad",
+  "sched_my_availability_desc": "Administra tus horarios disponibles; los horarios reservados no aparecerán aquí",
+  "sched_no_availability_slots": "Aún no hay horarios disponibles",
+  "sched_add_first_slot_hint": "Añade tu primer horario disponible",
+  "sched_start_time_label": "Hora de inicio",
+  "sched_end_time_label": "Hora de fin",
+  "sched_adding": "Añadiendo...",
+  "sched_add_time_slot": "Añadir horario"
 }

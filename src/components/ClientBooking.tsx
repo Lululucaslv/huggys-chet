@@ -150,7 +150,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
       setAvailableSlots(slotsWithNames)
     } catch (err) {
       console.error('Error:', err)
-      setError('获取可预约时间失败')
+      setError(t('err_fetch_slots'))
     } finally {
       setLoading(false)
     }
