@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId } from '../_utils/supabaseServer.js'
 
 export const runtime = 'nodejs'
 
@@ -11,9 +12,9 @@ export default async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const { tool, userMessage, userId } = body
+    const { tool, userMessage } = body
 
-    if (!tool || !userMessage || !userId) {
+    if (!tool || !userMessage) {
       res.status(400).json({ error: 'Missing required parameters' })
       return
     }
@@ -42,9 +43,32 @@ export default async function handler(req, res) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
+    const serviceSupabase = getServiceSupabase()
+    let userId = null
+    try {
+      userId = await getAuthUserIdFromRequest(req, serviceSupabase)
+    } catch (e) {
+      userId = body.userId || null
+    }
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const { data: profile, error: profErr } = await serviceSupabase
+      .from('user_profiles')
+      .select('id, life_status')
+      .eq('user_id', userId)
+      .single()
+    if (profErr || !profile) {
+      res.status(403).json({ error: 'Profile not found' })
+      return
+    }
+    const isTherapist = String(profile.life_status || '').toLowerCase() === 'therapist'
+
     const isoMatch = /ISO:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.\d+)?(?:Z|[+\-][0-9]{2}:[0-9]{2}))/.exec(userMessage || '')
     const explicitConfirm = /确认预约/.test(userMessage || '')
-    if (isoMatch && explicitConfirm) {
+    if (!isTherapist && isoMatch && explicitConfirm) {
       const iso = isoMatch[1]
       const tMatch = /(Megan\s+Chang)/i.exec(userMessage || '')
       const therapistName = tMatch ? tMatch[1] : 'Megan Chang'
@@ -67,18 +91,78 @@ export default async function handler(req, res) {
       return
     }
 
-
-    const result = await handleChatWithTools(userMessage, userId, openai, supabase)
+    const result = await handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase)
     res.status(200).json(result)
   } catch (error) {
     res.status(500).json({ error: 'Internal server error', details: error.message })
   }
 }
 
-async function handleChatWithTools(userMessage, userId, openai, supabase) {
-  console.log('🔥 v36 - Handling chat with tools')
+async function handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase) {
+  console.log('🔥 v37 - Handling chat with tools (role aware)')
   
-  const tools = [
+  const therapistTools = [
+    {
+      type: 'function',
+      function: {
+        name: 'setAvailability',
+        description: '为当前治疗师添加可预约时间段，使用ISO时间字符串。',
+        parameters: {
+          type: 'object',
+          properties: {
+            startTime: { type: 'string', description: 'ISO 8601 开始时间' },
+            endTime: { type: 'string', description: 'ISO 8601 结束时间' },
+            isRecurring: { type: 'boolean', description: '可选：是否重复' }
+          },
+          required: ['startTime', 'endTime']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'getAvailability',
+        description: '查询当前治疗师在指定日期范围的可预约时间（未被预定）。',
+        parameters: {
+          type: 'object',
+          properties: {
+            startDate: { type: 'string', description: 'YYYY-MM-DD' },
+            endDate: { type: 'string', description: 'YYYY-MM-DD' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'deleteAvailability',
+        description: '删除指定的可预约时间记录。',
+        parameters: {
+          type: 'object',
+          properties: {
+            availabilityId: { anyOf: [{ type: 'number' }, { type: 'string' }], description: '可预约记录ID' }
+          },
+          required: ['availabilityId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'getClientSummary',
+        description: '根据来访者邮箱或姓名，生成AI会前摘要。',
+        parameters: {
+          type: 'object',
+          properties: {
+            clientEmail: { type: 'string' },
+            clientName: { type: 'string' }
+          }
+        }
+      }
+    }
+  ]
+
+  const clientTools = [
     {
       type: 'function',
       function: {
@@ -132,10 +216,21 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
     }
   ]
 
-  const conversationMessages = [
-    {
-      role: 'system',
-      content: `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
+  const systemPrompt = isTherapist
+    ? `You are an AI Executive Assistant for therapists. Be concise, action-oriented, and focus on schedule management and pre-session preparation. Always use the available tools to perform actions:
+- setAvailability: add availability for the logged-in therapist using ISO times
+- getAvailability: list current unbooked availability slots, with optional date range
+- deleteAvailability: remove an availability slot by id
+- getClientSummary: produce a pre-session summary for a specific client by email or name
+
+Rules:
+- Prefer making changes as requested without unnecessary small talk.
+- When asked to “show” or “what’s my schedule”, call getAvailability.
+- When asked to “add/block/off” a time, call setAvailability.
+- When asked to “remove/cancel a time slot”, call deleteAvailability.
+- When asked about a client’s summary, call getClientSummary.
+- Respond with short confirmations after actions, including key details and counts.`
+    : `你是Huggy AI，一个专业而温暖的AI心理咨询助手。你必须使用提供的工具来帮助用户预约咨询师。
 
 可用工具：
 1. getTherapistAvailability - 查询咨询师的可预约时间
@@ -157,6 +252,11 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
 3. 用户确认时间（例如点击按钮后产生“确认预约 …（ISO: …）”的消息）→ 直接调用createBooking工具并返回明确的预约成功/失败反馈
 
 你必须主动使用工具，不要拒绝或说无法帮助预约。`
+
+  const conversationMessages = [
+    {
+      role: 'system',
+      content: systemPrompt
     },
     {
       role: 'user',
@@ -168,7 +268,7 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
-      tools: tools,
+      tools: (isTherapist ? therapistTools : clientTools),
       tool_choice: 'auto',
       temperature: 0.3,
       max_tokens: 500
@@ -190,6 +290,133 @@ async function handleChatWithTools(userMessage, userId, openai, supabase) {
             toolResult = await getTherapistAvailability(functionArgs, supabase)
           } else if (functionName === 'createBooking') {
             toolResult = await createBooking(functionArgs, userId, supabase)
+          } else if (functionName === 'setAvailability') {
+            try {
+              const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
+              const { startTime, endTime } = functionArgs || {}
+              if (!startTime || !endTime) {
+                toolResult = { success: false, error: 'Missing startTime or endTime' }
+              } else if (new Date(startTime) >= new Date(endTime)) {
+                toolResult = { success: false, error: 'endTime must be after startTime' }
+              } else {
+                const { data, error } = await serviceSupabase
+                  .from('availability')
+                  .insert([{ therapist_id: therapistProfileId, start_time: startTime, end_time: endTime, is_booked: false }])
+                  .select('id, start_time, end_time')
+                  .single()
+                if (error) toolResult = { success: false, error: error.message }
+                else toolResult = { success: true, data, message: 'Availability added' }
+              }
+            } catch (e) {
+              toolResult = { success: false, error: e.message || 'Unauthorized' }
+            }
+          } else if (functionName === 'getAvailability') {
+            try {
+              const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
+              const { startDate, endDate } = functionArgs || {}
+              let q = serviceSupabase
+                .from('availability')
+                .select('id, start_time, end_time')
+                .eq('therapist_id', therapistProfileId)
+                .eq('is_booked', false)
+                .order('start_time', { ascending: true })
+              if (startDate) q = q.gte('start_time', `${startDate}T00:00:00Z`)
+              if (endDate) q = q.lte('start_time', `${endDate}T23:59:59Z`)
+              const { data, error } = await q
+              if (error) toolResult = { success: false, error: error.message }
+              else toolResult = { success: true, data: data || [] }
+            } catch (e) {
+              toolResult = { success: false, error: e.message || 'Unauthorized' }
+            }
+          } else if (functionName === 'deleteAvailability') {
+            try {
+              const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
+              const { availabilityId } = functionArgs || {}
+              if (!availabilityId) {
+                toolResult = { success: false, error: 'availabilityId required' }
+              } else {
+                const { data, error } = await serviceSupabase
+                  .from('availability')
+                  .delete()
+                  .eq('id', availabilityId)
+                  .eq('therapist_id', therapistProfileId)
+                  .select('id')
+                  .maybeSingle()
+                if (error) toolResult = { success: false, error: error.message }
+                else toolResult = { success: true, data }
+              }
+            } catch (e) {
+              toolResult = { success: false, error: e.message || 'Unauthorized' }
+            }
+          } else if (functionName === 'getClientSummary') {
+            try {
+              if (!process.env.OPENAI_API_KEY) {
+                toolResult = { success: false, error: 'Missing OPENAI_API_KEY' }
+              } else {
+                const openai2 = openai
+                const { clientEmail, clientName } = functionArgs || {}
+                const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
+                const { data: tUser, error: tUserErr } = await serviceSupabase
+                  .from('user_profiles')
+                  .select('user_id')
+                  .eq('id', therapistProfileId)
+                  .single()
+                if (tUserErr || !tUser?.user_id) throw new Error('Therapist record not found')
+
+                const { data: therapist, error: tErr } = await serviceSupabase
+                  .from('therapists')
+                  .select('id')
+                  .eq('user_id', tUser.user_id)
+                  .maybeSingle()
+                if (tErr || !therapist) throw new Error('Therapist record not found')
+
+                let clientUserId = null
+                const { data: recent } = await serviceSupabase
+                  .from('bookings')
+                  .select('client_user_id')
+                  .eq('therapist_id', therapist.id)
+                  .order('created_at', { ascending: false })
+                  .limit(100)
+                if (Array.isArray(recent)) {
+                  for (const b of recent) {
+                    try {
+                      const { data: u } = await serviceSupabase.auth.admin.getUserById(b.client_user_id)
+                      const email = u?.user?.email || ''
+                      const local = email.split('@')[0] || ''
+                      if ((clientEmail && email.toLowerCase() === String(clientEmail).toLowerCase()) ||
+                          (clientName && local.toLowerCase().includes(String(clientName).toLowerCase()))) {
+                        clientUserId = b.client_user_id
+                        break
+                      }
+                    } catch {}
+                  }
+                }
+                if (!clientUserId) {
+                  toolResult = { success: false, error: 'Client not found from recent bookings' }
+                } else {
+                  const { data: msgs } = await serviceSupabase
+                    .from('chat_messages')
+                    .select('role, message, created_at')
+                    .eq('user_id', clientUserId)
+                    .order('created_at', { ascending: false })
+                    .limit(50)
+                  const transcript = (msgs || []).reverse().map(m => `${m.role}: ${m.message}`).join('\n')
+                  const completion = await openai2.chat.completions.create({
+                    model: 'gpt-4o',
+                    messages: [
+                      { role: 'system', content: 'You are a concise clinical assistant that generates pre-session summaries.' },
+                      { role: 'user', content: `Create a brief pre-session summary for the therapist based on this transcript.\nInclude: key themes, risks, goals, coping strategies, suggested agenda.\nTranscript:\n${transcript}` }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 600
+                  })
+                  const content = completion.choices[0]?.message?.content || 'No summary available.'
+                  toolResult = { success: true, data: { clientUserId, summary: content } }
+                }
+              }
+            } catch (e) {
+              toolResult = { success: false, error: e.message || 'Error generating summary' }
+            }
           } else {
             toolResult = { success: false, error: `Unknown function: ${functionName}` }
           }

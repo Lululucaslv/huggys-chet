@@ -1,4 +1,6 @@
 
+import { supabase } from './supabase'
+
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
@@ -42,10 +44,14 @@ export class ChatAPI {
         userId: (userProfile?.id) || 'anonymous'
       })
 
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token || ''
+
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({
           tool: 'chatWithTools',
