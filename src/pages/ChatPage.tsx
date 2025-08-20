@@ -100,7 +100,7 @@ export default function ChatPage({ session }: ChatPageProps) {
         if (contentType.includes('application/json') || !response.body) {
           const data = await response.clone().json()
           let assistantText = data?.content || data?.message || ''
-          if (!assistantText && Array.isArray(data?.toolResults)) {
+          if (Array.isArray(data?.toolResults)) {
             try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
@@ -191,7 +191,7 @@ export default function ChatPage({ session }: ChatPageProps) {
         if (contentType.includes('application/json') || !response.body) {
           const data = await response.clone().json()
           let assistantText = data?.content || data?.message || ''
-          if (!assistantText && Array.isArray(data?.toolResults)) {
+          if (Array.isArray(data?.toolResults)) {
             try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
