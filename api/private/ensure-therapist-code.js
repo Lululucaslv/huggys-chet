@@ -22,50 +22,63 @@ export default async function handler(req, res) {
 
     let code = row?.code || null
     if (!code) {
-      let newCode = null
-      try {
-        const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
-        if (typeof gen === 'string' && gen.trim()) newCode = gen.trim()
-      } catch {}
-
-      if (!newCode) {
+      const genLocalCode = async () => {
+        try {
+          const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
+          if (typeof gen === 'string' && gen.trim()) return gen.trim()
+        } catch {}
         const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-        newCode = Array.from({ length: 8 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
+        return Array.from({ length: 8 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
       }
 
-      if (!row) {
-        let fallbackName = 'Therapist'
-        try {
-          const { data: up } = await supabase
-            .from('user_profiles')
-            .select('display_name, user_id')
-            .eq('user_id', userId)
+      let attempts = 0
+      let persisted = false
+      let lastCode = null
+
+      while (attempts < 5 && !persisted) {
+        attempts++
+        const newCode = await genLocalCode()
+        lastCode = newCode
+
+        if (!row) {
+          let fallbackName = 'Therapist'
+          try {
+            const { data: up } = await supabase
+              .from('user_profiles')
+              .select('display_name, user_id')
+              .eq('user_id', userId)
+              .maybeSingle()
+            const emailPrefix = (up?.user_id || '').split('@')[0]
+            fallbackName = (up?.display_name && String(up.display_name).trim()) || (emailPrefix || fallbackName)
+          } catch {}
+          const { data: ins, error: insErr } = await supabase
+            .from('therapists')
+            .insert({ user_id: userId, name: fallbackName, verified: true, code: newCode })
+            .select('code')
             .maybeSingle()
-          const emailPrefix = (up?.user_id || '').split('@')[0]
-          fallbackName = (up?.display_name && String(up.display_name).trim()) || (emailPrefix || fallbackName)
-        } catch {}
-        const { data: ins, error: insErr } = await supabase
-          .from('therapists')
-          .insert({ user_id: userId, name: fallbackName, verified: true, code: newCode })
-          .select('code')
-          .maybeSingle()
-        if (insErr) {
-          res.status(200).json({ code: newCode, persisted: false })
-          return
+          if (!insErr && ins?.code) {
+            code = ins.code
+            persisted = true
+            break
+          }
+        } else {
+          const { data: upd, error: updErr } = await supabase
+            .from('therapists')
+            .update({ code: newCode })
+            .eq('user_id', userId)
+            .select('code')
+            .maybeSingle()
+          if (!updErr && (upd?.code || newCode)) {
+            code = upd?.code || newCode
+            persisted = true
+            break
+          }
         }
-        code = ins?.code || newCode
-      } else {
-        const { data: upd, error: updErr } = await supabase
-          .from('therapists')
-          .update({ code: newCode })
-          .eq('user_id', userId)
-          .select('code')
-          .maybeSingle()
-        if (updErr) {
-          res.status(200).json({ code: newCode, persisted: false })
-          return
-        }
-        code = upd?.code || newCode
+      }
+
+      if (!persisted) {
+        res.status(200).json({ code: lastCode, persisted: false })
+        return
       }
     }
 

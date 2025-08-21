@@ -10,16 +10,26 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
   useEffect(() => {
     let mounted = true
     const run = async () => {
-      try {
-        const resp = await fetch(`/api/private/ensure-therapist-code?userId=${encodeURIComponent(userId)}`)
-        if (resp.ok) {
-          const json = await resp.json()
-          if (mounted && json?.code) {
-            setCode(json.code)
-            return
+      const ensureOnce = async (): Promise<{ code: string; persisted: boolean } | null> => {
+        try {
+          const resp = await fetch(`/api/private/ensure-therapist-code?userId=${encodeURIComponent(userId)}`)
+          if (resp.ok) {
+            const json = await resp.json()
+            if (json?.code) return { code: json.code, persisted: !!json.persisted }
           }
+        } catch {}
+        return null
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const got = await ensureOnce()
+        if (mounted && got?.code) {
+          setCode(got.code)
+          if (got.persisted) return
         }
-      } catch {}
+        await new Promise(r => setTimeout(r, 500))
+      }
+
       try {
         let { data } = await supabase
           .from('therapists')
@@ -28,26 +38,6 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
           .maybeSingle()
         const existing = data?.code || null
         if (mounted) setCode(existing || '—')
-        if (!existing) {
-          let newCode: string | null = null
-          try {
-            const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
-            if (typeof gen === 'string' && gen.trim()) newCode = gen.trim()
-          } catch {}
-          if (!newCode) {
-            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-            newCode = Array.from({ length: 8 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
-          }
-          if (newCode) {
-            const { data: upd } = await supabase
-              .from('therapists')
-              .update({ code: newCode })
-              .eq('user_id', userId)
-              .select('code')
-              .maybeSingle()
-            if (mounted && (upd?.code || newCode)) setCode(upd?.code || newCode)
-          }
-        }
       } catch {}
     }
     run()
