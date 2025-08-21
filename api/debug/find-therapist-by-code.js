@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     if (resolved?.user_id) {
       const { data: prof, error: pErr } = await supabase
         .from('user_profiles')
-        .select('id, user_id, display_name')
+        .select('id, user_id')
         .eq('user_id', String(resolved.user_id))
         .maybeSingle()
       if (pErr) result.errors.profile = pErr.message || String(pErr)
