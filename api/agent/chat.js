@@ -495,125 +495,122 @@ Rules:
   }
 }
 
+async function resolveTherapistByNameOrPrefix(supabase, rawName) {
+  const name = String(rawName || '').trim()
+  if (!name) return { matches: [] }
+
+  const { data: tMatches } = await supabase
+    .from('therapists')
+    .select('user_id, name, verified')
+    .ilike('name', `%${name}%`)
+    .limit(5)
+
+  if (Array.isArray(tMatches) && tMatches.length > 0) {
+    return { matches: tMatches.filter(m => m.verified !== false) }
+  }
+
+  const { data: pMatches } = await supabase
+    .from('user_profiles')
+    .select('user_id, display_name')
+    .ilike('display_name', `%${name}%`)
+    .limit(5)
+
+  if (!Array.isArray(pMatches) || pMatches.length === 0) return { matches: [] }
+  const userIds = pMatches.map(p => String(p.user_id)).filter(Boolean)
+  if (userIds.length === 0) return { matches: [] }
+
+  const { data: thByUsers } = await supabase
+    .from('therapists')
+    .select('user_id, name, verified')
+    .in('user_id', userIds)
+
+  const thMap = new Map((thByUsers || []).map(r => [String(r.user_id), r]))
+  const merged = pMatches.map(p => {
+    const uid = String(p.user_id)
+    const th = thMap.get(uid)
+    return {
+      user_id: uid,
+      name: (th && th.name) || p.display_name || '',
+      verified: th ? th.verified !== false : true
+    }
+  }).filter(m => m.name && (thMap.has(String(m.user_id)) ? (thMap.get(String(m.user_id)).verified !== false) : true))
+
+  return { matches: merged }
+}
+
+async function getUserProfileIdByUserId(supabase, userId) {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', String(userId))
+    .maybeSingle()
+  return data?.id || null
+}
+
 async function getTherapistAvailability(params, supabase) {
   try {
-    console.log('🔥 v36 - getTherapistAvailability called with params:', params)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
+    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+    const matches = resolved.matches || []
+    if (matches.length === 0) {
+      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择` }
     }
-    
-    const therapists = Object.keys(knownTherapists).filter(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (therapists.length === 0) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师。可用的咨询师有：${Object.keys(knownTherapists).join(', ')}`
-      }
+    if (matches.length > 1) {
+      const names = matches.map(m => m.name).join(', ')
+      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
     }
-    
-    const therapistName = therapists[0]
-    const therapistId = knownTherapists[therapistName]
-    
-    console.log('🔥 v36 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
-    
-    let availabilityQuery = supabase
+    const picked = matches[0]
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
+
+    let q = supabase
       .from('availability')
-      .select('*')
-      .eq('therapist_id', therapistId)
+      .select('id, start_time, end_time')
+      .eq('therapist_id', profileId)
       .eq('is_booked', false)
       .order('start_time', { ascending: true })
-    
-    if (params.startDate) {
-      availabilityQuery = availabilityQuery.gte('start_time', params.startDate + 'T00:00:00Z')
-    }
-    
-    if (params.endDate) {
-      availabilityQuery = availabilityQuery.lte('start_time', params.endDate + 'T23:59:59Z')
-    }
-    
-    const { data: availability, error } = await availabilityQuery
-    
-    if (error) {
-      console.error('🔥 v36 - Database error:', error)
-      return {
-        success: false,
-        error: '查询可预约时间时发生错误'
-      }
-    }
-    
-    if (!availability || availability.length === 0) {
-      return {
-        success: true,
-        data: {
-          therapistName: therapistName,
-          availableSlots: [],
-          message: `${therapistName} 在指定时间段内暂无可预约时间。`
-        }
-      }
-    }
-    
-    const result = {
+
+    if (params.startDate) q = q.gte('start_time', `${params.startDate}T00:00:00Z`)
+    if (params.endDate) q = q.lte('start_time', `${params.endDate}T23:59:59Z`)
+
+    const { data: availability, error } = await q
+    if (error) return { success: false, error: '查询可预约时间时发生错误' }
+
+    const slots = (availability || []).map(a => ({
+      id: a.id,
+      startTime: a.start_time,
+      endTime: a.end_time
+    }))
+
+    return {
       success: true,
       data: {
-        therapistName: therapistName,
-        availableSlots: availability.map(slot => ({
-          id: slot.id,
-          startTime: slot.start_time,
-          endTime: slot.end_time,
-          date: new Date(slot.start_time).toLocaleDateString('zh-CN'),
-          time: new Date(slot.start_time).toLocaleTimeString('zh-CN', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          })
-        })),
-        message: `找到 ${availability.length} 个可预约时间段。`
+        therapistName: picked.name,
+        availableSlots: slots,
+        message: `找到 ${slots.length} 个可预约时间段。`
       }
     }
-    
-    console.log('🔥 v36 - Returning availability result:', result)
-    return result
-    
   } catch (error) {
-    console.error('🔥 v36 - Error in getTherapistAvailability:', error)
-    return {
-      success: false,
-      error: '获取咨询师可预约时间时发生错误'
-    }
+    return { success: false, error: '获取咨询师可预约时间时发生错误' }
   }
 }
 
 async function createBooking(params, userId, supabase) {
   try {
-    console.log('🔥 v36 - createBooking called with params:', params, 'userId:', userId)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
+    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+    const matches = resolved.matches || []
+    if (matches.length === 0) {
+      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师` }
     }
-    
-    const therapist = Object.keys(knownTherapists).find(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (!therapist) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师`
-      }
+    if (matches.length > 1) {
+      const names = matches.map(m => m.name).join(', ')
+      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
     }
-    
-    const therapistId = knownTherapists[therapist]
-    
+    const picked = matches[0]
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
+
     const targetDate = new Date(params.dateTime)
-    if (isNaN(targetDate.getTime())) {
-      return {
-        success: false,
-        error: '无效的时间格式，请提供有效的 ISO 时间'
-      }
-    }
+    if (isNaN(targetDate.getTime())) return { success: false, error: '无效的时间格式，请提供有效的 ISO 时间' }
     const isoStart = targetDate.toISOString()
     const isoEnd = new Date(targetDate.getTime() + 60 * 1000).toISOString()
 
@@ -622,44 +619,30 @@ async function createBooking(params, userId, supabase) {
       const { data, error } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
-        .gte('start_time', isoStart)
-        .lt('start_time', isoEnd)
-        .eq('is_booked', false)
-        .maybeSingle?.() || await supabase
-        .from('availability')
-        .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', isoStart)
         .lt('start_time', isoEnd)
         .eq('is_booked', false)
         .single()
-
-      if (!error && data) {
-        chosenAvailability = data
-      }
+      if (!error && data) chosenAvailability = data
     }
 
     if (!chosenAvailability) {
       const rangeStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000).toISOString()
       const rangeEnd = new Date(targetDate.getTime() + 12 * 60 * 60 * 1000).toISOString()
-      const { data: nearAvail, error: nearErr } = await supabase
+      const { data: nearAvail } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', rangeStart)
         .lte('start_time', rangeEnd)
         .eq('is_booked', false)
         .order('start_time', { ascending: true })
-
-      if (!nearErr && Array.isArray(nearAvail) && nearAvail.length > 0) {
+      if (Array.isArray(nearAvail) && nearAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
         for (const a of nearAvail) {
           const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
-          if (diff < minDiff) {
-            minDiff = diff
-            chosenAvailability = a
-          }
+          if (diff < minDiff) { minDiff = diff; chosenAvailability = a }
         }
       }
     }
@@ -667,45 +650,37 @@ async function createBooking(params, userId, supabase) {
     if (!chosenAvailability) {
       const dayStart = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0)).toISOString()
       const dayEnd = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59)).toISOString()
-      const { data: dayAvail, error: dayErr } = await supabase
+      const { data: dayAvail } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', dayStart)
         .lte('start_time', dayEnd)
         .eq('is_booked', false)
         .order('start_time', { ascending: true })
-
-      if (!dayErr && Array.isArray(dayAvail) && dayAvail.length > 0) {
+      if (Array.isArray(dayAvail) && dayAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
         for (const a of dayAvail) {
           const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
-          if (diff < minDiff) {
-            minDiff = diff
-            chosenAvailability = a
-          }
+          if (diff < minDiff) { minDiff = diff; chosenAvailability = a }
         }
         const threeHours = 3 * 60 * 60 * 1000
-        if (minDiff > threeHours) {
+        if (Math.abs(new Date(chosenAvailability.start_time).getTime() - targetDate.getTime()) > threeHours) {
           chosenAvailability = null
         }
       }
     }
 
     if (!chosenAvailability) {
-      return {
-        success: false,
-        error: '该时间段不可预约或已被预订'
-      }
+      return { success: false, error: '该时间段不可预约或已被预订' }
     }
 
     const { data: booking, error: bookingError } = await supabase.rpc('create_booking', {
       availability_id_to_book: chosenAvailability.id,
       client_id_to_book: userId
     })
-    
+
     if (bookingError || !booking) {
-      console.warn('🔥 v36 - RPC create_booking failed, attempting direct fallback...', bookingError)
       const { data: updatedAvail, error: updErr } = await supabase
         .from('availability')
         .update({ is_booked: true, updated_at: new Date().toISOString() })
@@ -713,50 +688,16 @@ async function createBooking(params, userId, supabase) {
         .eq('is_booked', false)
         .select('id, therapist_id, start_time, end_time')
         .single()
-      
-      if (updErr || !updatedAvail) {
-        console.error('🔥 v36 - Fallback update availability failed:', updErr)
-        return {
-          success: false,
-          error: (updErr && updErr.message) || '创建预约时发生错误'
-        }
-      }
-      
+      if (updErr || !updatedAvail) return { success: false, error: (updErr && updErr.message) || '创建预约时发生错误' }
+
       let therapistIdForBookings = null
-      const { data: tByName, error: tNameErr } = await supabase
+      const { data: tByUser } = await supabase
         .from('therapists')
         .select('id')
-        .ilike('name', therapist)
-        .maybeSingle?.() || await supabase
-        .from('therapists')
-        .select('id')
-        .ilike('name', therapist)
-        .single()
-      if (!tNameErr && tByName && tByName.id) {
-        therapistIdForBookings = tByName.id
-      } else {
-        const { data: up, error: upErr } = await supabase
-          .from('user_profiles')
-          .select('user_id')
-          .eq('id', updatedAvail.therapist_id)
-          .single()
-        if (!upErr && up && up.user_id) {
-          const { data: tByUser, error: tUserErr } = await supabase
-            .from('therapists')
-            .select('id')
-            .eq('user_id', String(up.user_id))
-            .single()
-          if (!tUserErr && tByUser && tByUser.id) {
-            therapistIdForBookings = tByUser.id
-          }
-        }
-      }
-      if (!therapistIdForBookings) {
-        return {
-          success: false,
-          error: '创建预约失败：未找到对应咨询师记录'
-        }
-      }
+        .eq('user_id', String(picked.user_id))
+        .maybeSingle()
+      if (tByUser && tByUser.id) therapistIdForBookings = tByUser.id
+      if (!therapistIdForBookings) return { success: false, error: '创建预约失败：未找到对应咨询师记录' }
 
       const { data: inserted, error: insErr } = await supabase
         .from('bookings')
@@ -769,41 +710,29 @@ async function createBooking(params, userId, supabase) {
         })
         .select('id')
         .single()
-      
-      if (insErr || !inserted) {
-        console.error('🔥 v36 - Fallback insert booking failed:', insErr)
-        return {
-          success: false,
-          error: (insErr && insErr.message) || '创建预约时发生错误'
-        }
-      }
-      
+      if (insErr || !inserted) return { success: false, error: (insErr && insErr.message) || '创建预约时发生错误' }
+
       return {
         success: true,
         data: {
           bookingId: inserted.id,
-          therapistName: therapist,
+          therapistName: picked.name,
           dateTime: params.dateTime,
-          message: `预约成功！您已预约 ${therapist} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
+          message: `预约成功！您已预约 ${picked.name} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
         }
       }
     }
-    
+
     return {
       success: true,
       data: {
         bookingId: booking,
-        therapistName: therapist,
+        therapistName: picked.name,
         dateTime: params.dateTime,
-        message: `预约成功！您已预约 ${therapist} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
+        message: `预约成功！您已预约 ${picked.name} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
       }
     }
-    
   } catch (error) {
-    console.error('🔥 v36 - Error in createBooking:', error)
-    return {
-      success: false,
-      error: '创建预约时发生错误'
-    }
+    return { success: false, error: '创建预约时发生错误' }
   }
 }
