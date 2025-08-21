@@ -498,14 +498,48 @@ Rules:
 async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   const name = String(rawName || '').trim()
   if (!name) return { matches: [] }
+
   const { data: tMatches, error: tErr } = await supabase
     .from('therapists')
     .select('user_id, name, verified')
     .ilike('name', `%${name}%`)
     .limit(5)
+
   if (!tErr && Array.isArray(tMatches) && tMatches.length > 0) {
     return { matches: tMatches.filter(m => m.verified !== false) }
   }
+
+  const { data: pMatches, error: pErr } = await supabase
+    .from('user_profiles')
+    .select('user_id, display_name')
+    .ilike('display_name', `%${name}%`)
+    .limit(5)
+
+  if (!pErr && Array.isArray(pMatches) && pMatches.length > 0) {
+    const userIds = pMatches.map(p => String(p.user_id)).filter(Boolean)
+    if (userIds.length === 0) return { matches: [] }
+
+    const { data: thByUsers, error: thErr } = await supabase
+      .from('therapists')
+      .select('user_id, name, verified')
+      .in('user_id', userIds)
+
+    if (thErr) return { matches: [] }
+
+    const thMap = new Map((thByUsers || []).map(r => [String(r.user_id), r]))
+    const merged = pMatches.map(p => {
+      const uid = String(p.user_id)
+      const th = thMap.get(uid)
+      return {
+        user_id: uid,
+        name: (th && th.name) || p.display_name || '',
+        verified: th ? th.verified !== false : true
+      }
+    }).filter(m => m.name && (thMap.has(String(m.user_id)) ? (thMap.get(String(m.user_id)).verified !== false) : true))
+
+    return { matches: merged }
+  }
+
   return { matches: [] }
 }
 
