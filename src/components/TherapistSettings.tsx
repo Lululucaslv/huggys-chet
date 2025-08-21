@@ -60,8 +60,9 @@ export default function TherapistSettings({ session }: { session: Session }) {
         throw new Error(err?.error || 'Failed to save')
       }
       setSuccess(t('settings_saved') || 'Saved')
-    } catch (e) {
-      setError(t('err_settings_save') || 'Failed to save')
+    } catch (e: any) {
+      const msg = (e?.message && String(e.message)) || (t('err_settings_save') as string) || 'Failed to save'
+      setError(msg)
     } finally {
       setSaving(false)
     }
