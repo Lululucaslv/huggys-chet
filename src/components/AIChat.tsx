@@ -118,15 +118,15 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
   }
 
   return (
-    <Card className="h-[80vh] max-h-[720px] flex flex-col">
+    <Card className="h-[80vh] max-h-[80vh] flex flex-col">
       <CardHeader className="shrink-0">
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           {t('nav_chat')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
-        <div className="flex-1 overflow-y-auto space-y-4 p-4" id="chat-scroll-area">
+      <CardContent className="flex-1 min-h-0 flex flex-col p-0">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 pb-24" id="chat-scroll-area">
           {messages.map((message: any) => (
             <div
               key={message.id}
@@ -160,35 +160,30 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
             </div>
           )}
           
-          <div className="flex justify-center mt-4 mb-2 p-2 bg-gray-50 rounded-lg">
-            <button 
-              onClick={async () => {
-                try {
-                  console.log('🔧 Testing: Clicking Add Test Data button');
-                  const response = await fetch('/api/setup/add-test-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                  });
-                  const result = await response.json();
-                  console.log('🔧 Testing: Add test data response:', result);
-                  if (result.success) {
-                    alert('测试数据添加成功！现在可以测试AI Agent工具调用功能了。');
-                  } else {
-                    alert('添加测试数据失败: ' + (result.error || '未知错误'));
+          {import.meta.env.DEV && (
+            <div className="flex justify-center mt-4 mb-2 p-2 bg-gray-50 rounded-lg">
+              <button 
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/setup/add-test-data', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await response.json();
+                    alert(result.success ? '测试数据添加成功！' : '添加测试数据失败: ' + (result.error || '未知错误'));
+                  } catch (error) {
+                    alert('添加测试数据时发生错误: ' + (error instanceof Error ? error.message : String(error)));
                   }
-                } catch (error) {
-                  console.error('Error adding test data:', error);
-                  alert('添加测试数据时发生错误: ' + (error instanceof Error ? error.message : String(error)));
-                }
-              }}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
-            >
-              🔧 添加测试数据 (v35简化工具调用-边缘运行时兼容性-修复500错误-最终修复)
-            </button>
-          </div>
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
+              >
+                🔧 添加测试数据
+              </button>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="sticky bottom-0 border-t bg-white p-3">
+        <div className="sticky bottom-0 border-t bg-white p-3 z-10">
           <div className="flex gap-2">
             <Input
               value={inputMessage}

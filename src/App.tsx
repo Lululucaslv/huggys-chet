@@ -169,7 +169,7 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
               <MessageCircle className="h-6 w-6" />
             </button>
             <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-              <DialogContent className="max-w-2xl p-0">
+              <DialogContent className="max-w-2xl p-0 max-h-[90vh] overflow-hidden">
                 <div className="sr-only">
                   <h2 id="ai-chat-title">{t('nav_chat')}</h2>
                   <p id="ai-chat-desc">{t('chat_modal_desc') || 'Chat with your AI assistant'}</p>
