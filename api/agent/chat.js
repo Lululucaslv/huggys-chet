@@ -477,6 +477,27 @@ Rules:
       }
     }
 
+    if (!isTherapist) {
+      try {
+        const upper = String(userMessage || '').toUpperCase()
+        const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
+        const codeToken = tokenMatch ? tokenMatch[0] : null
+        if (codeToken) {
+          const toolResult = await getTherapistAvailability({ therapistName: codeToken }, supabase)
+          if (toolResult) {
+            return {
+              success: true,
+              content: toolResult.success
+                ? `已为您找到可预约时间，共 ${Array.isArray(toolResult.data?.availableSlots) ? toolResult.data.availableSlots.length : 0} 个。`
+                : `工具返回错误：${toolResult.error || '查询失败'}`,
+              toolCalls: [{ id: 'fallback', name: 'getTherapistAvailability' }],
+              toolResults: [{ id: 'fallback', name: 'getTherapistAvailability', result: toolResult }]
+            }
+          }
+        }
+      } catch {}
+    }
+
     const directCompletion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
