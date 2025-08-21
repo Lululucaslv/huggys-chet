@@ -606,6 +606,9 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   return { matches: merged }
 }
 async function getCodeMatchDebugCounts(supabase, token) {
+  const host = (() => {
+    try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').host || null } catch { return null }
+  })()
   try {
     const exact = await supabase
       .from('therapists')
@@ -622,10 +625,11 @@ async function getCodeMatchDebugCounts(supabase, token) {
     return {
       exact: typeof exact.count === 'number' ? exact.count : null,
       ilike: typeof ilikeOne.count === 'number' ? ilikeOne.count : null,
-      contains: typeof contains.count === 'number' ? contains.count : null
+      contains: typeof contains.count === 'number' ? contains.count : null,
+      host
     }
-  } catch {
-    return { exact: null, ilike: null, contains: null }
+  } catch (e) {
+    return { exact: null, ilike: null, contains: null, host, error: e?.message || 'unknown' }
   }
 }
 
@@ -650,7 +654,9 @@ async function getTherapistAvailability(params, supabase) {
       let counts = ''
       if (debugTokens.length > 0) {
         const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
-        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}]`
+        const hostPart = c.host ? ` host:${c.host}` : ''
+        const errPart = c.error ? ` err:${c.error}` : ''
+        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
       }
       const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择${hint}` }
@@ -706,7 +712,9 @@ async function createBooking(params, userId, supabase) {
       let counts = ''
       if (debugTokens.length > 0) {
         const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
-        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}]`
+        const hostPart = c.host ? ` host:${c.host}` : ''
+        const errPart = c.error ? ` err:${c.error}` : ''
+        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
       }
       const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师${hint}` }
