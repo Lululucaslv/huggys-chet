@@ -17,10 +17,18 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
           .eq('user_id', userId)
           .maybeSingle()
         if (error) return
-        if (mounted) setCode(data?.code || '—')
-        if (!data?.code) {
-          const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
-          const newCode = typeof gen === 'string' ? gen : null
+        const existing = data?.code || null
+        if (mounted) setCode(existing || '—')
+        if (!existing) {
+          let newCode: string | null = null
+          try {
+            const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
+            if (typeof gen === 'string' && gen.trim()) newCode = gen.trim()
+          } catch {}
+          if (!newCode) {
+            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+            newCode = Array.from({ length: 8 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
+          }
           if (newCode) {
             const { data: upd } = await supabase
               .from('therapists')
@@ -28,7 +36,7 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
               .eq('user_id', userId)
               .select('code')
               .maybeSingle()
-            if (mounted && upd?.code) setCode(upd.code)
+            if (mounted && (upd?.code || newCode)) setCode(upd?.code || newCode)
           }
         }
       } catch {}
