@@ -126,7 +126,8 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                 {
                   user_id: userId,
                   name: nameToUse,
-                  verified: true
+                  verified: true,
+                  specialization: 'General'
                 },
                 { onConflict: 'user_id' }
               )
