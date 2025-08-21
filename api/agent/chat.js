@@ -629,6 +629,30 @@ async function getCodeMatchDebugCounts(supabase, token) {
 }
 
 }
+async function getCodeMatchDebugCounts(supabase, token) {
+  try {
+    const exact = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .eq('code', token)
+    const ilikeOne = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', token)
+    const contains = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', `%${token}%`)
+    return {
+      exact: typeof exact.count === 'number' ? exact.count : null,
+      ilike: typeof ilikeOne.count === 'number' ? ilikeOne.count : null,
+      contains: typeof contains.count === 'number' ? contains.count : null
+    }
+  } catch {
+    return { exact: null, ilike: null, contains: null }
+  }
+}
+
 
 async function getUserProfileIdByUserId(supabase, userId) {
   const { data } = await supabase
