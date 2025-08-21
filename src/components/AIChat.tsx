@@ -133,7 +133,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] p-3 rounded-lg ${
+                className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                   message.role === 'user'
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-900'
@@ -183,7 +183,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="sticky bottom-0 border-t bg-white p-3 z-10">
+        <div className="sticky bottom-0 border-t bg-white p-3 z-10 shadow-sm">
           <div className="flex gap-2">
             <Input
               value={inputMessage}
