@@ -47,11 +47,18 @@ export default function TherapistSettings({ session }: { session: Session }) {
     setError('')
     setSuccess('')
     try {
-      const uid = session.user.id
-      await supabase.from('therapists').upsert({ user_id: uid, name: name.trim(), verified: true }, { onConflict: 'user_id' })
-      try {
-        await supabase.from('user_profiles').update({ display_name: name.trim() }).eq('user_id', uid)
-      } catch {}
+      const resp = await fetch('/api/private/set-display-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ name: name.trim() }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to save')
+      }
       setSuccess(t('settings_saved') || 'Saved')
     } catch (e) {
       setError(t('err_settings_save') || 'Failed to save')
