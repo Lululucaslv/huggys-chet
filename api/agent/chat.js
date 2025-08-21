@@ -495,34 +495,60 @@ Rules:
   }
 }
 
+async function resolveTherapistByNameOrPrefix(supabase, rawName) {
+  const name = String(rawName || '').trim()
+  if (!name) return { matches: [] }
+  const { data: tMatches, error: tErr } = await supabase
+    .from('therapists')
+    .select('user_id, name, verified')
+    .ilike('name', `%${name}%`)
+    .limit(5)
+  if (!tErr && Array.isArray(tMatches) && tMatches.length > 0) {
+    return { matches: tMatches.filter(m => m.verified !== false) }
+  }
+  const { data: pMatches } = await supabase
+    .from('user_profiles')
+    .select('user_id, display_name')
+    .ilike('display_name', `%${name}%`)
+    .limit(5)
+  if (Array.isArray(pMatches) && pMatches.length > 0) {
+    return { matches: pMatches.map(p => ({ user_id: p.user_id, name: p.display_name })) }
+  }
+  return { matches: [] }
+}
+
+async function getUserProfileIdByUserId(supabase, userId) {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', String(userId))
+    .maybeSingle()
+  if (!error && data?.id) return data.id
+  return null
+}
+
 async function getTherapistAvailability(params, supabase) {
   try {
-    console.log('🔥 v36 - getTherapistAvailability called with params:', params)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
+    console.log('🔥 v37 - getTherapistAvailability called with params:', params)
+    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+    const matches = resolved.matches || []
+    if (matches.length === 0) {
+      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择` }
     }
-    
-    const therapists = Object.keys(knownTherapists).filter(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (therapists.length === 0) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师。可用的咨询师有：${Object.keys(knownTherapists).join(', ')}`
-      }
+    if (matches.length > 1) {
+      const names = matches.map(m => m.name).join(', ')
+      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
     }
-    
-    const therapistName = therapists[0]
-    const therapistId = knownTherapists[therapistName]
-    
-    console.log('🔥 v36 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
-    
+    const picked = matches[0]
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) {
+      return { success: false, error: '未找到该咨询师的档案' }
+    }
+
     let availabilityQuery = supabase
       .from('availability')
       .select('*')
-      .eq('therapist_id', therapistId)
+      .eq('therapist_id', profileId)
       .eq('is_booked', false)
       .order('start_time', { ascending: true })
     
@@ -537,76 +563,53 @@ async function getTherapistAvailability(params, supabase) {
     const { data: availability, error } = await availabilityQuery
     
     if (error) {
-      console.error('🔥 v36 - Database error:', error)
-      return {
-        success: false,
-        error: '查询可预约时间时发生错误'
-      }
+      console.error('🔥 v37 - Database error:', error)
+      return { success: false, error: '查询可预约时间时发生错误' }
     }
     
-    if (!availability || availability.length === 0) {
-      return {
-        success: true,
-        data: {
-          therapistName: therapistName,
-          availableSlots: [],
-          message: `${therapistName} 在指定时间段内暂无可预约时间。`
-        }
-      }
-    }
-    
-    const result = {
+    const av = availability || []
+    return {
       success: true,
       data: {
-        therapistName: therapistName,
-        availableSlots: availability.map(slot => ({
+        therapistName: picked.name || params.therapistName,
+        availableSlots: av.map(slot => ({
           id: slot.id,
           startTime: slot.start_time,
           endTime: slot.end_time,
           date: new Date(slot.start_time).toLocaleDateString('zh-CN'),
-          time: new Date(slot.start_time).toLocaleTimeString('zh-CN', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          })
+          time: new Date(slot.start_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
         })),
-        message: `找到 ${availability.length} 个可预约时间段。`
+        message: av.length > 0 ? `找到 ${av.length} 个可预约时间段。` : `${picked.name || params.therapistName} 在指定时间段内暂无可预约时间。`
       }
     }
-    
-    console.log('🔥 v36 - Returning availability result:', result)
-    return result
-    
   } catch (error) {
-    console.error('🔥 v36 - Error in getTherapistAvailability:', error)
-    return {
-      success: false,
-      error: '获取咨询师可预约时间时发生错误'
-    }
+    console.error('🔥 v37 - Error in getTherapistAvailability:', error)
+    return { success: false, error: '获取咨询师可预约时间时发生错误' }
   }
 }
 
 async function createBooking(params, userId, supabase) {
   try {
-    console.log('🔥 v36 - createBooking called with params:', params, 'userId:', userId)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
+    console.log('🔥 v37 - createBooking called with params:', params, 'userId:', userId)
+
+    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+    const matches = resolved.matches || []
+    if (matches.length === 0) {
+      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师` }
     }
-    
-    const therapist = Object.keys(knownTherapists).find(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (!therapist) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师`
-      }
+    if (matches.length > 1) {
+      const names = matches.map(m => m.name).join(', ')
+      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
     }
-    
-    const therapistId = knownTherapists[therapist]
-    
+    const picked = matches[0]
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) {
+      return { success: false, error: '未找到该咨询师的档案' }
+    }
+
+    const therapist = picked.name || params.therapistName
+    const therapistId = profileId
+
     const targetDate = new Date(params.dateTime)
     if (isNaN(targetDate.getTime())) {
       return {

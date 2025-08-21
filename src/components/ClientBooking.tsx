@@ -127,22 +127,33 @@ export default function ClientBooking({ session }: ClientBookingProps) {
         return
       }
 
+      const slots = data || []
+      const userIds = Array.from(new Set(slots.map((s: any) => s.user_profiles?.user_id).filter(Boolean)))
+      let therapistRows: any[] = []
+      if (userIds.length > 0) {
+        const { data: th, error: thErr } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified')
+          .in('user_id', userIds)
+        if (!thErr && Array.isArray(th)) therapistRows = th
+      }
+      const therapistByUserId = new Map<string, any>((therapistRows || []).map((r: any) => [String(r.user_id), r]))
+
       const slotsWithNames = await Promise.all(
-        (data || []).map(async (slot) => {
+        slots.map(async (slot: any) => {
+          const userId = slot.user_profiles?.user_id
+          const tRow = userId ? therapistByUserId.get(String(userId)) : null
+          if (tRow && tRow.name) {
+            return { ...slot, therapist_name: tRow.name as string }
+          }
           try {
-            const { data: userData } = await supabase.auth.admin.getUserById(
-              slot.user_profiles.user_id
-            )
-            
+            const { data: userData } = await supabase.auth.admin.getUserById(String(userId))
             return {
               ...slot,
               therapist_name: userData?.user?.email?.split('@')[0] || ''
             }
-          } catch (err) {
-            return {
-              ...slot,
-              therapist_name: ''
-            }
+          } catch {
+            return { ...slot, therapist_name: '' }
           }
         })
       )

@@ -19,6 +19,8 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [userRole, setUserRole] = useState<'client' | 'therapist'>('client')
   const [inviteCode, setInviteCode] = useState('')
+  const [displayName, setDisplayName] = useState('')
+
   const [loading, setLoading] = useState(false)
   const { i18n } = useTranslation()
   const [error, setError] = useState('')
@@ -91,12 +93,19 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
         return
       }
 
+      if (userRole === 'therapist' && !displayName.trim()) {
+        setError('请填写姓名')
+        setLoading(false)
+        return
+      }
+
       if (data.user) {
+        const userId = data.user.id
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert([
             {
-              user_id: data.user.id,
+              user_id: userId,
               interest: 'therapy',
               language: (i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage) || 'en',
               life_status: userRole,
@@ -106,6 +115,32 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
 
         if (profileError) {
           console.error('Error creating user profile:', profileError)
+        }
+
+        if (userRole === 'therapist') {
+          const nameToUse = displayName.trim()
+          try {
+            await supabase
+              .from('therapists')
+              .upsert(
+                {
+                  user_id: userId,
+                  name: nameToUse,
+                  verified: true
+                },
+                { onConflict: 'user_id' }
+              )
+          } catch (e) {
+            console.error('Error upserting therapist:', e)
+          }
+          try {
+            await supabase
+              .from('user_profiles')
+              .update({ display_name: nameToUse })
+              .eq('user_id', userId)
+          } catch (e) {
+            console.warn('Optional: display_name update failed or column missing')
+          }
         }
 
         onAuthSuccess()
@@ -228,6 +263,20 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                         注册治疗师账户需要有效的邀请码
                       </p>
                     </div>
+                  {userRole === 'therapist' && (
+                    <div className="mt-2">
+                      <Label htmlFor="displayName">姓名</Label>
+                      <Input
+                        id="displayName"
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="例如：Hanqi Lyu"
+                        required
+                      />
+                    </div>
+                  )}
+
                   )}
                 </>
               )}
