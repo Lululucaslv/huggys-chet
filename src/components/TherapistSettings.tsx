@@ -56,8 +56,15 @@ export default function TherapistSettings({ session }: { session: Session }) {
         body: JSON.stringify({ name: name.trim() }),
       })
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}))
-        throw new Error(err?.error || 'Failed to save')
+        let body: any = {}
+        try {
+          body = await resp.json()
+        } catch {}
+        const serverMsg = body?.error ? String(body.error) : ''
+        const msg = `HTTP ${resp.status}${serverMsg ? `: ${serverMsg}` : ''}`
+        setError(msg)
+        setSaving(false)
+        return
       }
       setSuccess(t('settings_saved') || 'Saved')
     } catch (e: any) {
