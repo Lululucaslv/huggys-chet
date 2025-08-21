@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar, Clock, Plus, Trash2, Globe, Users, User, Loader2 } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 import AISummaryModal from './AISummaryModal'
+import TherapistCodeDisplay from './fragments/TherapistCodeDisplay'
 import { useTranslation } from 'react-i18next'
 
 
@@ -352,6 +353,31 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   return (
     <div className="space-y-6">
       <Card>
+      <Card className="border-amber-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            {t('therapist_profile')}
+          </CardTitle>
+          <CardDescription>
+            {t('therapist_profile_desc')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">{t('therapist_name')}</label>
+              <div className="text-gray-900 font-medium">
+                {(userProfile?.display_name?.trim?.() || (session.user.email || '').split('@')[0] || t('therapist_fallback'))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">{t('therapist_code')}</label>
+              <TherapistCodeDisplay userId={session.user.id} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
