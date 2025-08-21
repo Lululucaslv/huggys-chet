@@ -24,6 +24,16 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
   const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle')
   const [error, setError] = useState<Error | null>(null)
   const chatApi = new ChatAPI()
+  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: Array<{ id?: number | string; startTime: string; endTime?: string }> } | null>(null)
+  const handleBookSlot = async (therapistName: string, slot: { startTime: string }) => {
+    if (status !== 'idle') return
+    const whenLocal = new Date(slot.startTime).toLocaleString(undefined as any, { hour12: false })
+    const text = t('chat_confirm_booking', { therapistName, whenLocal, iso: slot.startTime })
+    setSlotOptions(null)
+    setInputMessage(text)
+    await handleSendMessage()
+  }
+
 
   useEffect(() => {
     fetchUserProfile()
@@ -86,12 +96,56 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
       )
       const data = await resp.json()
       if (data && data.success) {
-        const content = (data.content || '').toString()
-        setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content }])
+        let assistantText = (data.content || '').toString()
+        if (Array.isArray(data.toolResults)) {
+          try {
+            const parts: string[] = []
+            for (const tr of data.toolResults) {
+              if (tr?.name === 'getAvailability' && tr.result?.success) {
+                const arr = Array.isArray(tr.result.data) ? tr.result.data : []
+                const slots = arr.map((r: any) => ({
+                  id: r.id,
+                  startTime: r.start_time || r.startTime,
+                  endTime: r.end_time || r.endTime
+                })).filter((s: any) => s.startTime)
+                const displayName = (userProfile?.display_name || (session.user.email || '').split('@')[0] || t('tool_therapist_fallback')) as string
+                parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
+                if (slots.length > 0) {
+                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
+                } else {
+                  setSlotOptions(null)
+                }
+              } else if (tr?.name === 'createBooking' && tr.result?.success) {
+                const d = tr.result.data || {}
+                parts.push(d.message || t('tool_booking_created', { name: d.therapistName || '', dateTime: d.dateTime || '' }))
+                setSlotOptions(null)
+                if (typeof onAfterToolAction === 'function') onAfterToolAction()
+              } else if (tr?.name === 'getTherapistAvailability' && tr.result?.success) {
+                const d = tr.result.data || {}
+                const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
+                parts.push(t('tool_availability_count', { name: d.therapistName || t('tool_therapist_fallback'), count, extra: d.message || '' }))
+                if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                  setSlotOptions({
+                    therapistName: d.therapistName || t('tool_therapist_fallback'),
+                    slots: d.availableSlots.slice(0, 8)
+                  })
+                } else {
+                  setSlotOptions(null)
+                }
+              } else if (tr?.result?.error) {
+                parts.push(t('tool_error', { error: tr.result.error }))
+              }
+            }
+            if (parts.length > 0) {
+              assistantText = parts.join(' ')
+            }
+          } catch {}
+        }
+        setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
         await supabase.from('chat_messages').insert({
           user_id: session.user.id,
           role: 'assistant',
-          message: content,
+          message: assistantText,
           message_type: 'text',
           audio_url: ''
         })
@@ -113,6 +167,24 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
 
 
 
+          
+          {slotOptions && slotOptions.slots?.length > 0 && (
+            <div className="mt-2">
+              <div className="text-gray-500 text-sm mb-2">{t('chat_choose_slot')}</div>
+              <div className="flex flex-wrap gap-2">
+                {slotOptions.slots.map((s) => (
+                  <button
+                    key={s.id || s.startTime}
+                    onClick={() => handleBookSlot(slotOptions.therapistName, s)}
+                    disabled={status === 'streaming' || status === 'submitted'}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
+                  >
+                    {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -156,6 +228,24 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
             <div className="flex justify-start">
               <div className="bg-red-100 p-3 rounded-lg text-red-700">
                 {t('chat_error_generic')} 错误: {error.message}
+              </div>
+            </div>
+          )}
+          
+          {slotOptions && slotOptions.slots?.length > 0 && (
+            <div className="mt-2">
+              <div className="text-gray-500 text-sm mb-2">{t('chat_choose_slot')}</div>
+              <div className="flex flex-wrap gap-2">
+                {slotOptions.slots.map((s) => (
+                  <button
+                    key={s.id || s.startTime}
+                    onClick={() => handleBookSlot(slotOptions.therapistName, s)}
+                    disabled={status === 'streaming' || status === 'submitted'}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
+                  >
+                    {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
+                  </button>
+                ))}
               </div>
             </div>
           )}
