@@ -33,9 +33,10 @@ export default async function handler(req, res) {
     }
 
     const list = Array.isArray(slots) ? slots : []
+    const valid = list.filter((s) => Boolean(s?.user_profiles?.user_id))
     const userIds = Array.from(
       new Set(
-        list.map((s) => s?.user_profiles?.user_id).filter(Boolean)
+        valid.map((s) => s.user_profiles.user_id).filter(Boolean)
       )
     )
 
@@ -82,11 +83,11 @@ export default async function handler(req, res) {
       emailPrefixByUserId = new Map(adminUsers)
     }
 
-    const hydrated = list.map((slot) => {
-      const uid = slot?.user_profiles?.user_id ? String(slot.user_profiles.user_id) : null
-      const tRow = uid ? therapistByUserId.get(uid) : null
-      const upName = uid ? displayNameByUserId.get(uid) : ''
-      const emailFallback = uid ? emailPrefixByUserId.get(uid) : ''
+    const hydrated = valid.map((slot) => {
+      const uid = String(slot.user_profiles.user_id)
+      const tRow = therapistByUserId.get(uid)
+      const upName = displayNameByUserId.get(uid) || ''
+      const emailFallback = emailPrefixByUserId.get(uid) || ''
       const name = tRow?.name || upName || emailFallback || ''
       return {
         id: slot.id,
