@@ -13,6 +13,15 @@ interface AIChatProps {
   session: Session
   onAfterToolAction?: () => void
 }
+function getSafeDisplayName(session: Session, profile: any, t: any): string {
+  const emailName = (session.user.email || '').split('@')[0]
+  if (profile && typeof profile.display_name === 'string') {
+    const v = profile.display_name.trim()
+    if (v) return v
+  }
+  return emailName || String(t('tool_therapist_fallback'))
+}
+
 
 
 export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
@@ -108,7 +117,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                   startTime: r.start_time || r.startTime,
                   endTime: r.end_time || r.endTime
                 })).filter((s: any) => s.startTime)
-                const displayName = (userProfile?.display_name || (session.user.email || '').split('@')[0] || t('tool_therapist_fallback')) as string
+                const displayName = getSafeDisplayName(session, userProfile, t)
                 parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
                 if (slots.length > 0) {
                   setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
