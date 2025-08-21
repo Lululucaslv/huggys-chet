@@ -616,7 +616,11 @@ async function getTherapistAvailability(params, supabase) {
     const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
     const matches = resolved.matches || []
     if (matches.length === 0) {
-      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择` }
+      const debugTokens = String(params.therapistName || '')
+        .toUpperCase()
+        .match(/[A-Z0-9]{6,12}/g) || []
+      const hint = debugTokens.length ? ` [debug tokens: ${debugTokens.join(',')}]` : ''
+      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择${hint}` }
     }
     if (matches.length > 1) {
       const names = matches.map(m => m.name).join(', ')
