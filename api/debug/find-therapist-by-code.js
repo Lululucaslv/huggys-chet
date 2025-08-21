@@ -15,6 +15,8 @@ export default async function handler(req, res) {
       exact: null,
       ilike: null,
       contains: null,
+      profile: null,
+      availability: null,
       errors: {}
     }
     try { result.host = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').host } catch {}
@@ -42,6 +44,30 @@ export default async function handler(req, res) {
       .limit(5)
     result.contains = { count: contains.count ?? null, rows: contains.data || null }
     if (contains.error) result.errors.contains = contains.error.message || String(contains.error)
+
+    const resolved = Array.isArray(exact?.data) && exact.data.length ? exact.data[0]
+      : (Array.isArray(ilike?.data) && ilike.data.length ? ilike.data[0]
+      : (Array.isArray(contains?.data) && contains.data.length ? contains.data[0] : null))
+
+    if (resolved?.user_id) {
+      const { data: prof, error: pErr } = await supabase
+        .from('user_profiles')
+        .select('id, user_id, display_name')
+        .eq('user_id', String(resolved.user_id))
+        .maybeSingle()
+      if (pErr) result.errors.profile = pErr.message || String(pErr)
+      result.profile = prof || null
+
+      if (prof?.id) {
+        const { data: av, error: aErr } = await supabase
+          .from('availability')
+          .select('id, therapist_id, start_time, end_time, is_booked')
+          .eq('therapist_id', prof.id)
+          .order('start_time', { ascending: true })
+        if (aErr) result.errors.availability = aErr.message || String(aErr)
+        result.availability = av || []
+      }
+    }
 
     res.status(200).json(result)
   } catch (e) {
