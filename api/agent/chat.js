@@ -525,11 +525,39 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   const codeToken = tokenMatch ? tokenMatch[0] : null
 
   if (codeToken) {
-    const { data: codeMatch } = await supabase
-      .from('therapists')
-      .select('user_id, name, verified, code')
-      .ilike('code', codeToken)
-      .maybeSingle()
+    let codeMatch = null
+
+    try {
+      const { data } = await supabase
+        .from('therapists')
+        .select('user_id, name, verified, code')
+        .eq('code', codeToken)
+        .maybeSingle()
+      if (data) codeMatch = data
+    } catch {}
+
+    if (!codeMatch) {
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .ilike('code', codeToken)
+          .maybeSingle()
+        if (data) codeMatch = data
+      } catch {}
+    }
+
+    if (!codeMatch) {
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .ilike('code', `%${codeToken}%`)
+          .maybeSingle()
+        if (data) codeMatch = data
+      } catch {}
+    }
+
     if (codeMatch) {
       return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
     }
