@@ -83,12 +83,19 @@ export default async function handler(req, res) {
       emailPrefixByUserId = new Map(adminUsers)
     }
 
+    const isGeneric = (s) => {
+      if (!s) return false
+      const n = String(s).trim().toLowerCase()
+      return n === 'therapist' || n === '治疗师'
+    }
+
     const hydrated = valid.map((slot) => {
       const uid = String(slot.user_profiles.user_id)
       const tRow = therapistByUserId.get(uid)
       const upName = displayNameByUserId.get(uid) || ''
       const emailFallback = emailPrefixByUserId.get(uid) || ''
-      const name = tRow?.name || upName || emailFallback || ''
+      const primary = tRow?.name
+      const name = (primary && !isGeneric(primary) ? primary : '') || upName || emailFallback || ''
       return {
         id: slot.id,
         therapist_id: slot.therapist_id,
