@@ -33,19 +33,40 @@ export default async function handler(req, res) {
         newCode = Array.from({ length: 8 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
       }
 
-      const { data: upd, error: updErr } = await supabase
-        .from('therapists')
-        .update({ code: newCode })
-        .eq('user_id', userId)
-        .select('code')
-        .maybeSingle()
-
-      if (updErr) {
-        res.status(200).json({ code: newCode, persisted: false })
-        return
+      if (!row) {
+        let fallbackName = 'Therapist'
+        try {
+          const { data: up } = await supabase
+            .from('user_profiles')
+            .select('display_name, user_id')
+            .eq('user_id', userId)
+            .maybeSingle()
+          const emailPrefix = (up?.user_id || '').split('@')[0]
+          fallbackName = (up?.display_name && String(up.display_name).trim()) || (emailPrefix || fallbackName)
+        } catch {}
+        const { data: ins, error: insErr } = await supabase
+          .from('therapists')
+          .insert({ user_id: userId, name: fallbackName, verified: true, code: newCode })
+          .select('code')
+          .maybeSingle()
+        if (insErr) {
+          res.status(200).json({ code: newCode, persisted: false })
+          return
+        }
+        code = ins?.code || newCode
+      } else {
+        const { data: upd, error: updErr } = await supabase
+          .from('therapists')
+          .update({ code: newCode })
+          .eq('user_id', userId)
+          .select('code')
+          .maybeSingle()
+        if (updErr) {
+          res.status(200).json({ code: newCode, persisted: false })
+          return
+        }
+        code = upd?.code || newCode
       }
-
-      code = upd?.code || newCode
     }
 
     res.status(200).json({ code, persisted: true })
