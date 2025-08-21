@@ -107,10 +107,12 @@ export default async function handler(req, res) {
       }
     })
 
+    const nonEmpty = hydrated.filter((s) => Boolean(s.therapist_name && String(s.therapist_name).trim()))
+
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
     res.setHeader('Pragma', 'no-cache')
     res.setHeader('Expires', '0')
-    res.status(200).json({ success: true, data: hydrated, meta: { filtered: true, genericGuard: true, ts: Date.now() } })
+    res.status(200).json({ success: true, data: nonEmpty, meta: { filtered: true, genericGuard: true, postHydrationFiltered: true, ts: Date.now() } })
   } catch (e) {
     res.status(500).json({ error: e.message || 'Unexpected error' })
   }
