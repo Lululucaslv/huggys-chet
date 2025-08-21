@@ -41,6 +41,7 @@ export default async function handler(req, res) {
 
     let therapistByUserId = new Map()
     let displayNameByUserId = new Map()
+    let emailPrefixByUserId = new Map()
 
     if (userIds.length > 0) {
       const [{ data: th }, { data: ups }] = await Promise.all([
@@ -65,13 +66,28 @@ export default async function handler(req, res) {
           .filter((r) => r && r.user_id)
           .map((r) => [String(r.user_id), r.display_name || ''])
       )
+
+      const adminUsers = await Promise.all(
+        userIds.map(async (uid) => {
+          try {
+            const { data: u } = await supabase.auth.admin.getUserById(uid)
+            const email = u?.user?.email || ''
+            const prefix = email.includes('@') ? email.split('@')[0] : ''
+            return [String(uid), prefix]
+          } catch {
+            return [String(uid), '']
+          }
+        })
+      )
+      emailPrefixByUserId = new Map(adminUsers)
     }
 
     const hydrated = list.map((slot) => {
       const uid = slot?.user_profiles?.user_id ? String(slot.user_profiles.user_id) : null
       const tRow = uid ? therapistByUserId.get(uid) : null
       const upName = uid ? displayNameByUserId.get(uid) : ''
-      const name = tRow?.name || upName || ''
+      const emailFallback = uid ? emailPrefixByUserId.get(uid) : ''
+      const name = tRow?.name || upName || emailFallback || ''
       return {
         id: slot.id,
         therapist_id: slot.therapist_id,
