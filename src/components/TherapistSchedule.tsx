@@ -158,10 +158,11 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
           .insert([
             {
               user_id: session.user.id,
-              name: userProfile.email?.split('@')[0] || 'Therapist',
+              name: userProfile.display_name || userProfile.email?.split('@')[0] || 'Therapist',
               specialization: 'General Therapy',
               bio: 'Professional therapist',
-              hourly_rate: 100.00
+              hourly_rate: 100.00,
+              verified: true
             }
           ])
           .select()
