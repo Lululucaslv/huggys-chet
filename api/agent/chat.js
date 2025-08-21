@@ -604,6 +604,30 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   }).filter(m => m.name && (thMap.has(String(m.user_id)) ? (thMap.get(String(m.user_id)).verified !== false) : true))
 
   return { matches: merged }
+async function getCodeMatchDebugCounts(supabase, token) {
+  try {
+    const exact = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .eq('code', token)
+    const ilikeOne = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', token)
+    const contains = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', `%${token}%`)
+    return {
+      exact: typeof exact.count === 'number' ? exact.count : null,
+      ilike: typeof ilikeOne.count === 'number' ? ilikeOne.count : null,
+      contains: typeof contains.count === 'number' ? contains.count : null
+    }
+  } catch {
+    return { exact: null, ilike: null, contains: null }
+  }
+}
+
 }
 
 async function getUserProfileIdByUserId(supabase, userId) {
@@ -623,7 +647,12 @@ async function getTherapistAvailability(params, supabase) {
       const debugTokens = String(params.therapistName || '')
         .toUpperCase()
         .match(/[A-Z0-9]{6,12}/g) || []
-      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]`
+      let counts = ''
+      if (debugTokens.length > 0) {
+        const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}]`
+      }
+      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择${hint}` }
     }
     if (matches.length > 1) {
@@ -674,7 +703,12 @@ async function createBooking(params, userId, supabase) {
       const debugTokens = String(params.therapistName || '')
         .toUpperCase()
         .match(/[A-Z0-9]{6,12}/g) || []
-      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]`
+      let counts = ''
+      if (debugTokens.length > 0) {
+        const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}]`
+      }
+      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师${hint}` }
     }
     if (matches.length > 1) {
