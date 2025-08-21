@@ -5,7 +5,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Calendar, Clock, Plus, Trash2, Globe, Users, User } from 'lucide-react'
+import { Calendar, Clock, Plus, Trash2, Globe, Users, User, Loader2 } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 import AISummaryModal from './AISummaryModal'
 import { useTranslation } from 'react-i18next'
@@ -31,9 +31,10 @@ interface Booking {
 
 interface TherapistScheduleProps {
   session: Session
+  refreshKey?: number
 }
 
-export default function TherapistSchedule({ session }: TherapistScheduleProps) {
+export default function TherapistSchedule({ session, refreshKey }: TherapistScheduleProps) {
   const { t, i18n } = useTranslation()
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
   const [startTime, setStartTime] = useState('')
@@ -55,6 +56,12 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
       fetchUpcomingBookings()
     }
   }, [userProfile])
+
+  useEffect(() => {
+    if (userProfile) {
+      fetchAvailabilitySlots()
+    }
+  }, [refreshKey])
 
   const fetchUserProfile = async () => {
     try {
@@ -458,7 +465,12 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
             disabled={loading || !startTime || !endTime}
             className="w-full md:w-auto"
           >
-            {loading ? t('sched_adding') : t('sched_add_time_slot')}
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('sched_adding')}
+              </span>
+            ) : t('sched_add_time_slot')}
           </Button>
         </CardContent>
       </Card>
@@ -505,7 +517,7 @@ export default function TherapistSchedule({ session }: TherapistScheduleProps) {
                     disabled={loading}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </Button>
                 </div>
               ))}

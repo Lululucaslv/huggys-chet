@@ -119,6 +119,11 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
   const isTherapist = userRole === 'therapist'
   const pageTitle = isTherapist ? t('app_title_therapist') : t('app_title_client')
   const [chatOpen, setChatOpen] = useState(false)
+  const [availabilityRefreshKey, setAvailabilityRefreshKey] = useState(0)
+
+  const handleAfterToolAction = () => {
+    setAvailabilityRefreshKey(k => k + 1)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,7 +160,7 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
       <main className="relative max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {isTherapist ? (
           <>
-            <TherapistSchedule session={session} />
+            <TherapistSchedule session={session} refreshKey={availabilityRefreshKey} />
             <button
               aria-label="Open AI assistant"
               onClick={() => setChatOpen(true)}
@@ -165,7 +170,11 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
             </button>
             <Dialog open={chatOpen} onOpenChange={setChatOpen}>
               <DialogContent className="max-w-2xl p-0">
-                <AIChat session={session} />
+                <div className="sr-only">
+                  <h2 id="ai-chat-title">{t('nav_chat')}</h2>
+                  <p id="ai-chat-desc">{t('chat_modal_desc') || 'Chat with your AI assistant'}</p>
+                </div>
+                <AIChat session={session} onAfterToolAction={handleAfterToolAction} />
               </DialogContent>
             </Dialog>
           </>

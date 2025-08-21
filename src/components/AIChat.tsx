@@ -11,10 +11,11 @@ import { useTranslation } from 'react-i18next'
 
 interface AIChatProps {
   session: Session
+  onAfterToolAction?: () => void
 }
 
 
-export default function AIChat({ session }: AIChatProps) {
+export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
   const { t } = useTranslation()
   const [userProfile, setUserProfile] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -31,7 +32,7 @@ export default function AIChat({ session }: AIChatProps) {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, status])
 
   const fetchUserProfile = async () => {
     const { data } = await supabase
@@ -94,6 +95,11 @@ export default function AIChat({ session }: AIChatProps) {
           message_type: 'text',
           audio_url: ''
         })
+        const names = Array.isArray(data.toolResults) ? data.toolResults.map((r: any) => r?.name || r?.function?.name) : []
+        const modified = names.some((n: string) => ['setAvailability', 'deleteAvailability'].includes(String(n)))
+        if (modified && typeof onAfterToolAction === 'function') {
+          onAfterToolAction()
+        }
       } else {
         const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
         setError(new Error(errMsg))
@@ -112,15 +118,15 @@ export default function AIChat({ session }: AIChatProps) {
   }
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader>
+    <Card className="h-[80vh] max-h-[720px] flex flex-col">
+      <CardHeader className="shrink-0">
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           {t('nav_chat')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+      <CardContent className="flex-1 flex flex-col p-0">
+        <div className="flex-1 overflow-y-auto space-y-4 p-4" id="chat-scroll-area">
           {messages.map((message: any) => (
             <div
               key={message.id}
@@ -182,21 +188,27 @@ export default function AIChat({ session }: AIChatProps) {
           </div>
           <div ref={messagesEndRef} />
         </div>
-        
-        <div className="flex gap-2">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={t('chat_input_placeholder')}
-            disabled={status === 'streaming' || status === 'submitted'}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={status === 'streaming' || status === 'submitted' || !inputMessage.trim()}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+        <div className="sticky bottom-0 border-t bg-white p-3">
+          <div className="flex gap-2">
+            <Input
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={t('chat_input_placeholder')}
+              disabled={status === 'streaming' || status === 'submitted'}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSendMessage()
+                }
+              }}
+            />
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={status === 'streaming' || status === 'submitted' || !inputMessage.trim()}
+            >
+              {status === 'submitted' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
