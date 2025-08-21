@@ -18,22 +18,19 @@ export default async function handler(req, res) {
       return
     }
 
-    const [{ data: th, error: thErr }, { data: up, error: upErr }] = await Promise.all([
-      supabase.from('therapists').select('user_id, name, verified').eq('user_id', uid).maybeSingle(),
-      supabase.from('user_profiles').select('user_id, display_name').eq('user_id', uid).maybeSingle(),
-    ])
+    const { data: th, error: thErr } = await supabase
+      .from('therapists')
+      .select('user_id, name, verified, specialization')
+      .eq('user_id', uid)
+      .maybeSingle()
 
     if (thErr) {
       res.status(400).json({ error: thErr.message })
       return
     }
-    if (upErr) {
-      res.status(400).json({ error: upErr.message })
-      return
-    }
 
     res.setHeader('Cache-Control', 'no-store')
-    res.status(200).json({ success: true, therapist: th || null, user_profile: up || null })
+    res.status(200).json({ success: true, therapist: th || null })
   } catch (e) {
     res.status(500).json({ error: e.message || 'Unexpected error' })
   }

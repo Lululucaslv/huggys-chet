@@ -48,39 +48,9 @@ export default async function handler(req, res) {
     } else {
       const { error: insErr } = await supabase
         .from('therapists')
-        .insert({ user_id: uid, name, verified: true })
+        .insert({ user_id: uid, name, verified: true, specialization: 'General' })
       if (insErr) {
         res.status(400).json({ error: insErr.message })
-        return
-      }
-    }
-
-    const { data: up, error: upSelErr } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('user_id', uid)
-      .maybeSingle()
-
-    if (upSelErr) {
-      res.status(400).json({ error: upSelErr.message })
-      return
-    }
-
-    if (up) {
-      const { error: updErr2 } = await supabase
-        .from('user_profiles')
-        .update({ display_name: name })
-        .eq('user_id', uid)
-      if (updErr2) {
-        res.status(400).json({ error: updErr2.message })
-        return
-      }
-    } else {
-      const { error: insErr2 } = await supabase
-        .from('user_profiles')
-        .insert({ user_id: uid, display_name: name })
-      if (insErr2) {
-        res.status(400).json({ error: insErr2.message })
         return
       }
     }
