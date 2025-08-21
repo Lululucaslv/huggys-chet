@@ -114,7 +114,8 @@ export default function ClientBooking({ session }: ClientBookingProps) {
           *,
           user_profiles!availability_therapist_id_fkey (
             id,
-            user_id
+            user_id,
+            display_name
           )
         `)
         .eq('is_booked', false)
@@ -145,6 +146,9 @@ export default function ClientBooking({ session }: ClientBookingProps) {
           const tRow = userId ? therapistByUserId.get(String(userId)) : null
           if (tRow && tRow.name) {
             return { ...slot, therapist_name: tRow.name as string }
+          }
+          if (slot.user_profiles?.display_name) {
+            return { ...slot, therapist_name: String(slot.user_profiles.display_name) }
           }
           try {
             const { data: userData } = await supabase.auth.admin.getUserById(String(userId))
