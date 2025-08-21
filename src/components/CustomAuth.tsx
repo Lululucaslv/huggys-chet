@@ -263,6 +263,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                         注册治疗师账户需要有效的邀请码
                       </p>
                     </div>
+                  )}
                   {userRole === 'therapist' && (
                     <div className="mt-2">
                       <Label htmlFor="displayName">姓名</Label>
@@ -275,8 +276,6 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                         required
                       />
                     </div>
-                  )}
-
                   )}
                 </>
               )}

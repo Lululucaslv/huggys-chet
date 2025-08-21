@@ -119,8 +119,8 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
   const { t } = useTranslation()
   const isTherapist = userRole === 'therapist'
   const pageTitle = isTherapist ? t('app_title_therapist') : t('app_title_client')
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
 
   return (
@@ -153,6 +153,12 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
                   {t('settings_title') || 'Settings'}
                 </button>
               )}
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="max-w-md p-0">
+            <TherapistSettings session={session} />
+          </DialogContent>
+        </Dialog>
+
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
