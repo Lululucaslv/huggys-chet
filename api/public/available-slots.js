@@ -40,22 +40,38 @@ export default async function handler(req, res) {
     )
 
     let therapistByUserId = new Map()
+    let displayNameByUserId = new Map()
+
     if (userIds.length > 0) {
-      const { data: th } = await supabase
-        .from('therapists')
-        .select('user_id, name, verified')
-        .in('user_id', userIds)
+      const [{ data: th }, { data: ups }] = await Promise.all([
+        supabase
+          .from('therapists')
+          .select('user_id, name, verified')
+          .in('user_id', userIds),
+        supabase
+          .from('user_profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds)
+      ])
+
       therapistByUserId = new Map(
         (th || [])
           .filter((r) => r && r.verified)
           .map((r) => [String(r.user_id), r])
+      )
+
+      displayNameByUserId = new Map(
+        (ups || [])
+          .filter((r) => r && r.user_id)
+          .map((r) => [String(r.user_id), r.display_name || ''])
       )
     }
 
     const hydrated = list.map((slot) => {
       const uid = slot?.user_profiles?.user_id ? String(slot.user_profiles.user_id) : null
       const tRow = uid ? therapistByUserId.get(uid) : null
-      const name = tRow?.name || ''
+      const upName = uid ? displayNameByUserId.get(uid) : ''
+      const name = tRow?.name || upName || ''
       return {
         id: slot.id,
         therapist_id: slot.therapist_id,
