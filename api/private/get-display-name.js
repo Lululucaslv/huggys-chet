@@ -1,4 +1,4 @@
-import { getServiceSupabase } from '../../api/_utils/supabaseServer.js'
+import { getServiceSupabase, getAuthUserIdFromRequest } from '../../api/_utils/supabaseServer.js'
 
 export const runtime = 'nodejs'
 
@@ -9,20 +9,14 @@ export default async function handler(req, res) {
       return
     }
 
-    const auth = req.headers.authorization || ''
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-    if (!token) {
-      res.status(401).json({ error: 'Missing auth token' })
-      return
-    }
-
     const supabase = getServiceSupabase()
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token)
-    if (userErr || !userData?.user?.id) {
-      res.status(401).json({ error: 'Invalid auth token' })
+    let uid
+    try {
+      uid = await getAuthUserIdFromRequest(req, supabase)
+    } catch (e) {
+      res.status(e.code || 401).json({ error: e.message || 'Unauthorized' })
       return
     }
-    const uid = userData.user.id
 
     const [{ data: th, error: thErr }, { data: up, error: upErr }] = await Promise.all([
       supabase.from('therapists').select('user_id, name, verified').eq('user_id', uid).maybeSingle(),
