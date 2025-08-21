@@ -496,13 +496,25 @@ Rules:
 }
 
 async function resolveTherapistByNameOrPrefix(supabase, rawName) {
-  const name = String(rawName || '').trim()
-  if (!name) return { matches: [] }
+  const input = String(rawName || '').trim()
+  if (!input) return { matches: [] }
+
+  const codeCandidate = input.toUpperCase()
+  if (/^[A-Z0-9]{4,12}$/.test(codeCandidate)) {
+    const { data: codeMatch } = await supabase
+      .from('therapists')
+      .select('user_id, name, verified, code')
+      .eq('code', codeCandidate)
+      .maybeSingle()
+    if (codeMatch && codeMatch.verified !== false) {
+      return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
+    }
+  }
 
   const { data: tMatches } = await supabase
     .from('therapists')
     .select('user_id, name, verified')
-    .ilike('name', `%${name}%`)
+    .ilike('name', `%${input}%`)
     .limit(5)
 
   if (Array.isArray(tMatches) && tMatches.length > 0) {
@@ -512,7 +524,7 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   const { data: pMatches } = await supabase
     .from('user_profiles')
     .select('user_id, display_name')
-    .ilike('display_name', `%${name}%`)
+    .ilike('display_name', `%${input}%`)
     .limit(5)
 
   if (!Array.isArray(pMatches) || pMatches.length === 0) return { matches: [] }

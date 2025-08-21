@@ -9,6 +9,8 @@ import { Calendar, Clock, Plus, Trash2, Globe, Users, User, Loader2 } from 'luci
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 import AISummaryModal from './AISummaryModal'
 import { useTranslation } from 'react-i18next'
+import TherapistCodeDisplay from './fragments/TherapistCodeDisplay'
+
 
 interface AvailabilitySlot {
   id: number
@@ -154,24 +156,32 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
     try {
       let { data: therapistData, error: therapistError } = await supabase
         .from('therapists')
-        .select('id')
+        .select('id, code, name')
         .eq('user_id', session.user.id)
-        .single()
+        .maybeSingle()
 
       if (therapistError || !therapistData) {
         console.log('No therapist record found, creating one...')
+        let code: string | null = null
+        try {
+          const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
+          if (typeof gen === 'string') code = gen
+        } catch {}
+        const fallbackName = userProfile.email?.split('@')[0] || 'Therapist'
         const { data: newTherapistData, error: createError } = await supabase
           .from('therapists')
           .insert([
             {
               user_id: session.user.id,
-              name: userProfile.email?.split('@')[0] || 'Therapist',
+              name: fallbackName,
               specialization: 'General Therapy',
               bio: 'Professional therapist',
-              hourly_rate: 100.00
+              hourly_rate: 100.00,
+              verified: true,
+              code: code || null
             }
           ])
-          .select()
+          .select('id, code, name')
           .single()
 
         if (createError) {
@@ -331,6 +341,30 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   }
 
   if (!userProfile) {
+      <Card className="border-amber-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            {t('therapist_profile')}
+          </CardTitle>
+          <CardDescription>
+            {t('therapist_profile_desc')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">{t('therapist_name')}</label>
+              <div className="text-gray-900 font-medium">{userProfile.display_name || (userProfile.email?.split('@')[0] || 'Therapist')}</div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">{t('therapist_code')}</label>
+              <TherapistCodeDisplay userId={session.user.id} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">

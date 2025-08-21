@@ -92,11 +92,12 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
       }
 
       if (data.user) {
+        const userId = data.user.id
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert([
             {
-              user_id: data.user.id,
+              user_id: userId,
               interest: 'therapy',
               language: (i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage) || 'en',
               life_status: userRole,
@@ -106,6 +107,37 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
 
         if (profileError) {
           console.error('Error creating user profile:', profileError)
+        }
+
+        if (userRole === 'therapist') {
+          let code = null as string | null
+          try {
+            const { data: gen } = await supabase.rpc('gen_therapist_code', { len: 8 })
+            if (typeof gen === 'string') code = gen
+          } catch {}
+          const fallbackName = (email || '').split('@')[0] || 'Therapist'
+          try {
+            await supabase
+              .from('therapists')
+              .upsert(
+                {
+                  user_id: userId,
+                  name: fallbackName,
+                  specialization: 'General',
+                  verified: true,
+                  code: code || null
+                },
+                { onConflict: 'user_id' }
+              )
+          } catch (e) {
+            console.error('Error upserting therapist:', e)
+          }
+          try {
+            await supabase
+              .from('user_profiles')
+              .update({ display_name: fallbackName })
+              .eq('user_id', userId)
+          } catch {}
         }
 
         onAuthSuccess()
