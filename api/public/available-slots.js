@@ -106,7 +106,7 @@ export default async function handler(req, res) {
       }
     })
 
-    res.status(200).json({ success: true, data: hydrated })
+    res.status(200).json({ success: true, data: hydrated, meta: { filtered: true, genericGuard: true } })
   } catch (e) {
     res.status(500).json({ error: e.message || 'Unexpected error' })
   }
