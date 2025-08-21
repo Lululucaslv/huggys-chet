@@ -25,18 +25,65 @@ export default async function handler(req, res) {
       return
     }
 
-    const { error: upsertErr } = await supabase
+    const { data: th, error: thSelErr } = await supabase
       .from('therapists')
-      .upsert({ user_id: uid, name, verified: true }, { onConflict: 'user_id' })
+      .select('user_id')
+      .eq('user_id', uid)
+      .maybeSingle()
 
-    if (upsertErr) {
-      res.status(400).json({ error: upsertErr.message })
+    if (thSelErr) {
+      res.status(400).json({ error: thSelErr.message })
       return
     }
 
-    await supabase
+    if (th) {
+      const { error: updErr } = await supabase
+        .from('therapists')
+        .update({ name, verified: true })
+        .eq('user_id', uid)
+      if (updErr) {
+        res.status(400).json({ error: updErr.message })
+        return
+      }
+    } else {
+      const { error: insErr } = await supabase
+        .from('therapists')
+        .insert({ user_id: uid, name, verified: true })
+      if (insErr) {
+        res.status(400).json({ error: insErr.message })
+        return
+      }
+    }
+
+    const { data: up, error: upSelErr } = await supabase
       .from('user_profiles')
-      .upsert({ user_id: uid, display_name: name }, { onConflict: 'user_id' })
+      .select('user_id')
+      .eq('user_id', uid)
+      .maybeSingle()
+
+    if (upSelErr) {
+      res.status(400).json({ error: upSelErr.message })
+      return
+    }
+
+    if (up) {
+      const { error: updErr2 } = await supabase
+        .from('user_profiles')
+        .update({ display_name: name })
+        .eq('user_id', uid)
+      if (updErr2) {
+        res.status(400).json({ error: updErr2.message })
+        return
+      }
+    } else {
+      const { error: insErr2 } = await supabase
+        .from('user_profiles')
+        .insert({ user_id: uid, display_name: name })
+      if (insErr2) {
+        res.status(400).json({ error: insErr2.message })
+        return
+      }
+    }
 
     res.setHeader('Cache-Control', 'no-store')
     res.status(200).json({ success: true })
