@@ -528,7 +528,7 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
     const { data: codeMatch } = await supabase
       .from('therapists')
       .select('user_id, name, verified, code')
-      .ilike('code', `%${codeToken}%`)
+      .ilike('code', codeToken)
       .maybeSingle()
     if (codeMatch) {
       return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
