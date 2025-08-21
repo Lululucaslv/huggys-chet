@@ -496,15 +496,18 @@ Rules:
 }
 
 async function resolveTherapistByNameOrPrefix(supabase, rawName) {
-  const input = String(rawName || '').trim()
-  if (!input) return { matches: [] }
+  const inputRaw = String(rawName || '').trim()
+  if (!inputRaw) return { matches: [] }
 
-  const codeCandidate = input.toUpperCase()
-  if (/^[A-Z0-9]{4,12}$/.test(codeCandidate)) {
+  const upper = inputRaw.toUpperCase()
+  const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
+  const codeToken = tokenMatch ? tokenMatch[0] : null
+
+  if (codeToken) {
     const { data: codeMatch } = await supabase
       .from('therapists')
       .select('user_id, name, verified, code')
-      .eq('code', codeCandidate)
+      .ilike('code', codeToken)
       .maybeSingle()
     if (codeMatch && codeMatch.verified !== false) {
       return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
@@ -514,7 +517,7 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   const { data: tMatches } = await supabase
     .from('therapists')
     .select('user_id, name, verified')
-    .ilike('name', `%${input}%`)
+    .ilike('name', `%${inputRaw}%`)
     .limit(5)
 
   if (Array.isArray(tMatches) && tMatches.length > 0) {
@@ -524,7 +527,7 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   const { data: pMatches } = await supabase
     .from('user_profiles')
     .select('user_id, display_name')
-    .ilike('display_name', `%${input}%`)
+    .ilike('display_name', `%${inputRaw}%`)
     .limit(5)
 
   if (!Array.isArray(pMatches) || pMatches.length === 0) return { matches: [] }
