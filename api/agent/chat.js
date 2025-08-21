@@ -536,8 +536,8 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
         .from('therapists')
         .select('user_id, name, verified, code')
         .eq('code', codeToken)
-        .maybeSingle()
-      if (data) codeMatch = data
+        .limit(2)
+      if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
     } catch {}
 
     if (!codeMatch) {
@@ -546,8 +546,8 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
           .from('therapists')
           .select('user_id, name, verified, code')
           .ilike('code', codeToken)
-          .maybeSingle()
-        if (data) codeMatch = data
+          .limit(2)
+        if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
       } catch {}
     }
 
@@ -557,8 +557,8 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
           .from('therapists')
           .select('user_id, name, verified, code')
           .ilike('code', `%${codeToken}%`)
-          .maybeSingle()
-        if (data) codeMatch = data
+          .limit(2)
+        if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
       } catch {}
     }
 
