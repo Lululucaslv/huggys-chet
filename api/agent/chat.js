@@ -521,7 +521,11 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   if (!inputRaw) return { matches: [] }
 
   const upper = inputRaw.toUpperCase()
-  const tokenMatches = upper.match(/[A-Z0-9]{6,12}/g) || []
+  let tokenMatches = upper.match(/[A-Z0-9]{6,12}/g) || []
+  const cleaned = upper.replace(/[^A-Z0-9]/g, '')
+  if (tokenMatches.length === 0 && cleaned.length >= 6 && cleaned.length <= 12) {
+    tokenMatches = [cleaned]
+  }
   const uniqueTokens = Array.from(new Set(tokenMatches))
 
   for (const codeToken of uniqueTokens) {
@@ -619,7 +623,7 @@ async function getTherapistAvailability(params, supabase) {
       const debugTokens = String(params.therapistName || '')
         .toUpperCase()
         .match(/[A-Z0-9]{6,12}/g) || []
-      const hint = debugTokens.length ? ` [debug tokens: ${debugTokens.join(',')}]` : ''
+      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择${hint}` }
     }
     if (matches.length > 1) {
@@ -670,7 +674,7 @@ async function createBooking(params, userId, supabase) {
       const debugTokens = String(params.therapistName || '')
         .toUpperCase()
         .match(/[A-Z0-9]{6,12}/g) || []
-      const hint = debugTokens.length ? ` [debug tokens: ${debugTokens.join(',')}]` : ''
+      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]`
       return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师${hint}` }
     }
     if (matches.length > 1) {
