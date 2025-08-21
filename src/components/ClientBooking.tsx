@@ -108,49 +108,15 @@ export default function ClientBooking({ session }: ClientBookingProps) {
   const fetchAvailableSlots = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('availability')
-        .select(`
-          *,
-          user_profiles!availability_therapist_id_fkey (
-            id,
-            user_id
-          )
-        `)
-        .eq('is_booked', false)
-        .gte('start_time', new Date().toISOString())
-        .order('start_time', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching available slots:', error)
+      const resp = await fetch('/api/public/available-slots')
+      if (!resp.ok) {
+        console.error('Error fetching available slots via API:', resp.status)
         setError(t('err_fetch_slots'))
         return
       }
-
-      const slots = data || []
-      const userIds = Array.from(new Set(slots.map((s: any) => s.user_profiles?.user_id).filter(Boolean)))
-      let therapistRows: any[] = []
-      if (userIds.length > 0) {
-        const { data: th, error: thErr } = await supabase
-          .from('therapists')
-          .select('user_id, name, verified')
-          .in('user_id', userIds)
-        if (!thErr && Array.isArray(th)) therapistRows = th
-      }
-      const therapistByUserId = new Map<string, any>((therapistRows || []).map((r: any) => [String(r.user_id), r]))
-
-      const slotsWithNames = await Promise.all(
-        slots.map(async (slot: any) => {
-          const userId = slot.user_profiles?.user_id
-          const tRow = userId ? therapistByUserId.get(String(userId)) : null
-          if (tRow && tRow.name) {
-            return { ...slot, therapist_name: tRow.name as string }
-          }
-          return { ...slot, therapist_name: '' }
-        })
-      )
-
-      setAvailableSlots(slotsWithNames)
+      const json = await resp.json()
+      const slots = Array.isArray(json?.data) ? json.data : []
+      setAvailableSlots(slots)
     } catch (err) {
       console.error('Error:', err)
       setError(t('err_fetch_slots'))
