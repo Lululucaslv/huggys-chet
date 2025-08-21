@@ -521,12 +521,12 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   if (!inputRaw) return { matches: [] }
 
   const upper = inputRaw.toUpperCase()
-  const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
-  const codeToken = tokenMatch ? tokenMatch[0] : null
+  const tokenMatches = upper.match(/[A-Z0-9]{6,12}/g) || []
+  const uniqueTokens = Array.from(new Set(tokenMatches))
 
-  if (codeToken) {
+  for (const codeToken of uniqueTokens) {
+    if (!codeToken) continue
     let codeMatch = null
-
     try {
       const { data } = await supabase
         .from('therapists')
