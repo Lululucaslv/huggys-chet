@@ -36,8 +36,7 @@ export default async function handler(req, res) {
 
     await supabase
       .from('user_profiles')
-      .update({ display_name: name })
-      .eq('user_id', uid)
+      .upsert({ user_id: uid, display_name: name }, { onConflict: 'user_id' })
 
     res.setHeader('Cache-Control', 'no-store')
     res.status(200).json({ success: true })
