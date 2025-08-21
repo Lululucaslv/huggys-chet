@@ -146,15 +146,7 @@ export default function ClientBooking({ session }: ClientBookingProps) {
           if (tRow && tRow.name) {
             return { ...slot, therapist_name: tRow.name as string }
           }
-          try {
-            const { data: userData } = await supabase.auth.admin.getUserById(String(userId))
-            return {
-              ...slot,
-              therapist_name: userData?.user?.email?.split('@')[0] || ''
-            }
-          } catch {
-            return { ...slot, therapist_name: '' }
-          }
+          return { ...slot, therapist_name: '' }
         })
       )
 

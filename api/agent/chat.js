@@ -506,14 +506,6 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
   if (!tErr && Array.isArray(tMatches) && tMatches.length > 0) {
     return { matches: tMatches.filter(m => m.verified !== false) }
   }
-  const { data: pMatches } = await supabase
-    .from('user_profiles')
-    .select('user_id, display_name')
-    .ilike('display_name', `%${name}%`)
-    .limit(5)
-  if (Array.isArray(pMatches) && pMatches.length > 0) {
-    return { matches: pMatches.map(p => ({ user_id: p.user_id, name: p.display_name })) }
-  }
   return { matches: [] }
 }
 
