@@ -25,6 +25,7 @@ export default async function handler(req, res) {
       `)
       .eq('is_booked', false)
       .gte('start_time', new Date().toISOString())
+      .not('user_profiles.user_id', 'is', null)
       .order('start_time', { ascending: true })
 
     if (error) {
