@@ -19,6 +19,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [userRole, setUserRole] = useState<'client' | 'therapist'>('client')
   const [inviteCode, setInviteCode] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const { i18n } = useTranslation()
   const [error, setError] = useState('')
@@ -75,6 +76,10 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
         setError('治疗师邀请码无效')
         return
       }
+      if (userRole === 'therapist' && !displayName.trim()) {
+        setError('请填写姓名')
+        return
+      }
     }
 
     setLoading(true)
@@ -116,13 +121,14 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
             if (typeof gen === 'string') code = gen
           } catch {}
           const fallbackName = (email || '').split('@')[0] || 'Therapist'
+          const nameToUse = (typeof displayName === 'string' && displayName.trim()) ? displayName.trim() : fallbackName
           try {
             await supabase
               .from('therapists')
               .upsert(
                 {
                   user_id: userId,
-                  name: fallbackName,
+                  name: nameToUse,
                   specialization: 'General',
                   verified: true,
                   code: code || null
@@ -135,7 +141,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
           try {
             await supabase
               .from('user_profiles')
-              .update({ display_name: fallbackName })
+              .update({ display_name: nameToUse })
               .eq('user_id', userId)
           } catch {}
         }
@@ -258,6 +264,19 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         注册治疗师账户需要有效的邀请码
+                  {userRole === 'therapist' && (
+                    <div>
+                      <Label htmlFor="displayName">姓名</Label>
+                      <Input
+                        id="displayName"
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="例如：Hanqi Lyu"
+                        required
+                      />
+                    </div>
+                  )}
                       </p>
                     </div>
                   )}
