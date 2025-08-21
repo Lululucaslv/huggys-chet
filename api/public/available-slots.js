@@ -96,14 +96,27 @@ export default async function handler(req, res) {
       const upName = displayNameByUserId.get(uid) || ''
       const emailFallback = emailPrefixByUserId.get(uid) || ''
       const primary = tRow?.name
-      const name = (primary && !isGeneric(primary) ? primary : '') || upName || emailFallback || ''
+      let source = ''
+      let name = ''
+      if (primary && !isGeneric(primary)) {
+        name = primary
+        source = 'therapists'
+      } else if (upName) {
+        name = upName
+        source = 'user_profiles'
+      } else {
+        name = emailFallback || ''
+        source = 'email_prefix'
+      }
       return {
         id: slot.id,
         therapist_id: slot.therapist_id,
         start_time: slot.start_time,
         end_time: slot.end_time,
         is_booked: slot.is_booked,
-        therapist_name: name
+        therapist_name: name,
+        therapist_name_source: source,
+        _uid: uid
       }
     })
 
@@ -112,7 +125,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
     res.setHeader('Pragma', 'no-cache')
     res.setHeader('Expires', '0')
-    res.status(200).json({ success: true, data: nonEmpty, meta: { filtered: true, genericGuard: true, postHydrationFiltered: true, ts: Date.now() } })
+    res.status(200).json({ success: true, data: nonEmpty, meta: { filtered: true, genericGuard: true, postHydrationFiltered: true, thCount: Array.from(therapistByUserId.keys()).length, upCount: Array.from(displayNameByUserId.keys()).length, ts: Date.now() } })
   } catch (e) {
     res.status(500).json({ error: e.message || 'Unexpected error' })
   }
