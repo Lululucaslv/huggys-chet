@@ -509,7 +509,7 @@ async function resolveTherapistByNameOrPrefix(supabase, rawName) {
       .select('user_id, name, verified, code')
       .ilike('code', codeToken)
       .maybeSingle()
-    if (codeMatch && codeMatch.verified !== false) {
+    if (codeMatch) {
       return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
     }
   }
