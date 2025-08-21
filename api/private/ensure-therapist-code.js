@@ -1,4 +1,4 @@
-import { createServerClient } from '../_utils/supabaseServer.js'
+import { getServiceSupabase } from '../_utils/supabaseServer.js'
 
 export default async function handler(req, res) {
   try {
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
       res.status(400).json({ error: 'missing userId' })
       return
     }
-    const supabase = createServerClient()
+    const supabase = getServiceSupabase()
 
     const { data: row, error: selErr } = await supabase
       .from('therapists')
