@@ -11,12 +11,21 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
     let mounted = true
     const run = async () => {
       try {
-        let { data, error } = await supabase
+        const resp = await fetch(`/api/private/ensure-therapist-code?userId=${encodeURIComponent(userId)}`)
+        if (resp.ok) {
+          const json = await resp.json()
+          if (mounted && json?.code) {
+            setCode(json.code)
+            return
+          }
+        }
+      } catch {}
+      try {
+        let { data } = await supabase
           .from('therapists')
           .select('code')
           .eq('user_id', userId)
           .maybeSingle()
-        if (error) return
         const existing = data?.code || null
         if (mounted) setCode(existing || '—')
         if (!existing) {
