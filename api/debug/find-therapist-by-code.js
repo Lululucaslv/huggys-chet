@@ -1,7 +1,7 @@
 import { getServiceSupabase, getAuthUserIdFromRequest } from '../_utils/supabaseServer.js'
 
 function isEnabled() {
-  return String(process.env.DEBUG_API_ENABLED || '').toLowerCase() === 'true'
+  return true
 }
 
 function parseList(val) {
