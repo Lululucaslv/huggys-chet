@@ -1,13 +1,54 @@
-import { getServiceSupabase } from '../_utils/supabaseServer.js'
+import { getServiceSupabase, getAuthUserIdFromRequest } from '../_utils/supabaseServer.js'
+
+function isEnabled() {
+  return String(process.env.DEBUG_API_ENABLED || '').toLowerCase() === 'true'
+}
+
+function parseList(val) {
+  return String(val || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+}
 
 export default async function handler(req, res) {
   try {
+    if (!isEnabled()) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const supabase = getServiceSupabase()
+
+    let userId = null
+    try {
+      userId = await getAuthUserIdFromRequest(req, supabase)
+    } catch (e) {
+      res.status(401).json({ error: 'unauthorized' })
+      return
+    }
+
+    const allowIds = parseList(process.env.DEBUG_ADMIN_USER_IDS)
+    const allowEmails = parseList(process.env.DEBUG_ADMIN_EMAILS)
+
+    let isAdmin = false
+    try {
+      const { data: u } = await supabase.auth.admin.getUserById(userId)
+      const email = u?.user?.email || ''
+      if (allowIds.includes(userId)) isAdmin = true
+      if (email && allowEmails.find(x => x.toLowerCase() === email.toLowerCase())) isAdmin = true
+    } catch {}
+
+    if (!isAdmin) {
+      res.status(403).json({ error: 'forbidden' })
+      return
+    }
+
     const code = String(req.query?.code || '').trim()
     if (!code) {
       res.status(400).json({ error: 'missing code' })
       return
     }
-    const supabase = getServiceSupabase()
 
     const result = {
       host: null,
