@@ -792,7 +792,7 @@ Rules:
         const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
         const codeToken = tokenMatch ? tokenMatch[0] : null
         if (codeToken) {
-          const toolResult = await getTherapistAvailability({ therapistName: codeToken }, supabase)
+          const toolResult = await getTherapistAvailability({ therapistCode: codeToken }, supabase)
           if (toolResult) {
             return {
               success: true,
