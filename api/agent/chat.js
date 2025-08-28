@@ -12,9 +12,10 @@ export default async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const { tool, userMessage } = body
+    let tool = body.tool || 'chatWithTools'
+    let userMessage = body.userMessage ?? body.message ?? body.content ?? ''
 
-    if (!tool || !userMessage) {
+    if (!userMessage || typeof userMessage !== 'string') {
       res.status(400).json({ error: 'Missing required parameters' })
       return
     }
