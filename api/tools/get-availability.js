@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       .from('availability')
       .select('*')
       .eq('therapist_id', therapistProfileId)
-      .eq('is_booked', false)
+      .or('is_booked.is.null,is_booked.eq.false')
       .order('start_time', { ascending: true })
 
     if (startDate) q = q.gte('start_time', `${startDate}T00:00:00Z`)

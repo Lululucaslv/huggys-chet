@@ -491,7 +491,7 @@ async function getTherapistAvailability(args, supabase) {
       .from('availability')
       .select('id, therapist_id, start_time, end_time')
       .in('therapist_id', therapistIds)
-      .eq('is_booked', false)
+      .or('is_booked.is.null,is_booked.eq.false')
       .order('start_time', { ascending: true })
 
     if (startDate) {
@@ -627,7 +627,7 @@ async function createBooking(args, userId, supabase) {
       .from('availability')
       .select('id')
       .eq('therapist_id', therapist.id)
-      .eq('is_booked', false)
+      .or('is_booked.is.null,is_booked.eq.false')
       .lte('start_time', startTime.toISOString())
       .gte('end_time', endTime.toISOString())
       .single()
