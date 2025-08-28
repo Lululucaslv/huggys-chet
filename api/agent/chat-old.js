@@ -719,9 +719,7 @@ ${conversationHistory}
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
-      messages: [
-        { role: 'system', content: systemPrompt }
-      ],
+      messages: [],
       temperature: 0.3,
       max_tokens: 1000
     })

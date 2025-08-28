@@ -1124,6 +1124,19 @@ async function createBooking(params, userId, supabase) {
         .single()
       if (insErr || !inserted) return { success: false, error: (insErr && insErr.message) || '创建预约时发生错误' }
 
+      await supabase.from('chat_messages').insert({
+        booking_id: inserted.id,
+        user_id: String(userId),
+        role: 'system',
+        message: JSON.stringify({
+          type: 'BOOKING_SUCCESS',
+          bookingId: inserted.id,
+          therapistName: picked.name,
+          dateTime: params.dateTime,
+          durationMins: 60,
+          userId: String(userId)
+        })
+      })
       return {
         success: true,
         data: {
@@ -1135,6 +1148,19 @@ async function createBooking(params, userId, supabase) {
       }
     }
 
+    await supabase.from('chat_messages').insert({
+      booking_id: booking,
+      user_id: String(userId),
+      role: 'system',
+      message: JSON.stringify({
+        type: 'BOOKING_SUCCESS',
+        bookingId: booking,
+        therapistName: picked.name,
+        dateTime: params.dateTime,
+        durationMins: 60,
+        userId: String(userId)
+      })
+    })
     return {
       success: true,
       data: {
