@@ -83,8 +83,8 @@ export default async function handler(req, res) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
+      prompt: process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID,
       messages: [
-        { role: 'system', content: 'You are a concise clinical assistant that generates pre-session summaries.' },
         { role: 'user', content: `Create a brief pre-session summary for the therapist based on this transcript.\nInclude: key themes, risks, goals, coping strategies, suggested agenda.\nTranscript:\n${transcript}` }
       ],
       temperature: 0.3,

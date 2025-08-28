@@ -476,18 +476,16 @@ Rules:
 
   const conversationMessages = [
     {
-      role: 'system',
-      content: systemPrompt
-    },
-    {
       role: 'user',
       content: userMessage
     }
   ]
 
+  const promptId = isTherapist ? process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID : process.env.OPENAI_SYSTEM_PROMPT_ID
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
+      prompt: promptId,
       messages: conversationMessages,
       tools: (isTherapist ? therapistTools : clientTools),
       tool_choice: 'auto',
@@ -696,8 +694,8 @@ Rules:
                   const transcript = (msgs || []).reverse().map(m => `${m.role}: ${m.message}`).join('\n')
                   const completion = await openai2.chat.completions.create({
                     model: 'gpt-4o',
+                    prompt: process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID,
                     messages: [
-                      { role: 'system', content: 'You are a concise clinical assistant that generates pre-session summaries.' },
                       { role: 'user', content: `Create a brief pre-session summary for the therapist based on this transcript.\nInclude: key themes, risks, goals, coping strategies, suggested agenda.\nTranscript:\n${transcript}` }
                     ],
                     temperature: 0.3,
@@ -733,6 +731,7 @@ Rules:
 
       const secondCompletion = await openai.chat.completions.create({
         model: 'gpt-4o',
+        prompt: promptId,
         messages: toolMessages,
         temperature: 0.3,
         max_tokens: 500
@@ -794,6 +793,7 @@ Rules:
 
     const directCompletion = await openai.chat.completions.create({
       model: 'gpt-4o',
+      prompt: promptId,
       messages: conversationMessages,
       temperature: 0.3,
       max_tokens: 500
