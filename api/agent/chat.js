@@ -1167,14 +1167,31 @@ async function createBooking(params, userId, supabase) {
     })
 
     if (bookingError || !booking) {
-      const { data: updatedAvail, error: updErr } = await supabase
-        .from('availability')
-        .update({ is_booked: true, updated_at: new Date().toISOString() })
-        .eq('id', chosenAvailability.id)
-        .or('is_booked.is.null,is_booked.eq.false')
-        .select('id, therapist_id, start_time, end_time')
-        .single()
-      if (updErr || !updatedAvail) return { success: false, error: (updErr && updErr.message) || '创建预约时发生错误' }
+      let updatedAvail = null
+      {
+        const firstTry = await supabase
+          .from('availability')
+          .update({ is_booked: true, updated_at: new Date().toISOString() })
+          .eq('id', chosenAvailability.id)
+          .or('is_booked.is.null,is_booked.eq.false')
+          .select('id, therapist_id, start_time, end_time')
+          .single()
+        if (!firstTry.error && firstTry.data) {
+          updatedAvail = firstTry.data
+        } else {
+          const secondTry = await supabase
+            .from('availability')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', chosenAvailability.id)
+            .select('id, therapist_id, start_time, end_time')
+            .single()
+          if (!secondTry.error && secondTry.data) {
+            updatedAvail = secondTry.data
+          } else {
+            return { success: false, error: (firstTry.error && firstTry.error.message) || (secondTry.error && secondTry.error.message) || '创建预约时发生错误' }
+          }
+        }
+      }
 
       let therapistIdForBookings = null
       const { data: tByUser } = await supabase
