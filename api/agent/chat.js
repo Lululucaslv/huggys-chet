@@ -102,7 +102,7 @@ export default async function handler(req, res) {
           .from('availability')
           .select('id, start_time, end_time')
           .eq('therapist_id', profileId)
-          .eq('is_booked', false)
+          .or('is_booked.is.null,is_booked.eq.false')
           .order('start_time', { ascending: true })
         if (avErr) {
           res.status(200).json({ success: false, error: '查询可预约时间时发生错误' })
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
         .from('availability')
         .select('id, start_time, end_time')
         .eq('therapist_id', profileId)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
       if (avErr) {
         res.status(200).json({ success: false, error: '查询可预约时间时发生错误' })
@@ -554,7 +554,7 @@ Rules:
                 .from('availability')
                 .select('id, start_time, end_time')
                 .eq('therapist_id', therapistProfileId)
-                .eq('is_booked', false)
+                .or('is_booked.is.null,is_booked.eq.false')
                 .order('start_time', { ascending: true })
               if (startDate) q = q.gte('start_time', `${startDate}T00:00:00Z`)
               if (endDate) q = q.lte('start_time', `${endDate}T23:59:59Z`)
@@ -1013,7 +1013,7 @@ async function getTherapistAvailability(params, supabase) {
       .from('availability')
       .select('id, start_time, end_time')
       .eq('therapist_id', profileId)
-      .eq('is_booked', false)
+      .or('is_booked.is.null,is_booked.eq.false')
       .order('start_time', { ascending: true })
 
     if (params.startDate) q = q.gte('start_time', `${params.startDate}T00:00:00Z`)
@@ -1107,7 +1107,7 @@ async function createBooking(params, userId, supabase) {
         .eq('therapist_id', profileId)
         .gte('start_time', isoStart)
         .lt('start_time', isoEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .single()
       if (!error && data) chosenAvailability = data
     }
@@ -1121,7 +1121,7 @@ async function createBooking(params, userId, supabase) {
         .eq('therapist_id', profileId)
         .gte('start_time', rangeStart)
         .lte('start_time', rangeEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
       if (Array.isArray(nearAvail) && nearAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
@@ -1141,7 +1141,7 @@ async function createBooking(params, userId, supabase) {
         .eq('therapist_id', profileId)
         .gte('start_time', dayStart)
         .lte('start_time', dayEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
       if (Array.isArray(dayAvail) && dayAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
@@ -1170,7 +1170,7 @@ async function createBooking(params, userId, supabase) {
         .from('availability')
         .update({ is_booked: true, updated_at: new Date().toISOString() })
         .eq('id', chosenAvailability.id)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .select('id, therapist_id, start_time, end_time')
         .single()
       if (updErr || !updatedAvail) return { success: false, error: (updErr && updErr.message) || '创建预约时发生错误' }
