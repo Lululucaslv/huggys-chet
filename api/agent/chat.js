@@ -392,9 +392,13 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
         parameters: {
           type: 'object',
           properties: {
+            therapistCode: {
+              type: 'string',
+              description: '咨询师唯一代码（推荐优先使用），如 "8W79AL2B"'
+            },
             therapistName: {
               type: 'string',
-              description: '咨询师的姓名，如"Megan Chang"'
+              description: '咨询师的姓名，如"Megan Chang"（若没有代码时作为备选）'
             },
             startDate: {
               type: 'string',
@@ -404,8 +408,7 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
               type: 'string',
               description: '查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段'
             }
-          },
-          required: ['therapistName']
+          }
         }
       }
     },
@@ -417,9 +420,13 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
         parameters: {
           type: 'object',
           properties: {
+            therapistCode: {
+              type: 'string',
+              description: '咨询师唯一代码（推荐优先使用），如 "8W79AL2B"'
+            },
             therapistName: {
               type: 'string',
-              description: '咨询师的姓名，如"Megan Chang"'
+              description: '咨询师的姓名，如"Megan Chang"（若没有代码时作为备选）'
             },
             dateTime: {
               type: 'string',
@@ -431,7 +438,7 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
               default: 60
             }
           },
-          required: ['therapistName', 'dateTime']
+          required: ['dateTime']
         }
       }
     }
@@ -506,6 +513,13 @@ Rules:
         try {
           const functionName = toolCall.function.name
           const functionArgs = JSON.parse(toolCall.function.arguments)
+
+          if ((functionName === 'getTherapistAvailability' || functionName === 'createBooking')) {
+            if (!functionArgs.therapistCode) {
+              const tokenMatch = String(userMessage || '').toUpperCase().match(/[A-Z0-9]{6,12}/)
+              if (tokenMatch) functionArgs.therapistCode = tokenMatch[0]
+            }
+          }
 
           let toolResult
           if (functionName === 'getTherapistAvailability') {
@@ -940,27 +954,58 @@ async function getUserProfileIdByUserId(supabase, userId) {
 
 async function getTherapistAvailability(params, supabase) {
   try {
-    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
-    const matches = resolved.matches || []
-    if (matches.length === 0) {
-      const debugTokens = String(params.therapistName || '')
-        .toUpperCase()
-        .match(/[A-Z0-9]{6,12}/g) || []
-      let counts = ''
-      if (debugTokens.length > 0) {
-        const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
-        const hostPart = c.host ? ` host:${c.host}` : ''
-        const errPart = c.error ? ` err:${c.error}` : ''
-        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+    let picked = null
+
+    if (params.therapistCode) {
+      const code = String(params.therapistCode).toUpperCase()
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .eq('code', code)
+          .limit(1)
+        if (Array.isArray(data) && data.length > 0) {
+          picked = data[0]
+        }
+      } catch {}
+      if (!picked) {
+        try {
+          const { data } = await supabase
+            .from('therapists')
+            .select('user_id, name, verified, code')
+            .ilike('code', code)
+            .limit(1)
+          if (Array.isArray(data) && data.length > 0) {
+            picked = data[0]
+          }
+        } catch {}
       }
-      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
-      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师，请确认姓名或从列表中选择${hint}` }
     }
-    if (matches.length > 1) {
-      const names = matches.map(m => m.name).join(', ')
-      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
+
+    if (!picked) {
+      const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+      const matches = resolved.matches || []
+      if (matches.length === 0) {
+        const debugTokens = String(params.therapistName || '')
+          .toUpperCase()
+          .match(/[A-Z0-9]{6,12}/g) || []
+        let counts = ''
+        if (debugTokens.length > 0) {
+          const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+          const hostPart = c.host ? ` host:${c.host}` : ''
+          const errPart = c.error ? ` err:${c.error}` : ''
+          counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+        }
+        const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
+        return { success: false, error: `未找到指定的咨询师，请提供咨询师代码或更准确的姓名${hint}` }
+      }
+      if (matches.length > 1) {
+        const names = matches.map(m => m.name).join(', ')
+        return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名或提供代码` }
+      }
+      picked = matches[0]
     }
-    const picked = matches[0]
+
     const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
     if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
 
@@ -998,27 +1043,54 @@ async function getTherapistAvailability(params, supabase) {
 
 async function createBooking(params, userId, supabase) {
   try {
-    const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
-    const matches = resolved.matches || []
-    if (matches.length === 0) {
-      const debugTokens = String(params.therapistName || '')
-        .toUpperCase()
-        .match(/[A-Z0-9]{6,12}/g) || []
-      let counts = ''
-      if (debugTokens.length > 0) {
-        const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
-        const hostPart = c.host ? ` host:${c.host}` : ''
-        const errPart = c.error ? ` err:${c.error}` : ''
-        counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+    let picked = null
+
+    if (params.therapistCode) {
+      const code = String(params.therapistCode).toUpperCase()
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .eq('code', code)
+          .limit(1)
+        if (Array.isArray(data) && data.length > 0) picked = data[0]
+      } catch {}
+      if (!picked) {
+        try {
+          const { data } = await supabase
+            .from('therapists')
+            .select('user_id, name, verified, code')
+            .ilike('code', code)
+            .limit(1)
+          if (Array.isArray(data) && data.length > 0) picked = data[0]
+        } catch {}
       }
-      const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
-      return { success: false, error: `未找到名为 "${params.therapistName}" 的咨询师${hint}` }
     }
-    if (matches.length > 1) {
-      const names = matches.map(m => m.name).join(', ')
-      return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名` }
+
+    if (!picked) {
+      const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+      const matches = resolved.matches || []
+      if (matches.length === 0) {
+        const debugTokens = String(params.therapistName || '')
+          .toUpperCase()
+          .match(/[A-Z0-9]{6,12}/g) || []
+        let counts = ''
+        if (debugTokens.length > 0) {
+          const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+          const hostPart = c.host ? ` host:${c.host}` : ''
+          const errPart = c.error ? ` err:${c.error}` : ''
+          counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+        }
+        const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
+        return { success: false, error: `未找到指定的咨询师，请提供咨询师代码或更准确的姓名${hint}` }
+      }
+      if (matches.length > 1) {
+        const names = matches.map(m => m.name).join(', ')
+        return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名或提供代码` }
+      }
+      picked = matches[0]
     }
-    const picked = matches[0]
+
     const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
     if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
 
