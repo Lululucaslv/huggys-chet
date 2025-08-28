@@ -208,22 +208,52 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
       </CardHeader>
       <CardContent className="flex-1 min-h-0 flex flex-col p-0">
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 pb-24" id="chat-scroll-area">
-          {messages.map((message: any) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+          {messages.map((message: any) => {
+            let summary: any = null
+            try {
+              const obj = typeof message.content === 'string' ? JSON.parse(message.content) : null
+              if (obj && obj.type === 'SESSION_SUMMARY') summary = obj
+            } catch {}
+            if (summary) {
+              const sections = Array.isArray(summary.payload?.sections) ? summary.payload.sections : []
+              return (
+                <div key={message.id} className="flex justify-start">
+                  <div className="max-w-[80%] p-3 rounded-lg bg-gray-100 text-gray-900">
+                    <div className="space-y-2">
+                      {sections.map((s: any, i: number) => (
+                        <div key={i} className="rounded-lg border p-3">
+                          <div className="text-sm font-semibold">{s.title}</div>
+                          <ul className="mt-2 space-y-1">
+                            {(s.items || []).map((it: any, j: number) => (
+                              <li key={j} className="text-sm text-muted-foreground">
+                                {typeof it === 'string' ? it : JSON.stringify(it).slice(0, 240)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+            return (
               <div
-                className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
-                  message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {message.content}
+                <div
+                  className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                    message.role === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  {message.content}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           {(status === 'streaming' || status === 'submitted') && (
             <div className="flex justify-start">
               <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">

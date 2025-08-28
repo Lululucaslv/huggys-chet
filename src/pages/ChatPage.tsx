@@ -6,6 +6,8 @@ import { UserProfileUpdater } from '../lib/userProfileUpdater'
 import { Send, Loader2, Camera } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { TimeConfirmCard } from '../components/chat/TimeConfirmCard'
+
 
 interface ChatMessage {
   id: string
@@ -387,37 +389,77 @@ export default function ChatPage({ session }: ChatPageProps) {
                   </div>
                 </div>
               </div>
+
             )}
             
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm">🤗</span>
-                  </div>
-                )}
+            {messages.map((message) => {
+              try {
+                const obj = JSON.parse(message.content || '')
+                if (obj && obj.type === 'TIME_CONFIRM') {
+                  const p = obj.payload || {}
+                  return (
+                    <div key={message.id} className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-sm">🤗</span>
+                      </div>
+                      <div className="max-w-[75%]">
+                        <TimeConfirmCard
+                          therapist={p.therapist}
+                          date={p.date || null}
+                          startTime={p.startTime || null}
+                          endTime={p.endTime || null}
+                          timezone={p.timezone || null}
+                          candidates={Array.isArray(p.candidates) ? p.candidates : []}
+                          onConfirm={(sel: any) => {
+                            const date = sel?.date || p.date || null
+                            const startTime = sel?.startTime || p.startTime || null
+                            const endTime = sel?.endTime || p.endTime || null
+                            const timezone = p.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+                            const payload = {
+                              type: 'USER_CONFIRM_TIME',
+                              payload: { therapist: p.therapist, date, startTime, endTime, timezone }
+                            }
+                            setInputMessage(JSON.stringify(payload))
+                            sendMessage()
+                          }}
+                          onCancel={() => {}}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
+              } catch {}
+              return (
                 <div
-                  className={`max-w-[75%] px-6 py-4 rounded-2xl ${
-                    message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-gray-700 text-white rounded-bl-md'
-                  }`}
-                  style={{
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                  }}
+                  key={message.id}
+                  className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
-                  {message.content}
-                </div>
-                {message.role === 'user' && (
-                  <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm">👤</span>
+                  {message.role === 'assistant' && (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm">🤗</span>
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] px-6 py-4 rounded-2xl ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white rounded-br-md'
+                        : 'bg-gray-700 text-white rounded-bl-md'
+                    }`}
+                    style={{
+                      fontFamily:
+                        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                    }}
+                  >
+                    {message.content}
                   </div>
-                )}
-              </div>
-            ))}
+                  {message.role === 'user' && (
+                    <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm">👤</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             
             {isTyping && (
               <div className="flex items-start gap-4">
