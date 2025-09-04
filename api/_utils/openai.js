@@ -2,7 +2,7 @@ import OpenAI from 'openai'
 
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-export async function respondWithPromptId(model, promptIdEnv, userContent) {
+export async function respondWithPromptId(model, promptIdEnv, userContent, opts = {}) {
   const promptId = process.env[promptIdEnv]
   if (!promptId) throw new Error(`Missing ${promptIdEnv}`)
   const input = [
@@ -18,6 +18,7 @@ export async function respondWithPromptId(model, promptIdEnv, userContent) {
     model,
     prompt: { id: promptId },
     input,
+    max_output_tokens: typeof opts.max_output_tokens === 'number' ? opts.max_output_tokens : 1024,
   })
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore

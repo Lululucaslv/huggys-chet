@@ -196,9 +196,30 @@ export default async function handler(req, res) {
       return
     }
 
+    try {
+      await serviceSupabase.from('ai_logs').insert({
+        scope: 'chat',
+        ok: true,
+        model: 'gpt-5',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+        payload: JSON.stringify({ userId, tool, userMessage: String(userMessage || '').slice(0, 500) }),
+        output: JSON.stringify(result).slice(0, 4000)
+      })
+    } catch {}
     const result = await handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase)
     res.status(200).json(result)
   } catch (error) {
+    try {
+      const serviceSupabase = getServiceSupabase()
+      await serviceSupabase.from('ai_logs').insert({
+        scope: 'chat',
+        ok: false,
+        model: 'gpt-5',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+        payload: JSON.stringify({ userId: null, tool: null, userMessage: String((req && req.body && (req.body.userMessage || req.body.message || req.body.content)) || '').slice(0, 500) }),
+        error: String(error && error.message ? error.message : error)
+      })
+    } catch {}
     res.status(500).json({ error: 'Internal server error', details: error.message })
   }
   try {

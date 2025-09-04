@@ -40,14 +40,57 @@ export default async function handler(req, res) {
       chatHistory,
     }
 
+    let text = ''
     try {
-      const text = await respondWithPromptId('gpt-5', 'OPENAI_SYSTEM_PROMPT_THERAPIST_ID', payload)
-      res.status(200).json({ text })
-    } catch (err) {
-      const text = await fallbackChatCompletion('gpt-5', 'OPENAI_SYSTEM_PROMPT_THERAPIST', JSON.stringify(payload))
-      res.status(200).json({ text, fallback: true })
+      text = await respondWithPromptId('gpt-5', 'OPENAI_SYSTEM_PROMPT_THERAPIST_ID', payload, { max_output_tokens: 2048 })
+    } catch {
+      const fb = await fallbackChatCompletion('gpt-5', 'OPENAI_SYSTEM_PROMPT_THERAPIST', JSON.stringify(payload))
+      text = fb || ''
     }
+
+    let summary
+    try {
+      summary = JSON.parse(text)
+    } catch {
+      summary = {
+        type: 'SESSION_SUMMARY',
+        bookingId: booking.id,
+        therapistCode: booking.therapist_code,
+        clientName: '',
+        sessionTimeUTC: booking.start_utc,
+        sessionTimeDisplayTZ: 'UTC',
+        concerns: [],
+        riskSignals: [],
+        goals: [],
+        suggestedQuestions: [],
+        copingStrategies: [],
+      }
+    }
+
+    try {
+      await supabase.from('ai_logs').insert({
+        scope: 'summary',
+        ok: true,
+        model: 'gpt-5',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID || null,
+        payload: JSON.stringify(payload),
+        output: text,
+      })
+    } catch {}
+
+    res.status(200).json({ summary })
   } catch (e) {
+    try {
+      const supabase = getServiceSupabase()
+      await supabase.from('ai_logs').insert({
+        scope: 'summary',
+        ok: false,
+        model: 'gpt-5',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID || null,
+        payload: JSON.stringify({ bookingId: String(req.query.bookingId || '') }),
+        error: e?.message || String(e),
+      })
+    } catch {}
     res.status(500).json({ error: e.message || 'summary failed' })
   }
 }
