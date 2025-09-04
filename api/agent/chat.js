@@ -196,16 +196,6 @@ export default async function handler(req, res) {
       return
     }
 
-    try {
-      await serviceSupabase.from('ai_logs').insert({
-        scope: 'chat',
-        ok: true,
-        model: 'gpt-5',
-        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
-        payload: JSON.stringify({ userId, tool, userMessage: String(userMessage || '').slice(0, 500) }),
-        output: JSON.stringify(result).slice(0, 4000)
-      })
-    } catch {}
     const fallback =
       '抱歉，查询有点慢。我先给你两种选择：\n' +
       '1) 换一个时间范围（例如“本周末下午”），我再查一次；\n' +
@@ -215,6 +205,16 @@ export default async function handler(req, res) {
       handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase),
       new Promise((resolve, reject) => setTimeout(() => reject(new Error('chat_timeout')), TIMEOUT_MS)),
     ])
+    try {
+      await serviceSupabase.from('ai_logs').insert({
+        scope: 'chat',
+        ok: true,
+        model: 'gpt-4o',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+        payload: JSON.stringify({ userId, tool, userMessage: String(userMessage || '').slice(0, 500) }),
+        output: JSON.stringify(result).slice(0, 4000)
+      })
+    } catch {}
     res.status(200).json(result)
   } catch (error) {
     const fb =
@@ -232,7 +232,13 @@ export default async function handler(req, res) {
         error: String(error && error.message ? error.message : error)
       })
     } catch {}
-    res.status(200).json({ text: fb, fallback: true })
+    res.status(200).json({
+      success: true,
+      content: fb,
+      toolCalls: [],
+      toolResults: [],
+      fallback: true
+    })
   }
   try {
     const maybeObj = JSON.parse(userMessage || '{}')
