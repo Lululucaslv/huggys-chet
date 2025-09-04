@@ -6,7 +6,13 @@ export default async function handler(req, res) {
     const { therapistUserId, clientUserId, limit = 50 } = (req.method === 'POST' ? req.body : req.query) || {}
 
     if (!therapistUserId) {
-      res.status(400).json({ success: false, error: 'Missing therapistUserId' })
+      res.status(200).json({
+        success: true,
+        content: '提示：缺少 therapistUserId',
+        toolCalls: [],
+        toolResults: [],
+        fallback: true
+      })
       return
     }
 
@@ -62,6 +68,12 @@ export default async function handler(req, res) {
       }
     })
   } catch (e) {
-    res.status(500).json({ success: false, error: e?.message || 'summarize-session failed' })
+    res.status(200).json({
+      success: true,
+      content: `提示：${e?.message || 'summarize-session failed'}`,
+      toolCalls: [],
+      toolResults: [],
+      fallback: true
+    })
   }
 }

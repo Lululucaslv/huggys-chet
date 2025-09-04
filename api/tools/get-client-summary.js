@@ -94,7 +94,13 @@ export default async function handler(req, res) {
     const content = completion.choices[0]?.message?.content || 'No summary available.'
     res.status(200).json({ success: true, data: { clientUserId, summary: content } })
   } catch (e) {
-    const code = e.code || 400
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error' })
+    const message = e && e.message ? String(e.message) : '请求失败，请稍后重试'
+    res.status(200).json({
+      success: true,
+      content: `工具返回错误：${message}`,
+      toolCalls: [],
+      toolResults: [],
+      fallback: true
+    })
   }
 }

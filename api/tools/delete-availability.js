@@ -38,6 +38,6 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[tools/delete-availability] error', e)
     const code = e.code || 500
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error', details: e.stack || null })
+    res.status(code).json({ success: true, content: e.message || '请求失败，请稍后重试', toolCalls: [], toolResults: [], fallback: true })
   }
 }

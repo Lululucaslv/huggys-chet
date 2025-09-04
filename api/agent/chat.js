@@ -82,20 +82,38 @@ export default async function handler(req, res) {
         const timezone = payload.timezone || null
 
         if (!therapistName || !date || !startTime || !timezone) {
-          res.status(200).json({ success: false, error: '缺少必要的确认参数' })
+          res.status(200).json({
+            success: true,
+            content: '提示：缺少必要的确认参数',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
           return
         }
 
         const resolved = await resolveTherapistByNameOrPrefix(supabase, therapistName)
         const matches = resolved.matches || []
         if (matches.length === 0) {
-          res.status(200).json({ success: false, error: `未找到咨询师：${therapistName}` })
+          res.status(200).json({
+            success: true,
+            content: `工具返回错误：未找到咨询师：${therapistName}`,
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
           return
         }
         const picked = matches[0]
         const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
         if (!profileId) {
-          res.status(200).json({ success: false, error: '未找到该咨询师的档案' })
+          res.status(200).json({
+            success: true,
+            content: '工具返回错误：未找到该咨询师的档案',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
           return
         }
 
@@ -106,7 +124,13 @@ export default async function handler(req, res) {
           .or('is_booked.is.null,is_booked.eq.false')
           .order('start_time', { ascending: true })
         if (avErr) {
-          res.status(200).json({ success: false, error: '查询可预约时间时发生错误' })
+          res.status(200).json({
+            success: true,
+            content: '工具返回错误：查询可预约时间时发生错误',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
           return
         }
 
@@ -142,7 +166,13 @@ export default async function handler(req, res) {
         }
 
         if (!pickedIso) {
-          res.status(200).json({ success: false, error: '未找到与所选本地时间匹配的可预约时段' })
+          res.status(200).json({
+            success: true,
+            content: '提示：未找到与所选本地时间匹配的可预约时段',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
           return
         }
 
@@ -161,10 +191,11 @@ export default async function handler(req, res) {
           return
         }
         res.status(200).json({
-          success: false,
-          error: (directResult && directResult.error) || '创建预约失败',
+          success: true,
+          content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
           toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
-          toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }]
+          toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }],
+          fallback: true
         })
         return
       }
@@ -188,10 +219,11 @@ export default async function handler(req, res) {
         return
       }
       res.status(200).json({
-        success: false,
-        error: (directResult && directResult.error) || '创建预约失败',
+        success: true,
+        content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
         toolCalls: [{ id: 'direct-createBooking', name: 'createBooking' }],
-        toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }]
+        toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }],
+        fallback: true
       })
       return
     }
@@ -254,20 +286,38 @@ export default async function handler(req, res) {
       const timezone = payload.timezone || null
 
       if (!therapistName || !date || !startTime || !timezone) {
-        res.status(200).json({ success: false, error: '缺少必要的确认参数' })
+        res.status(200).json({
+          success: true,
+          content: '提示：缺少必要的确认参数',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
         return
       }
 
       const resolved = await resolveTherapistByNameOrPrefix(supabase, therapistName)
       const matches = resolved.matches || []
       if (matches.length === 0) {
-        res.status(200).json({ success: false, error: `未找到咨询师：${therapistName}` })
+        res.status(200).json({
+          success: true,
+          content: `工具返回错误：未找到咨询师：${therapistName}`,
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
         return
       }
       const picked = matches[0]
       const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
       if (!profileId) {
-        res.status(200).json({ success: false, error: '未找到该咨询师的档案' })
+        res.status(200).json({
+          success: true,
+          content: '工具返回错误：未找到该咨询师的档案',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
         return
       }
 
@@ -278,7 +328,13 @@ export default async function handler(req, res) {
         .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
       if (avErr) {
-        res.status(200).json({ success: false, error: '查询可预约时间时发生错误' })
+        res.status(200).json({
+          success: true,
+          content: '工具返回错误：查询可预约时间时发生错误',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
         return
       }
 
@@ -314,7 +370,13 @@ export default async function handler(req, res) {
       }
 
       if (!pickedIso) {
-        res.status(200).json({ success: false, error: '未找到与所选本地时间匹配的可预约时段' })
+        res.status(200).json({
+          success: true,
+          content: '提示：未找到与所选本地时间匹配的可预约时段',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
         return
       }
 
@@ -333,10 +395,11 @@ export default async function handler(req, res) {
         return
       }
       res.status(200).json({
-        success: false,
-        error: (directResult && directResult.error) || '创建预约失败',
+        success: true,
+        content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
         toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
-        toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }]
+        toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }],
+        fallback: true
       })
       return
     }
