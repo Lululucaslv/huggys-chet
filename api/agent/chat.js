@@ -206,21 +206,33 @@ export default async function handler(req, res) {
         output: JSON.stringify(result).slice(0, 4000)
       })
     } catch {}
-    const result = await handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase)
+    const fallback =
+      '抱歉，查询有点慢。我先给你两种选择：\n' +
+      '1) 换一个时间范围（例如“本周末下午”），我再查一次；\n' +
+      '2) 告诉我偏好的咨询师或时区，我用这个条件来筛选。'
+    const TIMEOUT_MS = 12000
+    const result = await Promise.race([
+      handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase),
+      new Promise((resolve, reject) => setTimeout(() => reject(new Error('chat_timeout')), TIMEOUT_MS)),
+    ])
     res.status(200).json(result)
   } catch (error) {
+    const fb =
+      '抱歉，查询有点慢。我先给你两种选择：\n' +
+      '1) 换一个时间范围（例如“本周末下午”），我再查一次；\n' +
+      '2) 告诉我偏好的咨询师或时区，我用这个条件来筛选。'
     try {
       const serviceSupabase = getServiceSupabase()
       await serviceSupabase.from('ai_logs').insert({
         scope: 'chat',
         ok: false,
-        model: 'gpt-5',
+        model: 'gpt-4o',
         prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
         payload: JSON.stringify({ userId: null, tool: null, userMessage: String((req && req.body && (req.body.userMessage || req.body.message || req.body.content)) || '').slice(0, 500) }),
         error: String(error && error.message ? error.message : error)
       })
     } catch {}
-    res.status(500).json({ error: 'Internal server error', details: error.message })
+    res.status(200).json({ text: fb, fallback: true })
   }
   try {
     const maybeObj = JSON.parse(userMessage || '{}')
