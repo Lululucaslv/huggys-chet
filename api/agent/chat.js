@@ -831,17 +831,24 @@ Rules:
         const upper = String(userMessage || '').toUpperCase()
         const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
         const codeToken = tokenMatch ? tokenMatch[0] : null
+
+        let toolResult = null
         if (codeToken) {
-          const toolResult = await getTherapistAvailability({ therapistCode: codeToken }, supabase)
-          if (toolResult) {
-            return {
-              success: true,
-              content: toolResult.success
-                ? `已为您找到可预约时间，共 ${Array.isArray(toolResult.data?.availableSlots) ? toolResult.data.availableSlots.length : 0} 个。`
-                : `工具返回错误：${toolResult.error || '查询失败'}`,
-              toolCalls: [{ id: 'fallback', name: 'getTherapistAvailability' }],
-              toolResults: [{ id: 'fallback', name: 'getTherapistAvailability', result: toolResult }]
-            }
+          toolResult = await getTherapistAvailability({ therapistCode: codeToken }, supabase)
+        } else {
+          const defaultCode = process.env.THERAPIST_DEFAULT_CODE || null
+          const defaultName = process.env.THERAPIST_DEFAULT_NAME || 'Megan Chang'
+          const params = defaultCode ? { therapistCode: defaultCode } : { therapistName: defaultName }
+          toolResult = await getTherapistAvailability(params, supabase)
+        }
+        if (toolResult) {
+          return {
+            success: true,
+            content: toolResult.success
+              ? `已为您找到可预约时间，共 ${Array.isArray(toolResult.data?.availableSlots) ? toolResult.data.availableSlots.length : 0} 个。`
+              : `工具返回错误：${toolResult.error || '查询失败'}`,
+            toolCalls: [{ id: 'fallback', name: 'getTherapistAvailability' }],
+            toolResults: [{ id: 'fallback', name: 'getTherapistAvailability', result: toolResult }]
           }
         }
       } catch {}

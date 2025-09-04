@@ -164,8 +164,14 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           onAfterToolAction()
         }
       } else {
-        const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
-        setError(new Error(errMsg))
+        const assistantText =
+          (data && (data.content || data.text)) ? String(data.content || data.text) : ''
+        if (assistantText) {
+          setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
+        } else {
+          const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
+          setError(new Error(errMsg))
+        }
       }
     } catch (e: any) {
       setError(e instanceof Error ? e : new Error(String(e)))
