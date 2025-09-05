@@ -900,7 +900,7 @@ Rules:
           toolResult = await getTherapistAvailability({ therapistCode: codeToken }, supabase)
         } else {
           const defaultCode = process.env.THERAPIST_DEFAULT_CODE || null
-          const defaultName = process.env.THERAPIST_DEFAULT_NAME || 'Megan Chang'
+          const defaultName = process.env.THERAPIST_DEFAULT_NAME || 'Hanqi Lyu'
           const params = defaultCode ? { therapistCode: defaultCode } : { therapistName: defaultName }
           toolResult = await getTherapistAvailability(params, supabase)
         }
