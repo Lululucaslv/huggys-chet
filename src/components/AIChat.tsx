@@ -158,7 +158,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 parts.push(t('tool_error', { error: tr.result.error }))
               }
             }
-            if (parts.length > 0) {
+            if (!assistantText && parts.length > 0) {
               assistantText = parts.join(' ')
             }
           } catch {}
