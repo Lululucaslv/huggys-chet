@@ -141,6 +141,19 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 } else {
                   setSlotOptions(null)
                 }
+              } else if (tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options)) {
+                const slots = tr.options.map((opt: any) => ({
+                  id: opt.availabilityId,
+                  startTime: opt.startUTC,
+                  endTime: opt.endUTC
+                })).filter((s: any) => s.startTime)
+                const displayName = getSafeDisplayName(session, userProfile, t)
+                parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
+                if (slots.length > 0) {
+                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
+                } else {
+                  setSlotOptions(null)
+                }
               } else if (tr?.result?.error) {
                 parts.push(t('tool_error', { error: tr.result.error }))
               }
