@@ -69,6 +69,124 @@ export default async function handler(req, res) {
     const isTherapist = String(profile.life_status || '').toLowerCase() === 'therapist'
     console.log('[agent/chat] auth resolved', { userId, life_status: profile.life_status, isTherapist })
     try {
+      const lang = 'zh-CN'
+      const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || '8W79AL2B'
+
+      const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+      try {
+        const { data: recentSystem } = await serviceSupabase
+          .from('chats')
+          .select('id, content, created_at')
+          .eq('user_id', userId)
+          .eq('role', 'system')
+          .gte('created_at', twoHoursAgo)
+          .order('created_at', { ascending: false })
+          .limit(5)
+        const hasRecentBooking = (recentSystem || []).some(r => {
+          try { const j = JSON.parse(r.content || ''); return j && j.type === 'BOOKING_SUCCESS' } catch { return false }
+        })
+        if (hasRecentBooking) {
+          const text = lang.startsWith('zh')
+            ? '已为您确认预约。如需改期或再次预约，请告诉我新的时间范围或偏好。'
+            : 'Your booking is confirmed. Tell me a new time window if you want to reschedule or book another session.'
+          try {
+            await serviceSupabase.from('ai_logs').insert({
+              scope: 'chat', ok: true, model: 'gpt-4o',
+              prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+              output: JSON.stringify({ suppress: true })
+            })
+          } catch {}
+          res.status(200).json({ success: true, content: text, toolCalls: [], toolResults: [] })
+          return
+        }
+      } catch {}
+
+      const code = DEFAULT_CODE
+      const nowISO = new Date().toISOString()
+      const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString()
+      let list = []
+      try {
+        const { data: slots, error: availErr } = await serviceSupabase
+          .from('therapist_availability')
+          .select('id, therapist_code, start_utc, end_utc, status')
+          .eq('status', 'open')
+          .eq('therapist_code', code)
+          .gt('start_utc', nowISO)
+          .lt('start_utc', in72hISO)
+          .order('start_utc', { ascending: true })
+          .limit(8)
+        if (availErr) { /* noop */ }
+        list = (slots || []).map(s => ({
+          availabilityId: s.id,
+          therapistCode: s.therapist_code || code,
+          startUTC: s.start_utc,
+          endUTC: s.end_utc
+        }))
+      } catch {}
+
+      if (list.length) {
+        const text = lang.startsWith('zh')
+          ? `已为您找到 ${list.length} 个可预约时间，请选择：`
+          : `I found ${list.length} available time slots. Please pick one:`
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: true, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            output: JSON.stringify({ time_confirm: list.length })
+          })
+        } catch {}
+        res.status(200).json({
+          success: true,
+          content: text,
+          toolCalls: [],
+          toolResults: [{ type: 'TIME_CONFIRM', options: list }]
+        })
+        return
+      }
+
+      const payload = {
+        message: userMessage,
+        context: { browserTz: 'UTC', therapistCode: code, availability: [], availabilityCount: 0, lang }
+      }
+      try {
+        const resp = await openai.responses.create(
+          {
+            model: 'gpt-4o',
+            prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
+            input: [{ role: 'user', content: JSON.stringify(payload) }]
+          },
+          { timeout: 12000 }
+        )
+        // @ts-ignore
+        const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? '')
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: true, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            payload: JSON.stringify(payload).slice(0, 4000),
+            output: String(text || '').slice(0, 4000)
+          })
+        } catch {}
+        res.status(200).json({ success: true, content: text || '好的，我在这。请告诉我你更偏好的时间范围，我再帮你查。', toolCalls: [], toolResults: [] })
+        return
+      } catch (e) {
+        const fb = lang.startsWith('zh')
+          ? '抱歉，查询有点慢。您可换一个时间范围（例如“本周末下午”），或告诉我偏好的时区/咨询师，我再查一次。'
+          : 'Sorry, it’s a bit slow. Please try another time window or share your preferred timezone/therapist.'
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: false, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            payload: JSON.stringify(payload).slice(0, 4000),
+            error: String(e && e.message ? e.message : e)
+          })
+        } catch {}
+        res.status(200).json({ success: true, content: fb, toolCalls: [], toolResults: [], fallback: true })
+        return
+      }
+    } catch (e) {
+    }
+    try {
       const maybeObj = JSON.parse(userMessage || '{}')
       if (maybeObj && maybeObj.type === 'USER_CONFIRM_TIME') {
         const payload = maybeObj.payload || {}
