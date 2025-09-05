@@ -109,6 +109,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
         if (Array.isArray(data.toolResults)) {
           try {
             const parts: string[] = []
+            let hasTimeConfirm = false
             for (const tr of data.toolResults) {
               if (tr?.name === 'getAvailability' && tr.result?.success) {
                 const arr = Array.isArray(tr.result.data) ? tr.result.data : []
@@ -154,11 +155,14 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 } else {
                   setSlotOptions(null)
                 }
+                hasTimeConfirm = true
               } else if (tr?.result?.error) {
                 parts.push(t('tool_error', { error: tr.result.error }))
               }
             }
-            if (!assistantText && parts.length > 0) {
+            if (hasTimeConfirm && parts.length > 0) {
+              assistantText = parts.join(' ')
+            } else if (!assistantText && parts.length > 0) {
               assistantText = parts.join(' ')
             }
           } catch {}
