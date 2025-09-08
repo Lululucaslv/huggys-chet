@@ -1,32 +1,28 @@
-export async function sendChat({ userId, messages }) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15 秒超时保护
+// src/utils/api.js
+export async function sendChat({ userMessage, userId, therapistCode, browserTz }) {
+  const r = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userMessage, userId, therapistCode, browserTz })
+  });
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, message: messages[messages.length - 1]?.content }),
-      signal: controller.signal,
-    });
+  let data = {};
+  try { data = await r.json(); } catch {}
 
-    clearTimeout(timeout);
+  const content =
+    typeof data.content === "string" ? data.content :
+    typeof data.text === "string" ? data.text : "";
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("GPT 接口返回错误：", errorText);
-      throw new Error("服务器错误，请稍后重试");
-    }
+  const toolResults = Array.isArray(data.toolResults)
+    ? data.toolResults
+    : Array.isArray(data.blocks)
+    ? data.blocks
+    : [];
 
-    const data = await res.json();
-    return {
-      reply: {
-        role: "assistant",
-        content: data.response
-      }
-    };
-  } catch (err) {
-    console.error("发送 GPT 消息失败：", err);
-    throw new Error("连接 GPT 接口失败");
-  }
+  return {
+    success: data.success === true || !!content,
+    content,
+    toolResults,
+    raw: data
+  };
 }
