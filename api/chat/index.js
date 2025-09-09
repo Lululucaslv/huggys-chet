@@ -1,12 +1,15 @@
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false } }
-);
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
 
@@ -37,6 +40,7 @@ function isBookingIntent(text = "") {
 }
 
 async function resolveTherapistFromText(text) {
+  const supabase = getSupabase();
   const raw = String(text || "").toLowerCase().trim();
   if (!raw) return null;
 
@@ -62,6 +66,7 @@ async function resolveTherapistFromText(text) {
 }
 
 async function fetchSlotsWithNames(code, limit = 8) {
+  const supabase = getSupabase();
   const nowISO = new Date().toISOString();
   const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
 
