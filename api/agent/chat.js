@@ -1,3 +1,5 @@
+import chatHandler from '../chat/index.js'
+
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId } from '../_utils/supabaseServer.js'
@@ -5,6 +7,8 @@ import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId
 export const runtime = 'nodejs'
 
 export default async function handler(req, res) {
+  return await chatHandler(req, res)
+
   try {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' })
