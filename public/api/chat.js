@@ -30,8 +30,8 @@ const SYSTEM_PROMPT_USER = `
 /* ===== 收紧的预约意图 ===== */
 function isBookingIntent(text = "") {
   const t = String(text || "").toLowerCase();
-  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用时间|可用|空档|空闲|空余|空位|时段|看.*时段|找)/;
-  const zhTime = /(时间(段|点)?|今天|明天|后天|这周|下周|周[一二三四五六日天]|上午|下午|晚上|\d{1,2}点|\d{1,2}:\d{2})/;
+  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用时间|可用|空档|空闲|空余|空位|时段|看.*时段|找|时间安排|排期)/;
+  const zhTime = /(时间(段|点)?|今天|明天|后天|这周|本周|下周|周[一二三四五六日天]|上午|下午|晚上|\d{1,2}点|\d{1,2}:\d{2})/;
   const enBook = /\b(book|booking|schedule|reschedule|slot|availability|available|find)\b/;
   const enTime = /\b(today|tomorrow|tonight|this week|next week|morning|afternoon|evening|am|pm|\d{1,2}(:\d{2})?\s?(am|pm)?)\b/;
   const strong = /(预约|booking)/.test(t);
@@ -182,7 +182,12 @@ export default async function handler(req, res) {
 
   try {
     const greetings = /(你好|您好|hello|hi|嗨|在吗|hey)/i;
-    const wantBooking = isBookingIntent(userMessage) && !greetings.test(userMessage);
+    let wantBooking = isBookingIntent(userMessage) && !greetings.test(userMessage);
+
+    if (!wantBooking) {
+      const findTherapistHard = /(找|约)\s*([a-z\u4e00-\u9fa5\. ]+)/i.test(String(userMessage) || "");
+      if (findTherapistHard && !greetings.test(userMessage)) wantBooking = true;
+    }
 
     if (wantBooking) {
       let resolved = null;
@@ -211,6 +216,14 @@ export default async function handler(req, res) {
 
       try {
         await logAILine("chat", {
+    try {
+      await logAILine("chat", {
+        ok: true,
+        model: "none",
+        payload: { wantBooking: false, text: userMessage }
+      });
+    } catch {}
+
           ok: true,
           model: "none",
           payload: { wantBooking: true, resolvedCode: code, requestedCode: therapistCode || null, optionsForCode: options.length, optionsFinal: 0 }
