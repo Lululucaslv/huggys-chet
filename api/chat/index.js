@@ -79,14 +79,24 @@ async function fetchSlotsWithNames(code, limit = 8) {
   const nowISO = new Date().toISOString();
   const endISO = new Date(Date.now() + 96 * 3600 * 1000).toISOString();
 
-  let therapistId = null;
+  let profileId = null;
+  let trow = null;
   if (code) {
-    const { data: trow } = await supabase
+    const r1 = await supabase
       .from("therapists")
-      .select("id, code, name")
+      .select("user_id, code, name")
       .eq("code", code)
       .maybeSingle();
-    therapistId = trow?.id || null;
+    trow = r1?.data || null;
+
+    if (trow?.user_id) {
+      const r2 = await supabase
+        .from("user_profiles")
+        .select("id, user_id")
+        .eq("user_id", trow.user_id)
+        .maybeSingle();
+      profileId = r2?.data?.id || null;
+    }
   }
 
   let q = supabase
@@ -98,22 +108,31 @@ async function fetchSlotsWithNames(code, limit = 8) {
     .order("start_time", { ascending: true })
     .limit(limit);
 
-  if (therapistId) q = q.eq("therapist_id", therapistId);
+  if (profileId) q = q.eq("therapist_id", profileId);
 
   const { data: slots } = await q;
   if (!slots?.length) return [];
 
-  const therapistIds = [...new Set(slots.map(s => s.therapist_id))];
+  const profileIds = [...new Set(slots.map(s => s.therapist_id))];
+  const { data: profs } = await supabase
+    .from("user_profiles")
+    .select("id, user_id")
+    .in("id", profileIds);
+
+  const userIds = [...new Set((profs || []).map(p => p.user_id))];
   const { data: ther } = await supabase
     .from("therapists")
-    .select("id, code, name")
-    .in("id", therapistIds);
+    .select("user_id, code, name")
+    .in("user_id", userIds);
 
-  const byId = {};
-  ther?.forEach(t => (byId[t.id] = { code: t.code, name: t.name }));
+  const byProfileId = {};
+  (profs || []).forEach(p => {
+    const t = (ther || []).find(th => th.user_id === p.user_id);
+    if (t) byProfileId[p.id] = { code: t.code, name: t.name };
+  });
 
   return (slots || []).map(s => {
-    const info = byId[s.therapist_id] || {};
+    const info = byProfileId[s.therapist_id] || {};
     return {
       availabilityId: s.id,
       therapistCode: info.code || code || DEFAULT_CODE,
