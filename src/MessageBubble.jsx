@@ -75,7 +75,7 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnab
             }`}
             title={opt.startUTC}
           >
-            {fmtLocal(opt.startUTC)}
+            {opt.therapistName ? `${opt.therapistName} — ${fmtLocal(opt.startUTC)}` : fmtLocal(opt.startUTC)}
           </button>
         ))}
       </div>
