@@ -99,16 +99,16 @@ async function resolveTherapistFromText(text) {
 }
 
 /* ===== 查询未来72h可用时段，并附带咨询师姓名 ===== */
-async function fetchSlotsWithNames(code, limit = 8) {
+async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
   const nowISO = new Date().toISOString();
-  const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+  const untilISO = new Date(Date.now() + windowHours * 3600 * 1000).toISOString();
 
   let q = supabase
     .from("therapist_availability")
     .select("id, therapist_code, start_utc, end_utc")
     .eq("status", "open")
     .gt("start_utc", nowISO)
-    .lt("start_utc", in72hISO)
+    .lt("start_utc", untilISO)
     .order("start_utc", { ascending: true })
     .limit(limit);
 
@@ -144,7 +144,7 @@ async function fetchSlotsWithNames(code, limit = 8) {
             .eq("therapist_id", therapistId)
             .eq("is_booked", false)
             .gt("start_time", nowISO)
-            .lt("start_time", in72hISO)
+            .lt("start_time", untilISO)
             .order("start_time", { ascending: true })
             .limit(limit);
 
@@ -161,7 +161,7 @@ async function fetchSlotsWithNames(code, limit = 8) {
           .select("id, therapist_id, start_time, end_time, is_booked")
           .eq("is_booked", false)
           .gt("start_time", nowISO)
-          .lt("start_time", in72hISO)
+          .lt("start_time", untilISO)
           .order("start_time", { ascending: true })
           .limit(limit);
 
@@ -200,6 +200,7 @@ async function fetchSlotsWithNames(code, limit = 8) {
   const codes = [...new Set(slots.map(s => s.therapist_code))];
   const { data: ther } = await supabase
     .from("therapists")
+
     .select("code,name")
     .in("code", codes);
 
@@ -282,8 +283,11 @@ export default async function handler(req, res) {
       try { resolved = await resolveTherapistFromText(userMessage); } catch {}
       const code = therapistCode || resolved?.code || DEFAULT_CODE;
 
-      const options = await fetchSlotsWithNames(code, 8);
-      const opts = options.length ? options : await fetchSlotsWithNames(null, 8);
+      let options = await fetchSlotsWithNames(code, 8, 72);
+      if (!options.length && code) {
+        options = await fetchSlotsWithNames(code, 8, 96);
+      }
+      const opts = options.length ? options : await fetchSlotsWithNames(null, 8, 72);
 
       if (opts.length) {
         try {
