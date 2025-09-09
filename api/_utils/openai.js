@@ -23,6 +23,8 @@ export async function respondWithPromptId(model, promptIdEnv, userContent, opts 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   return resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? JSON.stringify(resp))
+}
+
 export async function respondWithPromptIdTimed(model, promptIdEnv, userContent, timeoutMs = 12000, opts = {}) {
   const promptId = process.env[promptIdEnv]
   if (!promptId) throw new Error(`Missing ${promptIdEnv}`)
@@ -50,7 +52,6 @@ export async function respondWithPromptIdTimed(model, promptIdEnv, userContent, 
   } finally {
     clearTimeout(timer)
   }
-}
 }
 
 export async function fallbackChatCompletion(model, systemEnv, userContent) {
