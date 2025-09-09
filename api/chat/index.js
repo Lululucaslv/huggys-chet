@@ -104,7 +104,7 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
       .from("therapist_availability")
       .select("id, therapist_code, start_utc, end_utc, status")
       .eq("therapist_code", code)
-      .eq("status", "open")
+      .or("status.eq.open,status.eq.available,status.is.null")
       .gt("start_utc", nowISO)
       .lt("start_utc", endISO)
       .order("start_utc", { ascending: true })
@@ -135,6 +135,16 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
         startUTC: s.start_utc,
         endUTC: s.end_utc
       }));
+    } else {
+      try {
+        await supabase.from("ai_logs").insert({
+          scope: "chat",
+          ok: true,
+          model: "none",
+          payload: JSON.stringify({ phase: "no_slots_in_therapist_availability", requestedCode: code, windowHours }),
+          output: JSON.stringify({ count: Array.isArray(ts) ? ts.length : 0 })
+        });
+      } catch {}
     }
   }
 
