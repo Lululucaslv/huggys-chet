@@ -99,6 +99,45 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
   const nowISO = new Date().toISOString();
   const endISO = new Date(Date.now() + windowHours * 3600 * 1000).toISOString();
 
+  if (code) {
+    const { data: ts } = await supabase
+      .from("therapist_availability")
+      .select("id, therapist_code, start_utc, end_utc, status")
+      .eq("therapist_code", code)
+      .eq("status", "open")
+      .gt("start_utc", nowISO)
+      .lt("start_utc", endISO)
+      .order("start_utc", { ascending: true })
+      .limit(limit);
+
+    if (Array.isArray(ts) && ts.length) {
+      const { data: ther } = await supabase
+        .from("therapists")
+        .select("code,name")
+        .eq("code", code)
+        .limit(1);
+      const name = ther?.[0]?.name || "Therapist";
+
+      try {
+        await supabase.from("ai_logs").insert({
+          scope: "chat",
+          ok: true,
+          model: "none",
+          payload: JSON.stringify({ phase: "slots_from_therapist_availability", requestedCode: code, windowHours }),
+          output: JSON.stringify({ count: ts.length })
+        });
+      } catch {}
+
+      return ts.map(s => ({
+        availabilityId: s.id,
+        therapistCode: code,
+        therapistName: name,
+        startUTC: s.start_utc,
+        endUTC: s.end_utc
+      }));
+    }
+  }
+
   let profileId = null;
   let trow = null;
   if (code) {
@@ -150,6 +189,16 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
     const t = (ther || []).find(th => th.user_id === p.user_id);
     if (t) byProfileId[p.id] = { code: t.code, name: t.name };
   });
+
+  try {
+    await supabase.from("ai_logs").insert({
+      scope: "chat",
+      ok: true,
+      model: "none",
+      payload: JSON.stringify({ phase: "slots_from_availability", requestedCode: code || null, windowHours }),
+      output: JSON.stringify({ count: (slots || []).length })
+    });
+  } catch {}
 
   return (slots || []).map(s => {
     const info = byProfileId[s.therapist_id] || {};
