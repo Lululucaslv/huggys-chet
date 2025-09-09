@@ -18,7 +18,7 @@ const fmtLocal = (iso) => {
  *  - therapistCode: 兜底用（若 option 里没带）
  *  - onBooked: (booking) => void 预约成功回调（父组件可用来追加“预约成功”气泡）
  */
-function TimeConfirm({ options = [], userId, therapistCode, onBooked }) {
+function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnabled = true, targetUserId = null }) {
   const [busyId, setBusyId] = useState(null);
   const [status, setStatus] = useState(null); // 'ok' | 'conflict' | 'error'
 
@@ -30,7 +30,9 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked }) {
     "";
 
   const pick = async (opt) => {
-    if (!realUserId) {
+    if (!createEnabled) return;
+    const uid = targetUserId || realUserId;
+    if (!uid) {
       setStatus("error");
       return;
     }
@@ -40,14 +42,14 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked }) {
       const res = await createBooking({
         availabilityId: opt.availabilityId,
         therapistCode: opt.therapistCode || therapistCode,
-        userId: realUserId,
-        startUTC: opt.startUTC, // 兼容后端非 RPC 路径
+        userId: uid,
+        startUTC: opt.startUTC,
       });
       if (res?.booking) {
         setStatus("ok");
         setBusyId(null);
         onBooked && onBooked(res.booking);
-      } else if (String(res?.error || "").includes("slot_unavailable")) {
+      } else if (String(res?.error || "").includes("slot_unavailable") || res?.status === 409) {
         setStatus("conflict");
         setBusyId(null);
       } else {
@@ -67,9 +69,9 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked }) {
           <button
             key={opt.availabilityId}
             onClick={() => pick(opt)}
-            disabled={busyId === opt.availabilityId}
+            disabled={busyId === opt.availabilityId || !createEnabled}
             className={`px-3 py-1 rounded-lg text-white ${
-              busyId === opt.availabilityId ? "bg-purple-400 cursor-wait" : "bg-purple-600 hover:opacity-90"
+              busyId === opt.availabilityId || !createEnabled ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:opacity-90"
             }`}
             title={opt.startUTC}
           >
@@ -141,6 +143,8 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
             userId={userId}
             therapistCode={therapistCode}
             onBooked={onBooked}
+            createEnabled={tcBlock.createEnabled !== false}
+            targetUserId={tcBlock.targetUserId || null}
           />
         )}
 

@@ -1,11 +1,27 @@
 // src/utils/api.js
 
 // 统一聊天请求：/api/chat
-export async function sendChat({ userMessage, userId, therapistCode, browserTz }) {
+export async function sendChat({
+  userMessage,
+  userId,
+  therapistCode,
+  browserTz,
+  actor = "therapist",
+  targetUserId = null,
+  lang = (typeof navigator !== "undefined" ? navigator.language : "zh-CN")
+}) {
   const r = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userMessage, userId, therapistCode, browserTz })
+    body: JSON.stringify({
+      userMessage,
+      userId,
+      therapistCode,
+      browserTz,
+      actor,
+      targetUserId,
+      lang
+    })
   });
 
   let data = {};
