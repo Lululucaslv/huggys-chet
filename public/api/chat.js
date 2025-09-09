@@ -325,11 +325,15 @@ export default async function handler(req, res) {
       try { resolved = await resolveTherapistFromText(userMessage); } catch {}
       const code = therapistCode || resolved?.code || DEFAULT_CODE;
 
-      let options = await fetchSlotsWithNames(code, 8, 72);
-      if (!options.length && code) {
-        options = await fetchSlotsWithNames(code, 8, 96);
+      let options = [];
+      if (code) {
+        options = await fetchSlotsWithNames(code, 8, 72);
+        if (!options.length) options = await fetchSlotsWithNames(code, 8, 96);
+        if (!options.length) options = await fetchSlotsWithNames(code, 8, 168);
+      } else {
+        options = await fetchSlotsWithNames(null, 8, 72);
       }
-      const opts = options.length ? options : await fetchSlotsWithNames(null, 8, 72);
+      const opts = options;
 
       if (opts.length) {
         try {
