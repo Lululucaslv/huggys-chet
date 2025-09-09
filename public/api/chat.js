@@ -29,14 +29,15 @@ const SYSTEM_PROMPT_USER = `
 
 /* ===== 收紧的预约意图 ===== */
 function isBookingIntent(text = "") {
-  const t = String(text).toLowerCase();
-  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用|空档|空闲|看.*时段)/;
+  const t = String(text || "").toLowerCase();
+  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用时间|可用|空档|空闲|空余|空位|时段|看.*时段|找)/;
   const zhTime = /(时间(段|点)?|今天|明天|后天|这周|下周|周[一二三四五六日天]|上午|下午|晚上|\d{1,2}点|\d{1,2}:\d{2})/;
-  const enBook = /\b(book|booking|schedule|reschedule|slot|availability|available)\b/;
+  const enBook = /\b(book|booking|schedule|reschedule|slot|availability|available|find)\b/;
   const enTime = /\b(today|tomorrow|tonight|this week|next week|morning|afternoon|evening|am|pm|\d{1,2}(:\d{2})?\s?(am|pm)?)\b/;
   const strong = /(预约|booking)/.test(t);
+  const mentionFindTherapist = /找\s*([a-z\u4e00-\u9fa5\. ]+)/i.test(t);
   const normal = (zhBook.test(t) && zhTime.test(t)) || (enBook.test(t) && enTime.test(t));
-  return strong || normal;
+  return strong || normal || mentionFindTherapist;
 }
 
 /* ===== 动态解析：根据文本匹配咨询师（therapists 表） ===== */
@@ -44,16 +45,22 @@ async function resolveTherapistFromText(text) {
   const raw = String(text || "").toLowerCase().trim();
   if (!raw) return null;
 
-  const { data: byAlias } = await supabase
-    .from("therapists")
-    .select("code,name,aliases,active")
-    .contains("aliases", [raw])
-    .eq("active", true)
-    .limit(1);
-  if (byAlias?.length) return byAlias[0];
+  const normTokens = Array.from(
+    new Set(String(raw).toLowerCase().split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean))
+  );
 
-  const terms = Array.from(new Set(raw.split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean)));
-  for (const t of terms) {
+  const aliasCandidates = [raw, ...normTokens];
+  for (const a of aliasCandidates) {
+    const { data } = await supabase
+      .from("therapists")
+      .select("code,name,aliases,active")
+      .contains("aliases", [a])
+      .eq("active", true)
+      .limit(1);
+    if (data?.length) return data[0];
+  }
+
+  for (const t of normTokens) {
     const { data } = await supabase
       .from("therapists")
       .select("code,name,aliases,active")
@@ -105,6 +112,20 @@ async function fetchSlotsWithNames(code, limit = 8) {
 /* ===== 统一响应打包（兼容旧字段） ===== */
 function compat(text, toolResults) {
   return {
+async function logAILine(scope, entry = {}) {
+  try {
+    await supabase.from("ai_logs").insert({
+      scope,
+      ok: entry.ok ?? false,
+      model: entry.model ?? "none",
+      prompt_id: entry.promptId ?? null,
+      payload: entry.payload ? (typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload)) : null,
+      output: entry.output ? (typeof entry.output === "string" ? entry.output : JSON.stringify(entry.output)) : null,
+      error: entry.error ? String(entry.error) : null
+    });
+  } catch {}
+}
+
     success: true,
     content: text,
     toolResults,
@@ -147,6 +168,13 @@ export default async function handler(req, res) {
       const opts = options.length ? options : await fetchSlotsWithNames(null, 8);
 
       if (opts.length) {
+        try {
+          await logAILine("chat", {
+            ok: true,
+            model: "none",
+            payload: { wantBooking: true, resolvedCode: code, requestedCode: therapistCode || null, optionsForCode: options.length, optionsFinal: opts.length }
+          });
+        } catch {}
         const text = lang.startsWith("zh")
           ? `已为您找到 ${opts.length} 个可预约时间，请选择：`
           : `I found ${opts.length} available time slots. Please pick one:`;
@@ -156,6 +184,13 @@ export default async function handler(req, res) {
         );
       }
 
+      try {
+        await logAILine("chat", {
+          ok: true,
+          model: "none",
+          payload: { wantBooking: true, resolvedCode: code, requestedCode: therapistCode || null, optionsForCode: options.length, optionsFinal: 0 }
+        });
+      } catch {}
       const noSlot = lang.startsWith("zh")
         ? "当前时段暂无可约。可以换个时间范围（如“这周末下午”），我再帮你查。"
         : "No open slots in that window. Try another time range and I’ll check again.";
