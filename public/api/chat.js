@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       (recentSystem || []).some((r) => {
         try {
           const j = JSON.parse(r.content || "");
-          return j?.type === "BOOKING_SUCCESS";
+        return j?.type === "BOOKING_SUCCESS";
         } catch {
           return false;
         }
