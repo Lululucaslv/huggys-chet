@@ -107,6 +107,31 @@ export default function ChatPage({ session }: ChatPageProps) {
           const data = await response.clone().json()
           let assistantText = data?.content || data?.message || ''
           if (Array.isArray(data?.toolResults)) {
+          if (Array.isArray(data?.toolResults)) {
+            try {
+              const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
+              if (trTC) {
+                const opts = trTC.options
+                const slots = opts.slice(0, 8).map((o: any) => ({
+                  id: o.availabilityId || o.id || o.startUTC,
+                  availabilityId: o.availabilityId || o.id || null,
+                  therapistCode: o.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+                  startTime: o.startUTC || o.start_time || o.startTime,
+                  endTime: o.endUTC || o.end_time || o.endTime
+                }))
+                const count = slots.length
+                if (count > 0) {
+                  setSlotOptions({ therapistName: t('tool_therapist_fallback'), slots })
+                } else {
+                  setSlotOptions(null)
+                }
+                if (!assistantText) {
+                  assistantText = t('tool_availability_count', { name: t('tool_therapist_fallback'), count, extra: '' })
+                }
+              }
+            } catch {}
+          }
+
             try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
@@ -201,6 +226,31 @@ export default function ChatPage({ session }: ChatPageProps) {
           let assistantText = data?.content || data?.message || ''
           if (Array.isArray(data?.toolResults)) {
             try {
+              const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
+              if (trTC) {
+                const opts = trTC.options
+                const slots = opts.slice(0, 8).map((o: any) => ({
+                  id: o.availabilityId || o.id || o.startUTC,
+                  availabilityId: o.availabilityId || o.id || null,
+                  therapistCode: o.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+                  startTime: o.startUTC || o.start_time || o.startTime,
+                  endTime: o.endUTC || o.end_time || o.endTime
+                }))
+                const count = slots.length
+                if (count > 0) {
+                  setSlotOptions({ therapistName: t('tool_therapist_fallback'), slots })
+                } else {
+                  setSlotOptions(null)
+                }
+                if (!assistantText) {
+                  assistantText = t('tool_availability_count', { name: t('tool_therapist_fallback'), count, extra: '' })
+                }
+              }
+            } catch {}
+          }
+
+          if (Array.isArray(data?.toolResults)) {
+            try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
                 if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
@@ -256,12 +306,51 @@ export default function ChatPage({ session }: ChatPageProps) {
   const handleBookSlot = async (therapistName: string, slot: any) => {
     if (isTyping) return
     try {
+      if (slot?.availabilityId || slot?.id) {
+        const body = {
+          availabilityId: slot.availabilityId || slot.id,
+          therapistCode: slot.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+          userId: session.user.id,
+          startUTC: slot.startTime
+        }
+        const r = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        const data = await r.json().catch(() => ({}))
+        if (data?.booking) {
+          setSlotOptions(null)
+          const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
+          const whenLocal = new Date(data.booking.start_utc || slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
+          const okText = t('tool_booking_created', { name: therapistName || '', dateTime: whenLocal })
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            role: 'assistant',
+            message: okText,
+            message_type: 'text',
+            audio_url: ''
+          })
+          updateStreamingMessage(okText)
+          return
+        } else if (r.status === 409 || String(data?.error || '').includes('slot_unavailable')) {
+          const conflictText = t('tool_slot_taken_retry', '该时间已被占用，请再选一个')
+          updateStreamingMessage(conflictText)
+          return
+        } else {
+          const errText = t('tool_booking_failed', '预约失败，请稍后再试')
+          updateStreamingMessage(errText)
+          return
+        }
+      }
       const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
       const whenLocal = new Date(slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
       const text = t('chat_confirm_booking', { therapistName, whenLocal, iso: slot.startTime })
       setSlotOptions(null)
       await sendTextMessage(text)
     } catch (e) {
+      const errText = t('tool_booking_failed', '预约失败，请稍后再试')
+      updateStreamingMessage(errText)
     }
   }
 
