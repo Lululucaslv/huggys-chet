@@ -135,6 +135,8 @@ export default async function handler(req, res) {
     targetUserId = null
   } = req.body || {};
 
+  const supabase = getSupabase();
+
   if (!userMessage || !userId) {
     const msg = lang.startsWith("zh")
       ? "可以先跟我说说最近在意的事，或告诉我一个时间范围（例如“明天下午”），我来帮你查看可预约时间。"
@@ -157,9 +159,19 @@ export default async function handler(req, res) {
       if (opts.length) {
         const text = lang.startsWith("zh")
           ? `已为您找到 ${opts.length} 个可预约时间，请选择：`
-    const supabase = getSupabase()
           : `I found ${opts.length} available time slots. Please pick one:`;
         const createEnabled = actor === "user" || !!targetUserId;
+
+        try {
+          await supabase.from("ai_logs").insert({
+            scope: "chat",
+            ok: true,
+            model: "none",
+            payload: JSON.stringify({ wantBooking: true, resolvedCode: code, source: "api/chat" }),
+            output: JSON.stringify({ options: opts.length })
+          });
+        } catch {}
+
         return res.status(200).json(
           compat(text, [{ type: "TIME_CONFIRM", options: opts.map(o => ({ ...o, targetUserId })), createEnabled, targetUserId }])
         );
@@ -174,7 +186,6 @@ export default async function handler(req, res) {
     const payload = { message: userMessage, context: { browserTz, lang } };
     try {
       const resp = await openai.responses.create(
-      try { await supabase.from("ai_logs").insert({ scope: "chat", ok: true, model: "none", payload: JSON.stringify({ wantBooking: true, code, source: "api/chat" }), output: JSON.stringify({ options: options.length, fallback: options.length ? 0 : 1 }) }) } catch {}
         {
           model: "gpt-4o",
           input: [
@@ -189,7 +200,6 @@ export default async function handler(req, res) {
       return res.status(200).json(compat(text || "我在这，愿意听你说说。", []));
     } catch {
       const fallback = lang.startsWith("zh")
-      try { await supabase.from("ai_logs").insert({ scope: "chat", ok: true, model: "none", payload: JSON.stringify({ wantBooking: true, code, source: "api/chat" }), output: JSON.stringify({ slots: 0 }) }) } catch {}
         ? "我在这，先陪你说说发生了什么吧。如果你愿意，我们也可以在合适的时候安排一次专业咨询。"
         : "I’m here with you. Tell me what’s going on.";
       return res.status(200).json(compat(fallback, []));
