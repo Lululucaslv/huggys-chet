@@ -104,22 +104,46 @@ export default async function handler(req, res) {
     const nowISO = new Date().toISOString();
     const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
 
-    const { data: slots, error: availErr } = await supabase
-      .from("therapist_availability")
-      .select("id, therapist_code, start_utc, end_utc")
-      .eq("status", "open")
-      .eq("therapist_code", code)
-      .gt("start_utc", nowISO)
-      .lt("start_utc", in72hISO)
-      .order("start_utc", { ascending: true })
-      .limit(8);
+    let therapistProfileId = null;
+    try {
+      const { data: t } = await supabase
+        .from("therapists")
+        .select("user_id, code")
+        .eq("code", code)
+        .maybeSingle();
+      if (t?.user_id) {
+        const { data: prof } = await supabase
+          .from("user_profiles")
+          .select("id, user_id")
+          .eq("user_id", String(t.user_id))
+          .maybeSingle();
+        therapistProfileId = prof?.id || null;
+      }
+    } catch {}
+
+    let slots = [];
+    let availErr = null;
+    if (therapistProfileId) {
+      const q = supabase
+        .from("availability")
+        .select("id, therapist_id, start_time, end_time, is_booked")
+        .eq("therapist_id", therapistProfileId)
+        .or("is_booked.is.null,is_booked.eq.false")
+        .gt("start_time", nowISO)
+        .lt("start_time", in72hISO)
+        .order("start_time", { ascending: true })
+        .limit(8);
+      const { data, error } = await q;
+      slots = data || [];
+      availErr = error || null;
+    }
 
     if (availErr) console.error("availability query error:", availErr?.message);
     const list = (slots || []).map((s) => ({
       availabilityId: s.id,
-      therapistCode: s.therapist_code || code,
-      startUTC: s.start_utc,
-      endUTC: s.end_utc,
+      therapistCode: code,
+      startUTC: s.start_time,
+      endUTC: s.end_time,
     }));
 
     if (list.length) {
