@@ -33,14 +33,52 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
   const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle')
   const [error, setError] = useState<Error | null>(null)
   const chatApi = new ChatAPI()
-  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: Array<{ id?: number | string; startTime: string; endTime?: string }> } | null>(null)
-  const handleBookSlot = async (therapistName: string, slot: { startTime: string }) => {
+  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: Array<{ id?: number | string; startTime: string; endTime?: string; therapistCode?: string }> } | null>(null)
+  const handleBookSlot = async (therapistName: string, slot: { id?: string | number; startTime: string; therapistCode?: string }) => {
     if (status !== 'idle') return
-    const whenLocal = new Date(slot.startTime).toLocaleString(undefined as any, { hour12: false })
-    const text = t('chat_confirm_booking', { therapistName, whenLocal, iso: slot.startTime })
-    setSlotOptions(null)
-    setInputMessage(text)
-    await handleSendMessage()
+    setStatus('submitted')
+    setError(null)
+    try {
+      setSlotOptions(null)
+      const defaultCode = (typeof window !== 'undefined' && (window as any).__THERAPIST_DEFAULT_CODE__) || '8W79AL2B'
+      const therapistCode = slot.therapistCode || defaultCode
+      const resp = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          therapistCode,
+          userId: session.user.id,
+          availabilityId: slot.id
+        })
+      })
+      const data = await resp.json()
+      if (resp.status === 409 || data?.error === 'slot_unavailable') {
+        const msg = (t as any)('tool_slot_taken_retry') || '该时间已被占用，请再选一个'
+        setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: msg }])
+        return
+      }
+      if (!resp.ok || !data?.booking) {
+        const errMsg = data?.error || (t as any)('tool_booking_failed') || '预约失败，请稍后再试'
+        setMessages(prev => [...prev, { id: String(Date.now() + 2), role: 'assistant', content: errMsg }])
+        return
+      }
+      const whenLocal = new Date(data.booking.start_utc || slot.startTime).toLocaleString(undefined as any, { hour12: false })
+      const successText = (t as any)('tool_booking_created', { name: therapistName, dateTime: whenLocal }) || `已为您为 ${therapistName} 预约：${whenLocal}`
+      setMessages(prev => [...prev, { id: String(Date.now() + 3), role: 'assistant', content: successText }])
+      await supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'assistant',
+        message: successText,
+        message_type: 'text',
+        audio_url: ''
+      })
+      if (typeof onAfterToolAction === 'function') onAfterToolAction()
+    } catch (e: any) {
+      const msg = e?.message || (t as any)('tool_booking_failed') || '预约失败，请稍后再试'
+      setMessages(prev => [...prev, { id: String(Date.now() + 4), role: 'assistant', content: msg }])
+    } finally {
+      setStatus('idle')
+    }
   }
 
 
@@ -146,7 +184,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 const slots = tr.options.map((opt: any) => ({
                   id: opt.availabilityId,
                   startTime: opt.startUTC,
-                  endTime: opt.endUTC
+                  endTime: opt.endUTC,
+                  therapistCode: opt.therapistCode
                 })).filter((s: any) => s.startTime)
                 const displayName = getSafeDisplayName(session, userProfile, t)
                 parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
