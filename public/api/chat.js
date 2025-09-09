@@ -14,6 +14,20 @@ const isPreview =
 
 const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
 
+function normalizeTherapistFromText(text = "") {
+  const t = String(text || "").toLowerCase();
+  const map = {
+    "megan chang": "8W79AL2B",
+    "megan": "8W79AL2B",
+    "hanqi lyu": "8W79AL2B",
+    "hanqi": "8W79AL2B",
+  };
+  for (const k of Object.keys(map)) {
+    if (t.includes(k)) return map[k];
+  }
+  return null;
+}
+
 async function logAILine(scope, entry = {}) {
   try {
     await supabase.from("ai_logs").insert({
@@ -45,7 +59,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userMessage, userId, therapistCode, browserTz = "UTC", lang = "zh-CN" } = req.body || {};
+    const { userMessage, userId, therapistCode, browserTz = "UTC", lang = "zh-CN", actor = "user", targetUserId } = req.body || {};
     if (!userMessage || !userId) {
       res.status(400).json({ error: "userMessage and userId required" });
       return;
@@ -86,7 +100,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const code = therapistCode || DEFAULT_CODE;
+    const code = therapistCode || normalizeTherapistFromText(userMessage) || DEFAULT_CODE;
     const nowISO = new Date().toISOString();
     const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
 
@@ -114,12 +128,17 @@ export default async function handler(req, res) {
           ? `已为您找到 ${list.length} 个可预约时间，请选择：`
           : `I found ${list.length} available time slots. Please pick one:`;
 
-      await logAILine("chat", { ok: true, output: { time_confirm: list.length } });
+      const createEnabled = actor === "user" || (actor === "therapist" && !!targetUserId);
+
+      await logAILine("chat", { ok: true, output: { time_confirm: list.length, actor, createEnabled } });
       res.status(200).json({
         success: true,
         content: text,
         toolCalls: [],
-        toolResults: [{ type: "TIME_CONFIRM", options: list }],
+        toolResults: [{ type: "TIME_CONFIRM", options: list, createEnabled, targetUserId: targetUserId || null }],
+        reply: { role: "assistant", content: text },
+        blocks: [{ type: "TIME_CONFIRM", options: list, createEnabled, targetUserId: targetUserId || null }],
+        response: text,
         ...(isPreview && availErr ? { debug: { availabilityError: availErr.message } } : {}),
       });
       return;

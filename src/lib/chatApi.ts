@@ -58,7 +58,8 @@ export class ChatAPI {
           userId: (userProfile?.id) || 'anonymous',
           browserTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           therapistCode: (window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B',
-          lang: navigator.language || 'zh-CN'
+          lang: navigator.language || 'zh-CN',
+          actor: 'user'
         })
       })
 

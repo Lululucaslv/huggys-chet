@@ -33,21 +33,23 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
   const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming'>('idle')
   const [error, setError] = useState<Error | null>(null)
   const chatApi = new ChatAPI()
-  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: Array<{ id?: number | string; startTime: string; endTime?: string; therapistCode?: string }> } | null>(null)
+  const [slotOptions, setSlotOptions] = useState<{ therapistName: string; slots: Array<{ id?: number | string; startTime: string; endTime?: string; therapistCode?: string }>; createEnabled?: boolean; targetUserId?: string | null } | null>(null)
   const handleBookSlot = async (therapistName: string, slot: { id?: string | number; startTime: string; therapistCode?: string }) => {
     if (status !== 'idle') return
+    if (slotOptions && slotOptions.createEnabled === false) return
     setStatus('submitted')
     setError(null)
     try {
       setSlotOptions(null)
       const defaultCode = (typeof window !== 'undefined' && (window as any).__THERAPIST_DEFAULT_CODE__) || '8W79AL2B'
       const therapistCode = slot.therapistCode || defaultCode
+      const targetUserId = slotOptions?.targetUserId || session.user.id
       const resp = await fetch('/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           therapistCode,
-          userId: session.user.id,
+          userId: targetUserId,
           availabilityId: slot.id
         })
       })
@@ -190,7 +192,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 const displayName = getSafeDisplayName(session, userProfile, t)
                 parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
                 if (slots.length > 0) {
-                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
+                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8), createEnabled: !!tr.createEnabled, targetUserId: tr.targetUserId || null })
                 } else {
                   setSlotOptions(null)
                 }
@@ -247,7 +249,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                   <button
                     key={s.id || s.startTime}
                     onClick={() => handleBookSlot(slotOptions.therapistName, s)}
-                    disabled={status === 'streaming' || status === 'submitted'}
+                    disabled={status === 'streaming' || status === 'submitted' || (slotOptions?.createEnabled === false)}
                     className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
                   >
                     {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
@@ -341,7 +343,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                   <button
                     key={s.id || s.startTime}
                     onClick={() => handleBookSlot(slotOptions.therapistName, s)}
-                    disabled={status === 'streaming' || status === 'submitted'}
+                    disabled={status === 'streaming' || status === 'submitted' || (slotOptions?.createEnabled === false)}
                     className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
                   >
                     {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
