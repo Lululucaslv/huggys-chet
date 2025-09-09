@@ -77,38 +77,51 @@ async function resolveTherapistFromText(text) {
 async function fetchSlotsWithNames(code, limit = 8) {
   const supabase = getSupabase();
   const nowISO = new Date().toISOString();
-  const in72hISO = new Date(Date.now() + 96 * 3600 * 1000).toISOString();
+  const endISO = new Date(Date.now() + 96 * 3600 * 1000).toISOString();
+
+  let therapistId = null;
+  if (code) {
+    const { data: trow } = await supabase
+      .from("therapists")
+      .select("id, code, name")
+      .eq("code", code)
+      .maybeSingle();
+    therapistId = trow?.id || null;
+  }
 
   let q = supabase
-    .from("therapist_availability")
-    .select("id, therapist_code, start_utc, end_utc")
-    .eq("status", "open")
-    .gt("start_utc", nowISO)
-    .lt("start_utc", in72hISO)
-    .order("start_utc", { ascending: true })
+    .from("availability")
+    .select("id, therapist_id, start_time, end_time, is_booked")
+    .gt("start_time", nowISO)
+    .lt("start_time", endISO)
+    .or("is_booked.is.null,is_booked.eq.false")
+    .order("start_time", { ascending: true })
     .limit(limit);
 
-  if (code) q = q.eq("therapist_code", code);
+  if (therapistId) q = q.eq("therapist_id", therapistId);
 
   const { data: slots } = await q;
   if (!slots?.length) return [];
 
-  const codes = [...new Set(slots.map(s => s.therapist_code))];
+  const therapistIds = [...new Set(slots.map(s => s.therapist_id))];
   const { data: ther } = await supabase
     .from("therapists")
-    .select("code,name")
-    .in("code", codes);
+    .select("id, code, name")
+    .in("id", therapistIds);
 
-  const nameMap = {};
-  ther?.forEach(t => (nameMap[t.code] = t.name));
+  const byId = {};
+  ther?.forEach(t => (byId[t.id] = { code: t.code, name: t.name }));
 
-  return (slots || []).map(s => ({
-    availabilityId: s.id,
-    therapistCode: s.therapist_code,
-    therapistName: nameMap[s.therapist_code] || "Therapist",
-    startUTC: s.start_utc,
-    endUTC: s.end_utc
-  }));
+  return (slots || []).map(s => {
+    const info = byId[s.therapist_id] || {};
+    return {
+      availabilityId: s.id,
+      therapistCode: info.code || code || DEFAULT_CODE,
+      therapistName: info.name || "Therapist",
+      startUTC: s.start_time,
+      endUTC: s.end_time
+    };
+  });
 }
 
 function compat(text, toolResults) {
