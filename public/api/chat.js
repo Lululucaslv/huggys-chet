@@ -114,8 +114,88 @@ async function fetchSlotsWithNames(code, limit = 8) {
 
   if (code) q = q.eq("therapist_code", code);
 
-  const { data: slots } = await q;
-  if (!slots?.length) return [];
+  const { data: slots1 } = await q;
+
+  let slots = Array.isArray(slots1) ? slots1 : [];
+
+  if (!slots.length) {
+    try {
+      if (code) {
+        const { data: t } = await supabase
+          .from("therapists")
+          .select("user_id, code, name")
+          .eq("code", code)
+          .maybeSingle();
+
+        let therapistId = null;
+        if (t?.user_id) {
+          const { data: prof } = await supabase
+            .from("user_profiles")
+            .select("id")
+            .eq("user_id", String(t.user_id))
+            .maybeSingle();
+          therapistId = prof?.id || null;
+        }
+
+        if (therapistId) {
+          const { data: slots2 } = await supabase
+            .from("availability")
+            .select("id, therapist_id, start_time, end_time, is_booked")
+            .eq("therapist_id", therapistId)
+            .eq("is_booked", false)
+            .gt("start_time", nowISO)
+            .lt("start_time", in72hISO)
+            .order("start_time", { ascending: true })
+            .limit(limit);
+
+          slots = (slots2 || []).map(s => ({
+            id: s.id,
+            therapist_code: code,
+            start_utc: s.start_time,
+            end_utc: s.end_time
+          }));
+        }
+      } else {
+        const { data: slots2 } = await supabase
+          .from("availability")
+          .select("id, therapist_id, start_time, end_time, is_booked")
+          .eq("is_booked", false)
+          .gt("start_time", nowISO)
+          .lt("start_time", in72hISO)
+          .order("start_time", { ascending: true })
+          .limit(limit);
+
+        const therapistIds = [...new Set((slots2 || []).map(s => s.therapist_id))];
+        let codeByTid = {};
+        if (therapistIds.length) {
+          const { data: profs } = await supabase
+            .from("user_profiles")
+            .select("id, user_id")
+            .in("id", therapistIds);
+          const userIds = [...new Set((profs || []).map(p => p.user_id))];
+          if (userIds.length) {
+            const { data: ths } = await supabase
+              .from("therapists")
+              .select("user_id, code")
+              .in("user_id", userIds);
+            (profs || []).forEach(p => {
+              const th = (ths || []).find(tt => String(tt.user_id) === String(p.user_id));
+              if (th) codeByTid[p.id] = th.code;
+            });
+          }
+        }
+
+        slots = (slots2 || []).map(s => ({
+          id: s.id,
+          therapist_code: codeByTid[s.therapist_id] || DEFAULT_CODE,
+          start_utc: s.start_time,
+          end_utc: s.end_time
+        }));
+      }
+    } catch {}
+  }
+
+  if (!slots.length) return [];
 
   const codes = [...new Set(slots.map(s => s.therapist_code))];
   const { data: ther } = await supabase
