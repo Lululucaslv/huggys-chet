@@ -39,20 +39,29 @@ function isBookingIntent(text = "") {
   return strong || normal;
 }
 
+function normTokens(raw) {
+  const t = String(raw || '').toLowerCase()
+  return Array.from(new Set(t.split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean)))
+}
+
 async function resolveTherapistFromText(text) {
   const supabase = getSupabase();
   const raw = String(text || "").toLowerCase().trim();
   if (!raw) return null;
 
-  const { data: byAlias } = await supabase
-    .from("therapists")
-    .select("code,name,aliases,active")
-    .contains("aliases", [raw])
-    .eq("active", true)
-    .limit(1);
-  if (byAlias?.length) return byAlias[0];
+  const terms = normTokens(raw);
 
-  const terms = Array.from(new Set(raw.split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean)));
+  const aliasCandidates = [...terms, raw];
+  for (const term of aliasCandidates) {
+    const { data: byAlias } = await supabase
+      .from("therapists")
+      .select("code,name,aliases,active")
+      .contains("aliases", [term])
+      .eq("active", true)
+      .limit(1);
+    if (byAlias?.length) return byAlias[0];
+  }
+
   for (const t of terms) {
     const { data } = await supabase
       .from("therapists")
@@ -148,6 +157,7 @@ export default async function handler(req, res) {
       if (opts.length) {
         const text = lang.startsWith("zh")
           ? `已为您找到 ${opts.length} 个可预约时间，请选择：`
+    const supabase = getSupabase()
           : `I found ${opts.length} available time slots. Please pick one:`;
         const createEnabled = actor === "user" || !!targetUserId;
         return res.status(200).json(
@@ -164,6 +174,7 @@ export default async function handler(req, res) {
     const payload = { message: userMessage, context: { browserTz, lang } };
     try {
       const resp = await openai.responses.create(
+      try { await supabase.from("ai_logs").insert({ scope: "chat", ok: true, model: "none", payload: JSON.stringify({ wantBooking: true, code, source: "api/chat" }), output: JSON.stringify({ options: options.length, fallback: options.length ? 0 : 1 }) }) } catch {}
         {
           model: "gpt-4o",
           input: [
@@ -178,6 +189,7 @@ export default async function handler(req, res) {
       return res.status(200).json(compat(text || "我在这，愿意听你说说。", []));
     } catch {
       const fallback = lang.startsWith("zh")
+      try { await supabase.from("ai_logs").insert({ scope: "chat", ok: true, model: "none", payload: JSON.stringify({ wantBooking: true, code, source: "api/chat" }), output: JSON.stringify({ slots: 0 }) }) } catch {}
         ? "我在这，先陪你说说发生了什么吧。如果你愿意，我们也可以在合适的时候安排一次专业咨询。"
         : "I’m here with you. Tell me what’s going on.";
       return res.status(200).json(compat(fallback, []));
