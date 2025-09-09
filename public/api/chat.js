@@ -188,6 +188,14 @@ export default async function handler(req, res) {
       const findTherapistHard = /(找|约)\s*([a-z\u4e00-\u9fa5\. ]+)/i.test(String(userMessage) || "");
       if (findTherapistHard && !greetings.test(userMessage)) wantBooking = true;
     }
+    try {
+      await logAILine("chat", {
+        ok: true,
+        model: "none",
+        payload: { phase: "intent_check", wantBooking, text: userMessage }
+      });
+    } catch {}
+
 
     if (wantBooking) {
       let resolved = null;
@@ -216,14 +224,6 @@ export default async function handler(req, res) {
 
       try {
         await logAILine("chat", {
-    try {
-      await logAILine("chat", {
-        ok: true,
-        model: "none",
-        payload: { wantBooking: false, text: userMessage }
-      });
-    } catch {}
-
           ok: true,
           model: "none",
           payload: { wantBooking: true, resolvedCode: code, requestedCode: therapistCode || null, optionsForCode: options.length, optionsFinal: 0 }
