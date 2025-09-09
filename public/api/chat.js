@@ -147,6 +147,21 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
             .lt("start_time", untilISO)
             .order("start_time", { ascending: true })
             .limit(limit);
+          try {
+            await supabase.from("ai_logs").insert({
+              scope: "chat",
+              ok: true,
+              model: "none",
+              payload: JSON.stringify({
+                phase: "fallback_availability_by_code",
+                requestedCode: code,
+                therapistId,
+                windowHours
+              }),
+              output: JSON.stringify({ count: (slots2 || []).length })
+            });
+          } catch {}
+
 
           slots = (slots2 || []).map(s => ({
             id: s.id,
@@ -190,6 +205,19 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
           therapist_code: codeByTid[s.therapist_id] || DEFAULT_CODE,
           start_utc: s.start_time,
           end_utc: s.end_time
+        try {
+          await supabase.from("ai_logs").insert({
+            scope: "chat",
+            ok: true,
+            model: "none",
+            payload: JSON.stringify({
+              phase: "fallback_availability_any",
+              windowHours
+            }),
+            output: JSON.stringify({ count: (slots2 || []).length })
+          });
+        } catch {}
+
         }));
       }
     } catch {}
@@ -213,6 +241,20 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
     therapistName: nameMap[s.therapist_code] || "Therapist",
     startUTC: s.start_utc,
     endUTC: s.end_utc
+  try {
+    await supabase.from("ai_logs").insert({
+      scope: "chat",
+      ok: true,
+      model: "none",
+      payload: JSON.stringify({
+        phase: "slots_result",
+        requestedCode: code || null,
+        windowHours,
+        slotsCount: slots.length
+      })
+    });
+  } catch {}
+
   }));
 }
 
