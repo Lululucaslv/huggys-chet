@@ -136,6 +136,24 @@ export default async function handler(req, res) {
       const { data, error } = await q;
       slots = data || [];
       availErr = error || null;
+
+      if (!slots?.length) {
+        const { data: slots2, error: err2 } = await supabase
+          .from("therapist_availability")
+          .select("id, therapist_code, start_utc, end_utc, status")
+          .eq("status", "open")
+          .eq("therapist_code", code)
+          .gt("start_utc", nowISO)
+          .lt("start_utc", in72hISO)
+          .order("start_utc", { ascending: true })
+          .limit(8);
+        if (err2) availErr = err2;
+        slots = (slots2 || []).map((r) => ({
+          id: r.id,
+          start_time: r.start_utc,
+          end_time: r.end_utc,
+        }));
+      }
     }
 
     if (availErr) console.error("availability query error:", availErr?.message);

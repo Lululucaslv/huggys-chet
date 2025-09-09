@@ -148,12 +148,33 @@ export default async function handler(req, res) {
           .order("start_time", { ascending: true })
           .limit(8);
         if (availErr) availErrMsg = availErr.message;
-        list = (slots || []).map((s) => ({
+        let listA = (slots || []).map((s) => ({
           availabilityId: s.id,
           therapistCode: code,
           startUTC: s.start_time,
           endUTC: s.end_time,
         }));
+
+        if (!listA.length) {
+          const { data: slots2, error: err2 } = await supabase
+            .from("therapist_availability")
+            .select("id, therapist_code, start_utc, end_utc, status")
+            .eq("status", "open")
+            .eq("therapist_code", code)
+            .gt("start_utc", nowISO)
+            .lt("start_utc", in72hISO)
+            .order("start_utc", { ascending: true })
+            .limit(8);
+          if (err2) availErrMsg = err2.message;
+          listA = (slots2 || []).map((r) => ({
+            availabilityId: r.id,
+            therapistCode: code,
+            startUTC: r.start_utc,
+            endUTC: r.end_utc,
+          }));
+        }
+
+        list = listA;
       }
     }
 
