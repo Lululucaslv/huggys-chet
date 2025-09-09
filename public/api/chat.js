@@ -1,246 +1,189 @@
+// public/api/chat.js
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false } }
 );
 
-const isPreview =
-  process.env.VERCEL_ENV === "preview" ||
-  String(process.env.DEBUG_ERRORS || "").toLowerCase() === "true";
-
 const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
 
-function normalizeTherapistFromText(text = "") {
-  const t = String(text || "").toLowerCase();
-  const map = {
-    "megan chang": "8W79AL2B",
-    "megan": "8W79AL2B",
-    "hanqi lyu": "8W79AL2B",
-    "hanqi": "8W79AL2B",
-  };
-  for (const k of Object.keys(map)) {
-    if (t.includes(k)) return map[k];
+/* ===== 用户端·共情聊天 System Prompt（内嵌文本） ===== */
+const SYSTEM_PROMPT_USER = `
+你是 Huggy，一位高共情的AI陪伴师。你的核心使命：让来访者感到“被听见、不孤单”。
+沟通原则：
+1) 无条件积极关注：接纳、无评判；禁止说教/诊断/医疗建议。
+2) 准确共情：先情绪验证（validating），再用简短复述/反映（reflect/paraphrase）。
+3) 真诚透明：可适度使用“我…”句式（如“我听到你说…我能感到…”）。
+4) 以用户为中心：少谈自己，围绕用户当下体验与需要。
+5) 此时此地：回应此刻情绪；若出现自伤/他伤等风险，温和提示尽快寻求线下专业支持与求助热线。
+对话风格：
+- 2–4 句一轮，语气温柔自然，尽量简洁，可少量表情🙂；
+- 多用开放式问题（什么/如何/哪一刻），避免“你应该…”；
+- 仅在用户明确提出预约时交由业务流程处理，否则坚持情感陪伴。
+输出：自然中文短段落；非必要不列清单。
+`;
+
+/* ===== 收紧的预约意图 ===== */
+function isBookingIntent(text = "") {
+  const t = String(text).toLowerCase();
+  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用|空档|空闲|看.*时段)/;
+  const zhTime = /(时间(段|点)?|今天|明天|后天|这周|下周|周[一二三四五六日天]|上午|下午|晚上|\d{1,2}点|\d{1,2}:\d{2})/;
+  const enBook = /\b(book|booking|schedule|reschedule|slot|availability|available)\b/;
+  const enTime = /\b(today|tomorrow|tonight|this week|next week|morning|afternoon|evening|am|pm|\d{1,2}(:\d{2})?\s?(am|pm)?)\b/;
+  const strong = /(预约|booking)/.test(t);
+  const normal = (zhBook.test(t) && zhTime.test(t)) || (enBook.test(t) && enTime.test(t));
+  return strong || normal;
+}
+
+/* ===== 动态解析：根据文本匹配咨询师（therapists 表） ===== */
+async function resolveTherapistFromText(text) {
+  const raw = String(text || "").toLowerCase().trim();
+  if (!raw) return null;
+
+  const { data: byAlias } = await supabase
+    .from("therapists")
+    .select("code,name,aliases,active")
+    .contains("aliases", [raw])
+    .eq("active", true)
+    .limit(1);
+  if (byAlias?.length) return byAlias[0];
+
+  const terms = Array.from(new Set(raw.split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean)));
+  for (const t of terms) {
+    const { data } = await supabase
+      .from("therapists")
+      .select("code,name,aliases,active")
+      .ilike("name", `%${t}%`)
+      .eq("active", true)
+      .limit(1);
+    if (data?.length) return data[0];
   }
   return null;
 }
 
-async function logAILine(scope, entry = {}) {
-  try {
-    await supabase.from("ai_logs").insert({
-      scope,
-      ok: entry.ok ?? false,
-      model: entry.model ?? "gpt-4o",
-      prompt_id: entry.promptId ?? process.env.OPENAI_SYSTEM_PROMPT_ID,
-      payload:
-        typeof entry.payload === "string"
-          ? entry.payload
-          : entry.payload
-          ? JSON.stringify(entry.payload)
-          : null,
-      output:
-        typeof entry.output === "string"
-          ? entry.output
-          : entry.output
-          ? JSON.stringify(entry.output)
-          : null,
-      error: entry.error ? String(entry.error) : null,
-    });
-  } catch (_) {}
+/* ===== 查询未来72h可用时段，并附带咨询师姓名 ===== */
+async function fetchSlotsWithNames(code, limit = 8) {
+  const nowISO = new Date().toISOString();
+  const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+
+  let q = supabase
+    .from("therapist_availability")
+    .select("id, therapist_code, start_utc, end_utc")
+    .eq("status", "open")
+    .gt("start_utc", nowISO)
+    .lt("start_utc", in72hISO)
+    .order("start_utc", { ascending: true })
+    .limit(limit);
+
+  if (code) q = q.eq("therapist_code", code);
+
+  const { data: slots } = await q;
+  if (!slots?.length) return [];
+
+  const codes = [...new Set(slots.map(s => s.therapist_code))];
+  const { data: ther } = await supabase
+    .from("therapists")
+    .select("code,name")
+    .in("code", codes);
+
+  const nameMap = {};
+  ther?.forEach(t => (nameMap[t.code] = t.name));
+
+  return (slots || []).map(s => ({
+    availabilityId: s.id,
+    therapistCode: s.therapist_code,
+    therapistName: nameMap[s.therapist_code] || "Therapist",
+    startUTC: s.start_utc,
+    endUTC: s.end_utc
+  }));
+}
+
+/* ===== 统一响应打包（兼容旧字段） ===== */
+function compat(text, toolResults) {
+  return {
+    success: true,
+    content: text,
+    toolResults,
+    reply: { role: "assistant", content: text },
+    blocks: toolResults,
+    response: text
+  };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const {
+    userMessage,
+    userId,
+    therapistCode,
+    browserTz = "UTC",
+    lang = "zh-CN",
+    actor = "user",
+    targetUserId = null
+  } = req.body || {};
+
+  if (!userMessage || !userId) {
+    const msg = lang.startsWith("zh")
+      ? "可以先跟我说说最近在意的事，或告诉我一个时间范围（例如“明天下午”），我来帮你查看可预约时间。"
+      : "Tell me what's on your mind, or share a time window (e.g., 'tomorrow afternoon') and I can check availability.";
+    return res.status(200).json(compat(msg, []));
   }
 
   try {
-    const { userMessage, userId, therapistCode, browserTz = "UTC", lang = "zh-CN", actor = "user", targetUserId } = req.body || {};
-    if (!userMessage || !userId) {
-      res.status(400).json({ error: "userMessage and userId required" });
-      return;
-    }
+    const greetings = /(你好|您好|hello|hi|嗨|在吗|hey)/i;
+    const wantBooking = isBookingIntent(userMessage) && !greetings.test(userMessage);
 
-    const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
-    const { data: recentSystem } = await supabase
-      .from("chats")
-      .select("id, content, created_at")
-      .eq("user_id", userId)
-      .eq("role", "system")
-      .gte("created_at", twoHoursAgo)
-      .order("created_at", { ascending: false })
-      .limit(5);
+    if (wantBooking) {
+      let resolved = null;
+      try { resolved = await resolveTherapistFromText(userMessage); } catch {}
+      const code = therapistCode || resolved?.code || DEFAULT_CODE;
 
-    const hasRecentBooking =
-      (recentSystem || []).some((r) => {
-        try {
-          const j = JSON.parse(r.content || "");
-        return j?.type === "BOOKING_SUCCESS";
-        } catch {
-          return false;
-        }
-      });
+      const options = await fetchSlotsWithNames(code, 8);
+      const opts = options.length ? options : await fetchSlotsWithNames(null, 8);
 
-    if (hasRecentBooking) {
-      const text =
-        lang.startsWith("zh")
-          ? "已为您确认预约。如需改期或再次预约，请告诉我新的时间范围或偏好。"
-          : "Your booking is confirmed. Tell me a new time window if you want to reschedule or book another session.";
-      await logAILine("chat", { ok: true, output: { suppress: true } });
-      res.status(200).json({
-        success: true,
-        content: text,
-        toolCalls: [],
-        toolResults: [],
-      });
-      return;
-    }
-
-    const code = therapistCode || normalizeTherapistFromText(userMessage) || DEFAULT_CODE;
-    const nowISO = new Date().toISOString();
-    const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
-
-    let therapistProfileId = null;
-    try {
-      const { data: t } = await supabase
-        .from("therapists")
-        .select("user_id, code")
-        .eq("code", code)
-        .maybeSingle();
-      if (t?.user_id) {
-        const { data: prof } = await supabase
-          .from("user_profiles")
-          .select("id, user_id")
-          .eq("user_id", String(t.user_id))
-          .maybeSingle();
-        therapistProfileId = prof?.id || null;
+      if (opts.length) {
+        const text = lang.startsWith("zh")
+          ? `已为您找到 ${opts.length} 个可预约时间，请选择：`
+          : `I found ${opts.length} available time slots. Please pick one:`;
+        const createEnabled = actor === "user" || !!targetUserId;
+        return res.status(200).json(
+          compat(text, [{ type: "TIME_CONFIRM", options: opts.map(o => ({ ...o, targetUserId })), createEnabled, targetUserId }])
+        );
       }
-    } catch {}
 
-    let slots = [];
-    let availErr = null;
-    if (therapistProfileId) {
-      const q = supabase
-        .from("availability")
-        .select("id, therapist_id, start_time, end_time, is_booked")
-        .eq("therapist_id", therapistProfileId)
-        .or("is_booked.is.null,is_booked.eq.false")
-        .gt("start_time", nowISO)
-        .lt("start_time", in72hISO)
-        .order("start_time", { ascending: true })
-        .limit(8);
-      const { data, error } = await q;
-      slots = data || [];
-      availErr = error || null;
-
-      if (!slots?.length) {
-        const { data: slots2, error: err2 } = await supabase
-          .from("therapist_availability")
-          .select("id, therapist_code, start_utc, end_utc, status")
-          .eq("status", "open")
-          .eq("therapist_code", code)
-          .gt("start_utc", nowISO)
-          .lt("start_utc", in72hISO)
-          .order("start_utc", { ascending: true })
-          .limit(8);
-        if (err2) availErr = err2;
-        slots = (slots2 || []).map((r) => ({
-          id: r.id,
-          start_time: r.start_utc,
-          end_time: r.end_utc,
-        }));
-      }
+      const noSlot = lang.startsWith("zh")
+        ? "当前时段暂无可约。可以换个时间范围（如“这周末下午”），我再帮你查。"
+        : "No open slots in that window. Try another time range and I’ll check again.";
+      return res.status(200).json(compat(noSlot, []));
     }
 
-    if (availErr) console.error("availability query error:", availErr?.message);
-    const list = (slots || []).map((s) => ({
-      availabilityId: s.id,
-      therapistCode: code,
-      startUTC: s.start_time,
-      endUTC: s.end_time,
-    }));
-
-    if (list.length) {
-      const text =
-        lang.startsWith("zh")
-          ? `已为您找到 ${list.length} 个可预约时间，请选择：`
-          : `I found ${list.length} available time slots. Please pick one:`;
-
-      const createEnabled = actor === "user" || (actor === "therapist" && !!targetUserId);
-
-      await logAILine("chat", { ok: true, output: { time_confirm: list.length, actor, createEnabled } });
-      res.status(200).json({
-        success: true,
-        content: text,
-        toolCalls: [],
-        toolResults: [{ type: "TIME_CONFIRM", options: list, createEnabled, targetUserId: targetUserId || null }],
-        reply: { role: "assistant", content: text },
-        blocks: [{ type: "TIME_CONFIRM", options: list, createEnabled, targetUserId: targetUserId || null }],
-        response: text,
-        ...(isPreview && availErr ? { debug: { availabilityError: availErr.message } } : {}),
-      });
-      return;
-    }
-
-    const payload = {
-      message: userMessage,
-      context: { browserTz, therapistCode: code, availability: [], availabilityCount: 0, lang },
-    };
-
+    const payload = { message: userMessage, context: { browserTz, lang } };
     try {
       const resp = await openai.responses.create(
         {
           model: "gpt-4o",
-          prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
-          input: [{ role: "user", content: JSON.stringify(payload) }],
+          input: [
+            { role: "system", content: SYSTEM_PROMPT_USER },
+            { role: "user", content: JSON.stringify(payload) }
+          ],
+          max_output_tokens: 600
         },
         { timeout: 12000 }
       );
       const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? "");
-      await logAILine("chat", {
-        ok: true,
-        model: "gpt-4o",
-        promptId: process.env.OPENAI_SYSTEM_PROMPT_ID,
-        payload,
-        output: text,
-      });
-
-      res.status(200).json({
-        success: true,
-        content: text,
-        toolCalls: [],
-        toolResults: [],
-      });
-      return;
-    } catch (llmErr) {
-      const fallback =
-        lang.startsWith("zh")
-          ? "抱歉，查询有点慢。您可换一个时间范围（例如“本周末下午”），或告诉我偏好的时区/咨询师，我再查一次。"
-          : "Sorry, it’s a bit slow. Please try another time window (e.g., this weekend afternoon) or share your preferred timezone/therapist.";
-      await logAILine("chat", { ok: false, error: llmErr?.message });
-      res.status(200).json({
-        success: true,
-        content: fallback,
-        toolCalls: [],
-        toolResults: [],
-        ...(isPreview ? { debug: { error: String(llmErr?.message || "") } } : {}),
-      });
-      return;
+      return res.status(200).json(compat(text || "我在这，愿意听你说说。", []));
+    } catch {
+      const fallback = lang.startsWith("zh")
+        ? "我在这，先陪你说说发生了什么吧。如果你愿意，我们也可以在合适的时候安排一次专业咨询。"
+        : "I’m here with you. Tell me what’s going on.";
+      return res.status(200).json(compat(fallback, []));
     }
-  } catch (err) {
-    const fallback =
-      "抱歉，系统有点忙。请换一个时间范围（例如“明天上午/下午”），或告诉我偏好的时区/咨询师，我再查一次。";
-    await logAILine("chat", { ok: false, error: err?.message });
-    res.status(200).json({
-      success: true,
-      content: fallback,
-      toolCalls: [],
-      toolResults: [],
-      ...(isPreview ? { debug: { error: String(err?.message || "") } } : {}),
-    });
+  } catch {
+    return res.status(200).json(compat("抱歉，系统有点忙。请稍后再试。", []));
   }
 }
