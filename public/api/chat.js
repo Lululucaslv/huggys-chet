@@ -49,6 +49,21 @@ async function resolveTherapistFromText(text) {
     new Set(String(raw).toLowerCase().split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean))
   );
 
+  const HARD_ALIASES = [
+    { keys: ["hanqi.lyu"], code: "8W79AL2C" },
+    { keys: ["hanqi lyu"], code: "8W79AL2C" },
+    { keys: ["hanqi"], code: "8W79AL2C" },
+    { keys: ["寒琦"], code: "8W79AL2C" },
+    { keys: ["吕寒琦"], code: "8W79AL2C" }
+  ];
+  for (const item of HARD_ALIASES) {
+    if (item.keys.some(k => raw.includes(k))) {
+      const { data } = await supabase.from("therapists").select("code,name,active").eq("code", item.code).eq("active", true).limit(1);
+      if (data?.length) return data[0];
+      return { code: item.code, name: "Hanqi Lyu", active: true };
+    }
+  }
+
   const aliasCandidates = [raw, ...normTokens];
   for (const a of aliasCandidates) {
     const { data } = await supabase
@@ -69,6 +84,17 @@ async function resolveTherapistFromText(text) {
       .limit(1);
     if (data?.length) return data[0];
   }
+
+  if (normTokens.includes("hanqi") && normTokens.includes("lyu")) {
+    const { data } = await supabase
+      .from("therapists")
+      .select("code,name,aliases,active")
+      .ilike("name", `%hanqi%`)
+      .eq("active", true);
+    const hit = (data || []).find(t => String(t.name || "").toLowerCase().includes("lyu"));
+    if (hit) return hit;
+  }
+
   return null;
 }
 
