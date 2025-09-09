@@ -44,12 +44,32 @@ function normTokens(raw) {
   return Array.from(new Set(t.split(/[^a-z\u4e00-\u9fa5]+/).filter(Boolean)))
 }
 
+const HARD_ALIASES = {
+  "hanqi": "8W79AL2C",
+  "hanqi lyu": "8W79AL2C",
+  "hanqi.lyu": "8W79AL2C",
+  "寒琦": "8W79AL2C",
+  "吕寒琦": "8W79AL2C"
+};
+
 async function resolveTherapistFromText(text) {
   const supabase = getSupabase();
   const raw = String(text || "").toLowerCase().trim();
   if (!raw) return null;
 
   const terms = normTokens(raw);
+  for (const k of [...terms, raw]) {
+    const hit = HARD_ALIASES[k];
+    if (hit) {
+      const { data } = await supabase
+        .from("therapists")
+        .select("code,name,aliases,active")
+        .eq("code", hit)
+        .eq("active", true)
+        .limit(1);
+      if (data?.length) return data[0];
+    }
+  }
 
   const aliasCandidates = [...terms, raw];
   for (const term of aliasCandidates) {
@@ -74,10 +94,10 @@ async function resolveTherapistFromText(text) {
   return null;
 }
 
-async function fetchSlotsWithNames(code, limit = 8) {
+async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
   const supabase = getSupabase();
   const nowISO = new Date().toISOString();
-  const endISO = new Date(Date.now() + 96 * 3600 * 1000).toISOString();
+  const endISO = new Date(Date.now() + windowHours * 3600 * 1000).toISOString();
 
   let profileId = null;
   let trow = null;
@@ -185,8 +205,15 @@ export default async function handler(req, res) {
       try { resolved = await resolveTherapistFromText(userMessage); } catch {}
       const code = therapistCode || resolved?.code || DEFAULT_CODE;
 
-      const options = await fetchSlotsWithNames(code, 8);
-      const opts = options.length ? options : await fetchSlotsWithNames(null, 8);
+      let options = [];
+      if (code) {
+        options = await fetchSlotsWithNames(code, 8, 72);
+        if (!options.length) options = await fetchSlotsWithNames(code, 8, 96);
+        if (!options.length) options = await fetchSlotsWithNames(code, 8, 168);
+      } else {
+        options = await fetchSlotsWithNames(null, 8, 72);
+      }
+      const opts = options;
 
       if (opts.length) {
         const text = lang.startsWith("zh")
@@ -199,7 +226,7 @@ export default async function handler(req, res) {
             scope: "chat",
             ok: true,
             model: "none",
-            payload: JSON.stringify({ wantBooking: true, resolvedCode: code, source: "api/chat" }),
+            payload: JSON.stringify({ wantBooking: true, resolvedCode: code, source: "api/chat", optionsForCode: options.length }),
             output: JSON.stringify({ options: opts.length })
           });
         } catch {}
