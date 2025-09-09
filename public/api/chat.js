@@ -109,9 +109,6 @@ async function fetchSlotsWithNames(code, limit = 8) {
   }));
 }
 
-/* ===== 统一响应打包（兼容旧字段） ===== */
-function compat(text, toolResults) {
-  return {
 async function logAILine(scope, entry = {}) {
   try {
     await supabase.from("ai_logs").insert({
@@ -125,7 +122,9 @@ async function logAILine(scope, entry = {}) {
     });
   } catch {}
 }
-
+/* ===== 统一响应打包（兼容旧字段） ===== */
+function compat(text, toolResults) {
+  return {
     success: true,
     content: text,
     toolResults,
