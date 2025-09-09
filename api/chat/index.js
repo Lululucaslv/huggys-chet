@@ -10,6 +10,22 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
+
+function normalizeTherapistFromText(text = "") {
+  const t = String(text || "").toLowerCase();
+  const map = {
+    "megan chang": "8W79AL2B",
+    "megan": "8W79AL2B",
+    "hanqi lyu": "8W79AL2B",
+    "hanqi": "8W79AL2B",
+  };
+  for (const k of Object.keys(map)) {
+    if (t.includes(k)) return map[k];
+  }
+  return null;
+}
+
 async function logAILine(supabase, scope, entry = {}) {
   if (!supabase) return;
   try {
@@ -50,6 +66,8 @@ export default async function handler(req, res) {
       therapistCode,
       browserTz = "UTC",
       lang = "zh-CN",
+      actor = "user",
+      targetUserId
     } = req.body || {};
     if (!userMessage || !userId) {
       res.status(400).json({ error: "userMessage and userId required" });
@@ -91,8 +109,11 @@ export default async function handler(req, res) {
       }
     }
 
-    const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
-    const code = therapistCode || DEFAULT_CODE;
+    const code =
+      therapistCode ||
+      normalizeTherapistFromText(userMessage) ||
+      DEFAULT_CODE;
+
     const nowISO = new Date().toISOString();
     const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
 
@@ -121,20 +142,52 @@ export default async function handler(req, res) {
       const text = lang.startsWith("zh")
         ? `已为您找到 ${list.length} 个可预约时间，请选择：`
         : `I found ${list.length} available time slots. Please pick one:`;
-      await logAILine(supabase, "chat", { ok: true, output: { time_confirm: list.length } });
+
+      const createEnabled =
+        actor === "user" || (actor === "therapist" && !!targetUserId);
+
+      await logAILine(supabase, "chat", {
+        ok: true,
+        output: { time_confirm: list.length, actor, createEnabled },
+      });
       res.status(200).json({
         success: true,
         content: text,
         toolCalls: [],
-        toolResults: [{ type: "TIME_CONFIRM", options: list }],
-        ...(process.env.VERCEL_ENV === "preview" && availErrMsg ? { debug: { availabilityError: availErrMsg } } : {}),
+        toolResults: [
+          {
+            type: "TIME_CONFIRM",
+            options: list,
+            createEnabled,
+            targetUserId: targetUserId || null,
+          },
+        ],
+        reply: { role: "assistant", content: text },
+        blocks: [
+          {
+            type: "TIME_CONFIRM",
+            options: list,
+            createEnabled,
+            targetUserId: targetUserId || null,
+          },
+        ],
+        response: text,
+        ...(process.env.VERCEL_ENV === "preview" && availErrMsg
+          ? { debug: { availabilityError: availErrMsg } }
+          : {}),
       });
       return;
     }
 
     const payload = {
       message: userMessage,
-      context: { browserTz, therapistCode: code, availability: [], availabilityCount: 0, lang },
+      context: {
+        browserTz,
+        therapistCode: code,
+        availability: [],
+        availabilityCount: 0,
+        lang,
+      },
     };
 
     try {
@@ -181,8 +234,8 @@ export default async function handler(req, res) {
   } catch (err) {
     const fallback =
       "抱歉，系统有点忙。请换一个时间范围（例如“明天上午/下午”），或告诉我偏好的时区/咨询师，我再查一次。";
-    const supabase = getSupabase();
-    await logAILine(supabase, "chat", { ok: false, error: err?.message });
+    const supabase2 = getSupabase();
+    await logAILine(supabase2, "chat", { ok: false, error: err?.message });
     res.status(200).json({
       success: true,
       content: fallback,
