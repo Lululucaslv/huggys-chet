@@ -120,13 +120,14 @@ export default function ChatPage({ session }: ChatPageProps) {
                   endTime: o.endUTC || o.end_time || o.endTime
                 }))
                 const count = slots.length
+                const nameFromOpt = (opts && opts[0] && (opts[0].therapistName || (opts[0] as any).therapist_name)) || null
                 if (count > 0) {
-                  setSlotOptions({ therapistName: t('tool_therapist_fallback'), slots })
+                  setSlotOptions({ therapistName: nameFromOpt || t('tool_therapist_fallback'), slots })
                 } else {
                   setSlotOptions(null)
                 }
                 if (!assistantText) {
-                  assistantText = t('tool_availability_count', { name: t('tool_therapist_fallback'), count, extra: '' })
+                  assistantText = t('tool_availability_count', { name: nameFromOpt || t('tool_therapist_fallback'), count, extra: '' })
                 }
               }
             } catch {}
@@ -237,13 +238,14 @@ export default function ChatPage({ session }: ChatPageProps) {
                   endTime: o.endUTC || o.end_time || o.endTime
                 }))
                 const count = slots.length
+                const nameFromOpt = (opts && opts[0] && (opts[0].therapistName || (opts[0] as any).therapist_name)) || null
                 if (count > 0) {
-                  setSlotOptions({ therapistName: t('tool_therapist_fallback'), slots })
+                  setSlotOptions({ therapistName: nameFromOpt || t('tool_therapist_fallback'), slots })
                 } else {
                   setSlotOptions(null)
                 }
                 if (!assistantText) {
-                  assistantText = t('tool_availability_count', { name: t('tool_therapist_fallback'), count, extra: '' })
+                  assistantText = t('tool_availability_count', { name: nameFromOpt || t('tool_therapist_fallback'), count, extra: '' })
                 }
               }
             } catch {}
@@ -572,7 +574,9 @@ export default function ChatPage({ session }: ChatPageProps) {
                       disabled={isTyping}
                       className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md text-sm transition-colors"
                     >
-                      {new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
+                      {slotOptions.therapistName
+                        ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}`
+                        : new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
                     </button>
                   ))}
                 </div>

@@ -189,7 +189,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                   endTime: opt.endUTC,
                   therapistCode: opt.therapistCode
                 })).filter((s: any) => s.startTime)
-                const displayName = getSafeDisplayName(session, userProfile, t)
+                const nameFromOpt = (tr.options && tr.options[0] && (tr.options[0].therapistName || tr.options[0].therapist_name)) || null
+                const displayName = nameFromOpt || getSafeDisplayName(session, userProfile, t)
                 parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
                 if (slots.length > 0) {
                   setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8), createEnabled: !!tr.createEnabled, targetUserId: tr.targetUserId || null })
@@ -252,7 +253,9 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                     disabled={status === 'streaming' || status === 'submitted' || (slotOptions?.createEnabled === false)}
                     className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
                   >
-                    {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
+                    {slotOptions?.therapistName
+                      ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}`
+                      : new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
                   </button>
                 ))}
               </div>
@@ -346,7 +349,9 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                     disabled={status === 'streaming' || status === 'submitted' || (slotOptions?.createEnabled === false)}
                     className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
                   >
-                    {new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
+                    {slotOptions?.therapistName
+                      ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}`
+                      : new Date(s.startTime).toLocaleString(undefined as any, { hour12: false })}
                   </button>
                 ))}
               </div>
