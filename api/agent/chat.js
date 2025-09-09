@@ -101,7 +101,8 @@ export default async function handler(req, res) {
         }
       } catch {}
 
-      const code = DEFAULT_CODE
+      const therapistCodeFromProfile = profile?.therapist_code || null
+      const code = therapistCodeFromProfile || DEFAULT_CODE
       const nowISO = new Date().toISOString()
       const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString()
       let list = []
