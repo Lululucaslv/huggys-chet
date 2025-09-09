@@ -47,17 +47,18 @@ export class ChatAPI {
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token || ''
 
-      const response = await fetch('/api/agent/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({
-          tool: 'chatWithTools',
-          messages: conversationHistory,
           userMessage: userMessage,
-          userId: (userProfile?.id) || 'anonymous'
+          userId: (userProfile?.id) || 'anonymous',
+          browserTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          therapistCode: (window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B',
+          lang: navigator.language || 'zh-CN'
         })
       })
 
