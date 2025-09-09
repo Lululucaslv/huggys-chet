@@ -109,7 +109,7 @@ export default async function handler(req, res) {
         payload,
         error: e?.message || String(e),
       });
-      res.status(200).json({ text: fallback, fallback: true });
+      res.status(200).json({ success: true, content: fallback, toolCalls: [], toolResults: [], fallback: true });
       return;
     }
 
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       }
     } catch {}
 
-    res.status(200).json({ text: text || fallback });
+    res.status(200).json({ success: true, content: text || fallback, toolCalls: [], toolResults: [] });
   } catch (err) {
     await logAILine(supabase, "chat", {
       ok: false,
@@ -140,6 +140,6 @@ export default async function handler(req, res) {
       promptId: process.env.OPENAI_SYSTEM_PROMPT_ID,
       error: err?.message,
     });
-    res.status(200).json({ text: fallback, fallback: true });
+    res.status(200).json({ success: true, content: fallback, toolCalls: [], toolResults: [], fallback: true });
   }
 }
