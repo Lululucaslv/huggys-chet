@@ -77,7 +77,7 @@ async function resolveTherapistFromText(text) {
 async function fetchSlotsWithNames(code, limit = 8) {
   const supabase = getSupabase();
   const nowISO = new Date().toISOString();
-  const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+  const in72hISO = new Date(Date.now() + 96 * 3600 * 1000).toISOString();
 
   let q = supabase
     .from("therapist_availability")
