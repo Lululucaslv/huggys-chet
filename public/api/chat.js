@@ -205,6 +205,8 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
           therapist_code: codeByTid[s.therapist_id] || DEFAULT_CODE,
           start_utc: s.start_time,
           end_utc: s.end_time
+        }));
+
         try {
           await supabase.from("ai_logs").insert({
             scope: "chat",
@@ -217,8 +219,6 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
             output: JSON.stringify({ count: (slots2 || []).length })
           });
         } catch {}
-
-        }));
       }
     } catch {}
   }
@@ -235,12 +235,6 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
   const nameMap = {};
   ther?.forEach(t => (nameMap[t.code] = t.name));
 
-  return (slots || []).map(s => ({
-    availabilityId: s.id,
-    therapistCode: s.therapist_code,
-    therapistName: nameMap[s.therapist_code] || "Therapist",
-    startUTC: s.start_utc,
-    endUTC: s.end_utc
   try {
     await supabase.from("ai_logs").insert({
       scope: "chat",
@@ -255,6 +249,12 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
     });
   } catch {}
 
+  return (slots || []).map(s => ({
+    availabilityId: s.id,
+    therapistCode: s.therapist_code,
+    therapistName: nameMap[s.therapist_code] || "Therapist",
+    startUTC: s.start_utc,
+    endUTC: s.end_utc
   }));
 }
 
