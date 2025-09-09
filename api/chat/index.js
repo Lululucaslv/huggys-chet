@@ -30,7 +30,7 @@ const SYSTEM_PROMPT_USER = `
 
 function isBookingIntent(text = "") {
   const t = String(text).toLowerCase();
-  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用|空档|空闲|看.*时段|时间安排|排期)/;
+  const zhBook = /(预约|约个?|安排|改约|改期|再约|可预约|可用|可用时间|空档|空闲|空余|空位|时段|看.*时段|时间安排|排期)/;
   const zhTime = /(时间(段|点)?|今天|明天|后天|这周|下周|周[一二三四五六日天]|上午|下午|晚上|\d{1,2}点|\d{1,2}:\d{2}|(\d{1,3})\s*小时|(\d{1,3})h)/;
   const enBook = /\b(book|booking|schedule|reschedule|slot|availability|available)\b/;
   const enTime = /\b(today|tomorrow|tonight|this week|next week|morning|afternoon|evening|am|pm|\d{1,2}(:\d{2})?\s?(am|pm)?|\d{1,3}\s?hours?)\b/;

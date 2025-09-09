@@ -3,29 +3,17 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "functions": {
-    "api/agent/chat.js": {
-      "maxDuration": 60
-    },
-    "api/agent/chat-simple.js": {
-      "maxDuration": 60
-    },
-    "api/agent/chat-minimal.js": {
-      "maxDuration": 60
-    },
-    "api/agent/chat-simplified.js": {
-      "maxDuration": 60
-    },
-    "api/agent/chat-debug.js": {
-      "maxDuration": 60
-    },
-    "api/setup/add-test-data.js": {
-      "maxDuration": 60
-    }
+    "api/agent/chat.js": { "maxDuration": 60 },
+    "api/agent/chat-simple.js": { "maxDuration": 60 },
+    "api/agent/chat-minimal.js": { "maxDuration": 60 },
+    "api/agent/chat-simplified.js": { "maxDuration": 60 },
+    "api/agent/chat-debug.js": { "maxDuration": 60 },
+    "api/setup/add-test-data.js": { "maxDuration": 60 }
   },
   "rewrites": [
     {
       "source": "/api/agent/chat",
-      "destination": "/api/agent/chat.js"
+      "destination": "/api/chat/index.js"
     },
     {
       "source": "/((?!api/).*)",
