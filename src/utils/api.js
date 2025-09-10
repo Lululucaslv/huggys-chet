@@ -10,14 +10,14 @@ export async function sendChat({
   targetUserId = null,
   lang = (typeof navigator !== "undefined" ? navigator.language : "zh-CN")
 }) {
-  const r = await fetch("/api/chat", {
+  const r = await fetch("/api/agent/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userMessage,
       userId,
       therapistCode,
-      browserTz,
+      browserTz: browserTz || (typeof Intl !== "undefined" ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") : "UTC"),
       actor,
       targetUserId,
       lang
