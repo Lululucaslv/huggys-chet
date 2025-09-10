@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js@2";
+import { createClient } from "supabase/supabase-js";
 
 function withCors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -22,17 +22,22 @@ export default async function handler(req, res) {
   }
 
   const t0 = Date.now();
-  const { userMessage = "", userId = "", therapistCode = null, browserTz = null } = req.body || {};
+  const {
+    userMessage = "",
+    userId = "",
+    therapistCode = null,
+    browserTz = null,
+  } = req.body || {};
 
   const base = (process.env.DIFY_API_BASE || "").replace(/\/+$/, "");
   const key = process.env.DIFY_API_KEY;
 
   try {
     if (!base || !key) {
-      const reply = { role: "assistant", content: "（系统未连接工作流，已进入简单聊天模式）" };
+      const reply = { role: "assistant", content: "（系统暂未接通工作流，我在，愿意听你说说。）" };
       await supabase.from("ai_logs").insert({
         scope: "agent_chat", ok: true, model: "fallback",
-        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz }),
+        payload: JSON.stringify({ userMessage, userId }),
         output: JSON.stringify(reply), ms: Date.now() - t0
       });
       return res.status(200).json({ reply });
@@ -40,22 +45,28 @@ export default async function handler(req, res) {
 
     const r = await fetch(`${base}/v1/workflows/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
       body: JSON.stringify({
         inputs: {
           query: userMessage,
           user_id: userId || "anonymous",
           therapist_code: therapistCode,
-          browser_tz: browserTz
+          browser_tz: browserTz,
         },
         response_mode: "blocking",
-        user: userId || "anonymous"
-      })
+        user: userId || "anonymous",
+      }),
     });
 
     const dj = await r.json().catch(() => ({}));
     let out = dj?.data?.outputs?.[0]?.value ?? dj?.data?.output_text ?? dj?.result ?? dj;
-    if (typeof out === "string") { try { out = JSON.parse(out); } catch {} }
+
+    if (typeof out === "string") {
+      try { out = JSON.parse(out); } catch {}
+    }
 
     let reply;
     if (out && typeof out === "object" && out.type === "TIME_CONFIRM") {
@@ -66,13 +77,15 @@ export default async function handler(req, res) {
         options: Array.isArray(out.options) ? out.options : []
       };
     } else {
-      const text = typeof out === "string" ? out : (dj?.data?.output_text || "我在，愿意听你说说。");
+      const text = typeof out === "string"
+        ? out
+        : (dj?.data?.output_text || "我在，愿意听你说说。");
       reply = { role: "assistant", content: text };
     }
 
     await supabase.from("ai_logs").insert({
       scope: "agent_chat", ok: true, model: "dify-workflow",
-      payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz }),
+      payload: JSON.stringify({ userMessage, userId }),
       output: JSON.stringify(reply), ms: Date.now() - t0
     });
 
