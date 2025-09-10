@@ -12,6 +12,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/agent/chat",
+      "destination": "/api/agent/chat-dify.js"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
