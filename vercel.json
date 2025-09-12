@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "functions": {
+    "api/**.js": { "maxDuration": 60 },
     "api/chat/index.js": { "maxDuration": 60 },
     "api/agent/chat.js": { "maxDuration": 60 },
     "api/agent/chat-simple.js": { "maxDuration": 60 },
