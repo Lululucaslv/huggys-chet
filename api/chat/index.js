@@ -11,6 +11,12 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+function withCors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
 const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || "8W79AL2B";
 
 const SYSTEM_PROMPT_USER = `
@@ -234,7 +240,15 @@ function compat(text, toolResults) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  withCors(res)
+  if (req.method === "OPTIONS") {
+    res.status(200).end()
+    return
+  }
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST, OPTIONS")
+    return res.status(405).json({ error: "Method not allowed" })
+  }
 
   const {
     userMessage,
