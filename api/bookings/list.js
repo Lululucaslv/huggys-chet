@@ -1,4 +1,5 @@
 import { getServiceSupabase } from '../_utils/supabaseServer.js'
+import { DateTime } from 'luxon'
 
 export const runtime = 'nodejs'
 
@@ -6,6 +7,14 @@ function withCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
+
+function fmtDisplay(iso, tz) {
+  if (!iso) return ''
+  const dt = DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC')
+  const pretty = dt.toFormat('LLL dd (ccc) HH:mm')
+  const abbr = dt.toFormat('ZZZ')
+  return `${pretty} ${abbr}`
 }
 
 export default async function handler(req, res) {
@@ -30,6 +39,7 @@ export default async function handler(req, res) {
       hours = 96,
       limit = 8,
       userId = null,
+      user_tz = 'UTC',
     } = body
 
     let therapistCode = process.env.THERAPIST_DEFAULT_CODE || null
@@ -74,15 +84,29 @@ export default async function handler(req, res) {
       return
     }
 
-    const data = (slots || []).map(s => ({
-      availabilityId: s.id,
-      therapistCode: s.therapist_code,
-      startUTC: s.start_utc,
-      endUTC: s.end_utc,
-      display: s.start_utc,
-    }))
+    const codes = [...new Set((slots || []).map(s => s.therapist_code))].filter(Boolean)
+    let tzByCode = {}
+    if (codes.length) {
+      const { data: thRows } = await supabase
+        .from('therapists')
+        .select('code, timezone')
+        .in('code', codes)
+      tzByCode = Object.fromEntries((thRows || []).map(r => [r.code, r.timezone || 'UTC']))
+    }
 
-    res.status(200).json({ ok: true, data, meta: { therapistCode, lang, timeHint, userId } })
+    const data = (slots || []).map(s => {
+      const tz = tzByCode[s.therapist_code] || 'UTC'
+      return {
+        availabilityId: s.id,
+        therapistCode: s.therapist_code,
+        startUTC: s.start_utc,
+        endUTC: s.end_utc,
+        timeZone: tz,
+        display: fmtDisplay(s.start_utc, user_tz || tz),
+      }
+    })
+
+    res.status(200).json({ ok: true, data, meta: { therapistCode, lang, timeHint, userId, user_tz } })
   } catch (e) {
     res.status(500).json({ ok: false, error: 'exception' })
   }
