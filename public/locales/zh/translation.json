@@ -83,5 +83,6 @@
   "sched_end_time_label": "结束时间",
   "sched_adding": "添加中...",
   "sched_add_time_slot": "添加时间段",
-  "chat_confirm_booking": "我确认预约 {{therapistName}} 在 {{whenLocal}}（ISO: {{iso}}）的时间。"
+  "chat_confirm_booking": "我确认预约 {{therapistName}} 在 {{whenLocal}}（ISO: {{iso}}）的时间。",
+  "chat_modal_desc": "与AI助理聊天"
 }

@@ -130,13 +130,15 @@ export default function ClientBooking({ session }: ClientBookingProps) {
       const slotsWithNames = await Promise.all(
         (data || []).map(async (slot) => {
           try {
-            const { data: userData } = await supabase.auth.admin.getUserById(
-              slot.user_profiles.user_id
-            )
-            
+            const therapistUserId = slot.user_profiles.user_id
+            const { data: therapistRow } = await supabase
+              .from('therapists')
+              .select('name')
+              .eq('user_id', therapistUserId)
+              .maybeSingle()
             return {
               ...slot,
-              therapist_name: userData?.user?.email?.split('@')[0] || ''
+              therapist_name: therapistRow?.name || ''
             }
           } catch (err) {
             return {
