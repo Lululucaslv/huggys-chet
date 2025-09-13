@@ -1,18 +1,13 @@
 {
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
-  "installCommand": "pnpm install",
+  "version": 2,
   "functions": {
     "api/**/*.{js,ts,mjs}": {
-      "runtime": "nodejs20",
+      "runtime": "nodejs20.x",
       "memory": 1024,
       "maxDuration": 10
     }
   },
-  "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" }
   ]
 }
