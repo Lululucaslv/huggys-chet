@@ -3,17 +3,11 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "functions": {
-    "api/**.js": { "maxDuration": 60 },
-    "api/chat/index.js": { "maxDuration": 60 },
-    "api/agent/chat.js": { "maxDuration": 60 },
-    "api/agent/chat-simple.js": { "maxDuration": 60 },
-    "api/agent/chat-minimal.js": { "maxDuration": 60 },
-    "api/agent/chat-simplified.js": { "maxDuration": 60 },
-    "api/agent/chat-debug.js": { "maxDuration": 60 },
-    "api/bookings/list.js": { "maxDuration": 60 },
-    "api/bookings/create.js": { "maxDuration": 60 },
-    "api/bookings/summary.js": { "maxDuration": 60 },
-    "api/setup/add-test-data.js": { "maxDuration": 60 }
+    "api/**/*.{js,ts,mjs}": {
+      "runtime": "nodejs20",
+      "memory": 1024,
+      "maxDuration": 10
+    }
   },
   "rewrites": [
     {
