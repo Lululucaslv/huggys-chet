@@ -1,11 +1,9 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*.{js,ts,mjs}": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 10
-    }
+    "api/**/*.js":  { "runtime": "nodejs22.x", "memory": 1024, "maxDuration": 10 },
+    "api/**/*.ts":  { "runtime": "nodejs22.x", "memory": 1024, "maxDuration": 10 },
+    "api/**/*.mjs": { "runtime": "nodejs22.x", "memory": 1024, "maxDuration": 10 }
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" }
