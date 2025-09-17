@@ -20,7 +20,8 @@ export async function sendChat({
       browserTz: browserTz || (typeof Intl !== "undefined" ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") : "UTC"),
       actor,
       targetUserId,
-      lang
+      lang,
+      mode: actor === 'therapist' ? 'therapist' : 'user'
     })
   });
 
