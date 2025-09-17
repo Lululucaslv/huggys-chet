@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 12000)
 
-    const r = await fetch(`${base}/v1/workflows/run`, {
+    const r = await fetch(`${base}/workflows/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
