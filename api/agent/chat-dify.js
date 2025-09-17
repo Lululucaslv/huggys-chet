@@ -30,8 +30,10 @@ export default async function handler(req, res) {
     userId = "",
     therapistCode = null,
     browserTz = null,
-    mode: modeRaw = "user"
+    mode: modeBody = "user"
   } = body
+  const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined
+  const modeRaw = modeQuery || modeBody
 
   const base = String(process.env.DIFY_API_BASE || "").replace(/\/+$/, "")
   const key = process.env.DIFY_API_KEY
