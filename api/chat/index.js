@@ -281,6 +281,7 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           inputs: {
+            user_message: userMessage,
             query: userMessage,
             user_id: userId || 'anonymous',
             therapist_code: therapistCode || DEFAULT_CODE,
@@ -305,8 +306,8 @@ export default async function handler(req, res) {
         try {
           await supabase.from('ai_logs').insert({
             scope, ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role }).slice(0, 4000),
-            output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length }).slice(0, 4000)
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, status: r.status }).slice(0, 4000),
+            output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length, raw: dj }).slice(0, 4000)
           })
         } catch {}
 
@@ -319,8 +320,8 @@ export default async function handler(req, res) {
         try {
           await supabase.from('ai_logs').insert({
             scope, ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role }).slice(0, 4000),
-            output: String(text || '').slice(0, 4000)
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, status: r.status }).slice(0, 4000),
+            output: JSON.stringify({ text: String(text || ''), raw: dj }).slice(0, 4000)
           })
         } catch {}
 
