@@ -268,6 +268,74 @@ export default async function handler(req, res) {
       : "Tell me what's on your mind, or share a time window (e.g., 'tomorrow afternoon') and I can check availability.";
     return res.status(200).json(compat(msg, []));
   }
+  try {
+    const base = String(process.env.DIFY_API_BASE || '').replace(/\/+$/, '')
+    const key = process.env.DIFY_API_KEY
+    const workflowUser = process.env.DIFY_USER_WORKFLOW_ID
+    if (base && key && workflowUser) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 12000)
+      const r = await fetch(`${base}/v1/workflows/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          inputs: {
+            query: userMessage,
+            user_id: userId || 'anonymous',
+            therapist_code: therapistCode || DEFAULT_CODE,
+            browser_tz: browserTz || 'UTC'
+          },
+          response_mode: 'blocking',
+          user: userId || 'anonymous',
+          workflow_id: workflowUser
+        }),
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeout))
+
+      const dj = await r.json().catch(() => ({}))
+      let out = dj?.data?.outputs?.[0]?.value ?? dj?.data?.output_text ?? dj?.result ?? dj
+      if (typeof out === 'string') { try { out = JSON.parse(out) } catch {} }
+
+      if (out && typeof out === 'object' && out.type === 'TIME_CONFIRM') {
+        const options = Array.isArray(out.options) ? out.options : []
+        const text = lang.startsWith('zh')
+          ? (out.message || `已为您找到 ${options.length} 个可预约时间，请选择：`)
+          : (out.message || `I found ${options.length} available time slots. Please pick one:`)
+
+        try {
+          await supabase.from('ai_logs').insert({
+            scope: 'chat_dify_user', ok: true, model: 'dify-workflow',
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode: 'user', workflowId: workflowUser }).slice(0, 4000),
+            output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length }).slice(0, 4000)
+          })
+        } catch {}
+
+        return res.status(200).json(compat(text, [{ type: 'TIME_CONFIRM', options }]))
+      } else {
+        const text = typeof out === 'string'
+          ? out
+          : (dj?.data?.output_text || (lang.startsWith('zh') ? '我在，愿意听你说说。' : 'I’m here and listening.'))
+
+        try {
+          await supabase.from('ai_logs').insert({
+            scope: 'chat_dify_user', ok: true, model: 'dify-workflow',
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode: 'user', workflowId: workflowUser }).slice(0, 4000),
+            output: String(text || '').slice(0, 4000)
+          })
+        } catch {}
+
+        return res.status(200).json(compat(text, []))
+      }
+    }
+  } catch (e) {
+    try {
+      await supabase.from('ai_logs').insert({
+        scope: 'chat_dify_user', ok: false, model: 'dify-workflow',
+        error: String(e && e.message ? e.message : e)
+      })
+    } catch {}
+  }
+
 
   try {
     const greetings = /(你好|您好|hello|hi|嗨|在吗|hey)/i;
