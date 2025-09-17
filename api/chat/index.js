@@ -271,6 +271,7 @@ export default async function handler(req, res) {
   try {
     const base = String(process.env.DIFY_API_BASE || 'https://api.dify.ai/v1').replace(/\/+$/, '')
     const role = String(actor || 'user').toLowerCase() === 'therapist' ? 'therapist' : 'user'
+    const scope = role === 'therapist' ? 'agent_chat_therapist' : 'agent_chat_user'
     const apiKey = role === 'therapist' ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY
     if (base && apiKey) {
       const controller = new AbortController()
@@ -303,8 +304,8 @@ export default async function handler(req, res) {
 
         try {
           await supabase.from('ai_logs').insert({
-            scope: 'chat_dify_user', ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode: 'user', workflowId: workflowUser }).slice(0, 4000),
+            scope, ok: true, model: 'dify-workflow',
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role }).slice(0, 4000),
             output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length }).slice(0, 4000)
           })
         } catch {}
@@ -317,8 +318,8 @@ export default async function handler(req, res) {
 
         try {
           await supabase.from('ai_logs').insert({
-            scope: 'chat_dify_user', ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode: 'user', workflowId: workflowUser }).slice(0, 4000),
+            scope, ok: true, model: 'dify-workflow',
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role }).slice(0, 4000),
             output: String(text || '').slice(0, 4000)
           })
         } catch {}
@@ -329,7 +330,7 @@ export default async function handler(req, res) {
   } catch (e) {
     try {
       await supabase.from('ai_logs').insert({
-        scope: 'chat_dify_user', ok: false, model: 'dify-workflow',
+        scope: 'agent_chat_user', ok: false, model: 'dify-workflow',
         error: String(e && e.message ? e.message : e)
       })
     } catch {}
