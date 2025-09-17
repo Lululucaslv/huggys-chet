@@ -25,23 +25,50 @@ export default async function handler(req, res) {
 
   const t0 = Date.now()
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})
-  const { userMessage = "", userId = "", therapistCode = null, browserTz = null } = body
+  const {
+    userMessage = "",
+    userId = "",
+    therapistCode = null,
+    browserTz = null,
+    mode: modeRaw = "user"
+  } = body
 
   const base = String(process.env.DIFY_API_BASE || "").replace(/\/+$/, "")
   const key = process.env.DIFY_API_KEY
+  const workflowUser = process.env.DIFY_USER_WORKFLOW_ID
+  const workflowTherapist = process.env.DIFY_THERAPIST_WORKFLOW_ID
+
+  const mode = String(modeRaw || "user").toLowerCase() === "therapist" ? "therapist" : "user"
+  const workflowId = mode === "therapist" ? workflowTherapist : workflowUser
+  const scope = mode === "therapist" ? "agent_chat_therapist" : "agent_chat_user"
 
   try {
-    if (!base || !key) {
-      const reply = { role: "assistant", content: "（系统未连接工作流，已进入简单聊天模式）" }
-      try {
-        await supabase.from("ai_logs").insert({
-          scope: "agent_chat", ok: true, model: "fallback",
-          payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz }),
-          output: JSON.stringify(reply), ms: Date.now() - t0
-        })
-      } catch {}
-      return res.status(200).json({ reply })
+    if (!base || !key || !workflowId) {
+      const msg = !base ? "Missing DIFY_API_BASE" : (!key ? "Missing DIFY_API_KEY" : "Missing workflow id")
+      if (mode === "user") {
+        const reply = { role: "assistant", content: "抱歉，服务暂不可用，请稍后再试。", fallback: true, error: msg }
+        try {
+          await supabase.from("ai_logs").insert({
+            scope, ok: false, model: "dify-workflow",
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode }),
+            error: msg, ms: Date.now() - t0
+          })
+        } catch {}
+        return res.status(200).json({ reply })
+      } else {
+        try {
+          await supabase.from("ai_logs").insert({
+            scope, ok: false, model: "dify-workflow",
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode }),
+            error: msg, ms: Date.now() - t0
+          })
+        } catch {}
+        return res.status(400).json({ error: msg })
+      }
     }
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
 
     const r = await fetch(`${base}/v1/workflows/run`, {
       method: "POST",
@@ -54,9 +81,11 @@ export default async function handler(req, res) {
           browser_tz: browserTz
         },
         response_mode: "blocking",
-        user: userId || "anonymous"
-      })
-    })
+        user: userId || "anonymous",
+        workflow_id: workflowId
+      }),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout))
 
     const dj = await r.json().catch(() => ({}))
     let out = dj?.data?.outputs?.[0]?.value ?? dj?.data?.output_text ?? dj?.result ?? dj
@@ -77,22 +106,33 @@ export default async function handler(req, res) {
 
     try {
       await supabase.from("ai_logs").insert({
-        scope: "agent_chat", ok: true, model: "dify-workflow",
-        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz }),
+        scope, ok: true, model: "dify-workflow",
+        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode, workflowId }),
         output: JSON.stringify(reply), ms: Date.now() - t0
       })
     } catch {}
 
     return res.status(200).json({ reply })
   } catch (e) {
-    try {
-      await supabase.from("ai_logs").insert({
-        scope: "agent_chat", ok: false, model: "dify-workflow",
-        error: String(e?.message || e), ms: Date.now() - t0
+    const errMsg = String(e?.message || e)
+    if (mode === "user") {
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: false, model: "dify-workflow",
+          error: errMsg, ms: Date.now() - t0
+        })
+      } catch {}
+      return res.status(200).json({
+        reply: { role: "assistant", content: "抱歉，服务有点忙，稍后再试可以吗？", fallback: true }
       })
-    } catch {}
-    return res.status(200).json({
-      reply: { role: "assistant", content: "抱歉，服务有点忙，稍后再试可以吗？" }
-    })
+    } else {
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: false, model: "dify-workflow",
+          error: errMsg, ms: Date.now() - t0
+        })
+      } catch {}
+      return res.status(500).json({ error: "dify_failed" })
+    }
   }
 }
