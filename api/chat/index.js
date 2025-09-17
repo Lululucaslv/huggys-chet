@@ -269,15 +269,15 @@ export default async function handler(req, res) {
     return res.status(200).json(compat(msg, []));
   }
   try {
-    const base = String(process.env.DIFY_API_BASE || '').replace(/\/+$/, '')
-    const key = process.env.DIFY_API_KEY
-    const workflowUser = process.env.DIFY_USER_WORKFLOW_ID
-    if (base && key && workflowUser) {
+    const base = String(process.env.DIFY_API_BASE || 'https://api.dify.ai/v1').replace(/\/+$/, '')
+    const role = String(actor || 'user').toLowerCase() === 'therapist' ? 'therapist' : 'user'
+    const apiKey = role === 'therapist' ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY
+    if (base && apiKey) {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 12000)
       const r = await fetch(`${base}/v1/workflows/run`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           inputs: {
             query: userMessage,
@@ -286,8 +286,7 @@ export default async function handler(req, res) {
             browser_tz: browserTz || 'UTC'
           },
           response_mode: 'blocking',
-          user: userId || 'anonymous',
-          workflow_id: workflowUser
+          user: userId || 'anonymous'
         }),
         signal: controller.signal
       }).finally(() => clearTimeout(timeout))

@@ -35,18 +35,14 @@ export default async function handler(req, res) {
   const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined
   const modeRaw = modeQuery || modeBody
 
-  const base = String(process.env.DIFY_API_BASE || "").replace(/\/+$/, "")
-  const key = process.env.DIFY_API_KEY
-  const workflowUser = process.env.DIFY_USER_WORKFLOW_ID
-  const workflowTherapist = process.env.DIFY_THERAPIST_WORKFLOW_ID
-
+  const base = String(process.env.DIFY_API_BASE || "https://api.dify.ai/v1").replace(/\/+$/, "")
   const mode = String(modeRaw || "user").toLowerCase() === "therapist" ? "therapist" : "user"
-  const workflowId = mode === "therapist" ? workflowTherapist : workflowUser
+  const apiKey = mode === "therapist" ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY
   const scope = mode === "therapist" ? "agent_chat_therapist" : "agent_chat_user"
 
   try {
-    if (!base || !key || !workflowId) {
-      const msg = !base ? "Missing DIFY_API_BASE" : (!key ? "Missing DIFY_API_KEY" : "Missing workflow id")
+    if (!base || !apiKey) {
+      const msg = !base ? "Missing DIFY_API_BASE" : "Missing Dify API Key"
       if (mode === "user") {
         const reply = { role: "assistant", content: "抱歉，服务暂不可用，请稍后再试。", fallback: true, error: msg }
         try {
@@ -74,7 +70,7 @@ export default async function handler(req, res) {
 
     const r = await fetch(`${base}/v1/workflows/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         inputs: {
           query: userMessage,
@@ -83,8 +79,7 @@ export default async function handler(req, res) {
           browser_tz: browserTz
         },
         response_mode: "blocking",
-        user: userId || "anonymous",
-        workflow_id: workflowId
+        user: userId || "anonymous"
       }),
       signal: controller.signal
     }).finally(() => clearTimeout(timeout))
@@ -109,7 +104,7 @@ export default async function handler(req, res) {
     try {
       await supabase.from("ai_logs").insert({
         scope, ok: true, model: "dify-workflow",
-        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode, workflowId }),
+        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode }),
         output: JSON.stringify(reply), ms: Date.now() - t0
       })
     } catch {}
