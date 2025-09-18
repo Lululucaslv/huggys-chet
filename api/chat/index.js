@@ -261,6 +261,7 @@ export default async function handler(req, res) {
   } = req.body || {};
 
   const supabase = getSupabase();
+  const t0 = Date.now()
 
   if (!userMessage || !userId) {
     const msg = lang.startsWith("zh")
@@ -270,13 +271,15 @@ export default async function handler(req, res) {
   }
   try {
     const base = String(process.env.DIFY_API_BASE || 'https://api.dify.ai/v1').replace(/\/+$/, '')
-    const role = String(actor || 'user').toLowerCase() === 'therapist' ? 'therapist' : 'user'
+    const modeParam = (req.query && (req.query.mode || req.query.m)) || req.body?.mode || actor
+    const role = String(modeParam || 'user').toLowerCase() === 'therapist' ? 'therapist' : 'user'
     const scope = role === 'therapist' ? 'agent_chat_therapist' : 'agent_chat_user'
     const apiKey = role === 'therapist' ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY
+    const url = `${base}/workflows/run`
     if (base && apiKey) {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 12000)
-      const r = await fetch(`${base}/workflows/run`, {
+      const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -294,8 +297,33 @@ export default async function handler(req, res) {
       }).finally(() => clearTimeout(timeout))
 
       const dj = await r.json().catch(() => ({}))
-      let out = dj?.data?.outputs?.[0]?.value ?? dj?.data?.output_text ?? dj?.result ?? dj
-      if (typeof out === 'string') { try { out = JSON.parse(out) } catch {} }
+      const outputs = dj?.data?.outputs
+      const outputsKeys = Array.isArray(outputs) ? outputs.map(o => o?.name || o?.key).filter(Boolean) : (outputs && typeof outputs === 'object' ? Object.keys(outputs) : [])
+      const hasOutputText = typeof dj?.data?.output_text === 'string'
+      const outputTextLen = hasOutputText ? dj.data.output_text.length : 0
+      const difyStatus = dj?.status || dj?.data?.status
+
+      function pickFromOutputs(outs) {
+        if (Array.isArray(outs)) {
+          const byReply = outs.find(x => x?.key === 'reply' || x?.name === 'reply')
+          if (byReply && byReply.value) return byReply.value
+          const byAnswer = outs.find(x => x?.key === 'answer' || x?.name === 'answer')
+          if (byAnswer && byAnswer.value) return byAnswer.value
+          const any = outs.find(x => x && x.value)
+          if (any) return any.value
+        } else if (outs && typeof outs === 'object') {
+          if (outs.reply) return outs.reply
+          if (outs.answer) return outs.answer
+        }
+        return null
+      }
+
+      let out = pickFromOutputs(outputs) || null
+      if (!out && hasOutputText) out = dj.data.output_text
+      if (!out) out = (dj?.result && (dj.result.reply || dj.result.text)) || null
+      if (!out) out = dj?.message || dj?.text || null
+
+      if (typeof out === 'string') { try { const parsed = JSON.parse(out); out = parsed } catch {} }
 
       if (out && typeof out === 'object' && out.type === 'TIME_CONFIRM') {
         const options = Array.isArray(out.options) ? out.options : []
@@ -306,22 +334,26 @@ export default async function handler(req, res) {
         try {
           await supabase.from('ai_logs').insert({
             scope, ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, status: r.status }).slice(0, 4000),
-            output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length, raw: dj }).slice(0, 4000)
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, url, status: r.status, keyHint: (apiKey||'').slice(-6), outputsKeys, hasOutputText, outputTextLen, difyStatus }).slice(0, 4000),
+            output: JSON.stringify({ type: 'TIME_CONFIRM', count: options.length, raw: dj }).slice(0, 4000),
+            ms: Date.now() - t0
           })
         } catch {}
 
         return res.status(200).json(compat(text, [{ type: 'TIME_CONFIRM', options }]))
       } else {
-        const text = typeof out === 'string'
-          ? out
-          : (dj?.data?.output_text || (lang.startsWith('zh') ? '我在，愿意听你说说。' : 'I’m here and listening.'))
+        let text = ''
+        if (typeof out === 'string') text = out
+        else if (out && typeof out === 'object' && (out.message || out.text)) text = out.message || out.text
+        else if (hasOutputText) text = dj.data.output_text
+        if (!text) text = lang.startsWith('zh') ? '我在，愿意听你说说。' : 'I’m here and listening.'
 
         try {
           await supabase.from('ai_logs').insert({
             scope, ok: true, model: 'dify-workflow',
-            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, status: r.status }).slice(0, 4000),
-            output: JSON.stringify({ text: String(text || ''), raw: dj }).slice(0, 4000)
+            payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, role, url, status: r.status, keyHint: (apiKey||'').slice(-6), outputsKeys, hasOutputText, outputTextLen, difyStatus }).slice(0, 4000),
+            output: JSON.stringify({ text: String(text || ''), raw: dj }).slice(0, 4000),
+            ms: Date.now() - t0
           })
         } catch {}
 
@@ -331,8 +363,16 @@ export default async function handler(req, res) {
   } catch (e) {
     try {
       await supabase.from('ai_logs').insert({
-        scope: 'agent_chat_user', ok: false, model: 'dify-workflow',
-        error: String(e && e.message ? e.message : e)
+        scope: (String(actor||'user').toLowerCase()==='therapist' ? 'agent_chat_therapist' : 'agent_chat_user'),
+        ok: false,
+        model: 'dify-workflow',
+        payload: JSON.stringify({
+          role: (String(actor||'user').toLowerCase()==='therapist' ? 'therapist' : 'user'),
+          url: (String(process.env.DIFY_API_BASE || 'https://api.dify.ai/v1').replace(/\/+$/, '')) + '/workflows/run',
+          keyHint: (((String(actor||'user').toLowerCase()==='therapist' ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY)) || '').slice(-6)
+        }).slice(0,4000),
+        error: String(e && e.message ? e.message : e),
+        ms: Date.now() - t0
       })
     } catch {}
   }

@@ -68,7 +68,8 @@ export default async function handler(req, res) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 12000)
 
-    const r = await fetch(`${base}/workflows/run`, {
+    const url = `${base}/workflows/run`
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -86,14 +87,37 @@ export default async function handler(req, res) {
     }).finally(() => clearTimeout(timeout))
 
     const dj = await r.json().catch(() => ({}))
+
+    const outputs = dj?.data?.outputs
+    const outputsArr = Array.isArray(outputs) ? outputs : []
+    const outputsObj = outputs && !Array.isArray(outputs) && typeof outputs === "object" ? outputs : null
+
+    const pickFromArray = (arr, key) => {
+      const byKey = arr.find(o => (o?.name || o?.key) === key)
+      if (byKey && byKey.value) return byKey.value
+      const firstWithValue = arr.find(o => o && o.value)
+      return firstWithValue ? firstWithValue.value : null
+    }
+    const pickFromObject = (obj, key) => {
+      if (!obj) return null
+      if (obj[key] != null) return obj[key]
+      const vals = Object.values(obj)
+      return vals.length ? vals[0] : null
+    }
+
     let out =
-      (Array.isArray(dj?.data?.outputs) && dj.data.outputs.find(o => o && o.value)?.value) ??
-      dj?.data?.output_text ??
-      dj?.result ??
-      null
+      (outputsArr.length ? (pickFromArray(outputsArr, "reply") ?? null) : null) ??
+      (typeof dj?.data?.output_text === "string" ? dj.data.output_text : null) ??
+      (outputsArr.length ? (pickFromArray(outputsArr, "answer") ?? null) : null) ??
+      (dj?.result && (dj.result.reply || dj.result.text) ? (dj.result.reply || dj.result.text) : null) ??
+      (outputsObj ? (pickFromObject(outputsObj, "reply") ?? pickFromObject(outputsObj, "answer")) : null) ??
+      (dj?.message || dj?.text || null)
 
     if (typeof out === "string") {
-      try { out = JSON.parse(out) } catch {}
+      const s = out.trim()
+      if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+        try { out = JSON.parse(out) } catch {}
+      }
     }
 
     let reply
@@ -115,10 +139,34 @@ export default async function handler(req, res) {
 
     try {
       const keyHint = (apiKey || "").slice(-6)
+      const outputsKeys = outputsArr.length
+        ? outputsArr.map(o => o?.name || o?.key).filter(Boolean)
+        : (outputsObj ? Object.keys(outputsObj) : [])
+      const hasOutputText = typeof dj?.data?.output_text === "string"
+      const outputTextLen = hasOutputText ? dj.data.output_text.length : 0
+      const difyStatus = dj?.status || dj?.data?.status
+
       await supabase.from("ai_logs").insert({
-        scope, ok: true, model: "dify-workflow",
-        payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode, status: r.status, keyHint }).slice(0,4000),
-        output: JSON.stringify({ reply, raw: dj }).slice(0,4000), ms: Date.now() - t0
+        scope,
+        ok: true,
+        model: "dify-workflow",
+        payload: JSON.stringify({
+          mode,
+          role: mode,
+          url,
+          status: r.status,
+          keyHint,
+          outputsKeys,
+          hasOutputText,
+          outputTextLen,
+          difyStatus,
+          userId,
+          therapistCode,
+          browserTz,
+          elapsed_ms: Date.now() - t0
+        }).slice(0, 4000),
+        output: JSON.stringify({ reply, raw: dj }).slice(0, 4000),
+        ms: Date.now() - t0
       })
     } catch {}
 

@@ -293,8 +293,148 @@ export default async function handler(req, res) {
     browserTz = "UTC",
     lang = "zh-CN",
     actor = "user",
-    targetUserId = null
+    targetUserId = null,
+    mode: modeBody,
+    text,
+    inputs
   } = req.body || {};
+
+  const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined;
+  const mode = String(modeQuery || modeBody || "").toLowerCase();
+  const isDifyPath = mode === "user" || mode === "therapist";
+
+  if (isDifyPath) {
+    const base = (process.env.DIFY_API_BASE || "https://api.dify.ai/v1").replace(/\/+$/, "");
+    const apiKey = mode === "therapist" ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY;
+    const scope = mode === "therapist" ? "agent_chat_therapist" : "agent_chat_user";
+    const url = `${base}/workflows/run`;
+    const t0 = Date.now();
+
+    if (!apiKey) {
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ phase: "missing_key", mode, url }),
+          error: `Missing Dify API Key for mode=${mode}`
+        });
+      } catch {}
+      return res.status(500).json(compat("抱歉，服务暂不可用，请稍后再试。", []));
+    }
+
+    const finalText = typeof text === "string" && text ? text : (userMessage || "");
+    const inObj = inputs && typeof inputs === "object" ? inputs : {};
+    const payload = {
+      inputs: {
+        user_message: finalText,
+        query: finalText,
+        user_id: inObj.user_id || userId || "anonymous",
+        therapist_code: inObj.therapist_code || therapistCode || null,
+        browser_tz: inObj.browser_tz || browserTz || "UTC",
+        ...inObj
+      },
+      response_mode: "blocking",
+      user: (inObj.user_id || userId || "anonymous")
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    let r, dj;
+    try {
+      r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      dj = await r.json().catch(() => ({}));
+    } catch (e) {
+      clearTimeout(timeout);
+      const errMsg = String(e?.message || e);
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, role: mode, url, keyHint: (apiKey||"").slice(-6) }).slice(0,4000),
+          error: errMsg,
+          ms: Date.now() - t0
+        });
+      } catch {}
+      return res.status(200).json(compat("抱歉，服务有点忙，稍后再试可以吗？", []));
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const outputs = dj?.data?.outputs;
+    const outputText = dj?.data?.output_text;
+    const difyStatus = dj?.status || dj?.data?.status;
+    const outputsKeys = Array.isArray(outputs)
+      ? outputs.map(o => o?.name || o?.key).filter(Boolean)
+      : (outputs && typeof outputs === "object" ? Object.keys(outputs) : []);
+    const hasOutputText = typeof outputText === "string";
+    const outputTextLen = hasOutputText ? outputText.length : 0;
+
+    function pickFromOutputs(byKey) {
+      if (Array.isArray(outputs)) {
+        const hit = outputs.find(o => (o?.name || o?.key) === byKey) ||
+                    outputs.find(o => o && o.value);
+        return hit?.value;
+      }
+      if (outputs && typeof outputs === "object") return outputs[byKey];
+      return undefined;
+    }
+
+    let out =
+      pickFromOutputs("reply") ??
+      outputText ??
+      pickFromOutputs("answer") ??
+      dj?.result?.reply ?? dj?.result?.text ??
+      dj?.message ?? dj?.text ?? null;
+
+    if (typeof out === "string") {
+      const s = out.trim();
+      if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+        try { out = JSON.parse(s); } catch {}
+      }
+    }
+
+    if (out && typeof out === "object" && out.type === "TIME_CONFIRM") {
+      const replyText = out.message || "请从下面的时间中选择：";
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: true, model: "dify-workflow",
+          payload: JSON.stringify({
+            mode, role: mode, url, status: r.status, difyStatus, keyHint: (apiKey||"").slice(-6),
+            outputsKeys, hasOutputText, outputTextLen
+          }).slice(0,4000),
+          output: JSON.stringify({ replyType: "TIME_CONFIRM", raw: dj }).slice(0,4000),
+          ms: Date.now() - t0
+        });
+      } catch {}
+      return res.status(200).json(compat(replyText, [{
+        type: "TIME_CONFIRM",
+        options: Array.isArray(out.options) ? out.options : []
+      }]));
+    }
+
+    let textOut = "";
+    if (typeof out === "string") textOut = out;
+    else if (hasOutputText) textOut = outputText;
+    else if (out && typeof out === "object" && (out.message || out.text)) textOut = out.message || out.text;
+    if (!textOut) textOut = "我在，愿意听你说说。";
+
+    try {
+      await supabase.from("ai_logs").insert({
+        scope, ok: true, model: "dify-workflow",
+        payload: JSON.stringify({
+          mode, role: mode, url, status: r.status, difyStatus, keyHint: (apiKey||"").slice(-6),
+          outputsKeys, hasOutputText, outputTextLen
+        }).slice(0,4000),
+        output: JSON.stringify({ text: textOut, raw: dj }).slice(0,4000),
+        ms: Date.now() - t0
+      });
+    } catch {}
+
+    return res.status(200).json(compat(textOut, []));
+  }
 
   if (!userMessage || !userId) {
     const msg = lang.startsWith("zh")
