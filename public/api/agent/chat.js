@@ -82,7 +82,11 @@ export default async function handler(req, res) {
     }).finally(() => clearTimeout(timeout));
 
     const dj = await r.json().catch(() => ({}));
-    let out = dj?.data?.outputs?.[0]?.value ?? dj?.data?.output_text ?? dj?.result ?? dj;
+    let out =
+      (Array.isArray(dj?.data?.outputs) && dj.data.outputs.find(o => o && o.value)?.value) ??
+      dj?.data?.output_text ??
+      dj?.result ??
+      null;
 
     if (typeof out === "string") {
       try { out = JSON.parse(out); } catch {}
@@ -97,15 +101,18 @@ export default async function handler(req, res) {
         options: Array.isArray(out.options) ? out.options : []
       };
     } else {
-      const text = typeof out === "string"
-        ? out
-        : (dj?.data?.output_text || "我在，愿意听你说说。");
+      let text = "";
+      if (typeof out === "string") text = out;
+      else if (typeof dj?.data?.output_text === "string") text = dj.data.output_text;
+      else if (out && typeof out === "object" && (out.message || out.text)) text = out.message || out.text;
+      if (!text) text = "我在，愿意听你说说。";
       reply = { role: "assistant", content: text };
     }
 
+    const keyHint = (apiKey || "").slice(-6);
     await supabase.from("ai_logs").insert({
       scope, ok: true, model: "dify-workflow",
-      payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode, status: r.status }).slice(0,4000),
+      payload: JSON.stringify({ userMessage, userId, therapistCode, browserTz, mode, status: r.status, keyHint }).slice(0,4000),
       output: JSON.stringify({ reply, raw: dj }).slice(0,4000), ms: Date.now() - t0
     });
 
