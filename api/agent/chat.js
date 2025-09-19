@@ -1,3 +1,5 @@
+import chatHandler from '../chat/index.js'
+
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId } from '../_utils/supabaseServer.js'
@@ -5,6 +7,8 @@ import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId
 export const runtime = 'nodejs'
 
 export default async function handler(req, res) {
+  return await chatHandler(req, res)
+
   try {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' })
@@ -12,9 +16,10 @@ export default async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const { tool, userMessage } = body
+    let tool = body.tool || 'chatWithTools'
+    let userMessage = body.userMessage ?? body.message ?? body.content ?? ''
 
-    if (!tool || !userMessage) {
+    if (!userMessage || typeof userMessage !== 'string') {
       res.status(400).json({ error: 'Missing required parameters' })
       return
     }
@@ -67,6 +72,258 @@ export default async function handler(req, res) {
     }
     const isTherapist = String(profile.life_status || '').toLowerCase() === 'therapist'
     console.log('[agent/chat] auth resolved', { userId, life_status: profile.life_status, isTherapist })
+    try {
+      const lang = 'zh-CN'
+      const DEFAULT_CODE = process.env.THERAPIST_DEFAULT_CODE || '8W79AL2B'
+
+      const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+      try {
+        const { data: recentSystem } = await serviceSupabase
+          .from('chats')
+          .select('id, content, created_at')
+          .eq('user_id', userId)
+          .eq('role', 'system')
+          .gte('created_at', twoHoursAgo)
+          .order('created_at', { ascending: false })
+          .limit(5)
+        const hasRecentBooking = (recentSystem || []).some(r => {
+          try { const j = JSON.parse(r.content || ''); return j && j.type === 'BOOKING_SUCCESS' } catch { return false }
+        })
+        if (hasRecentBooking) {
+          const text = lang.startsWith('zh')
+            ? '已为您确认预约。如需改期或再次预约，请告诉我新的时间范围或偏好。'
+            : 'Your booking is confirmed. Tell me a new time window if you want to reschedule or book another session.'
+          try {
+            await serviceSupabase.from('ai_logs').insert({
+              scope: 'chat', ok: true, model: 'gpt-4o',
+              prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+              output: JSON.stringify({ suppress: true })
+            })
+          } catch {}
+          res.status(200).json({ success: true, content: text, toolCalls: [], toolResults: [] })
+          return
+        }
+      } catch {}
+
+      const therapistCodeFromProfile = profile?.therapist_code || null
+      const code = therapistCodeFromProfile || DEFAULT_CODE
+      const nowISO = new Date().toISOString()
+      const in72hISO = new Date(Date.now() + 72 * 3600 * 1000).toISOString()
+      let list = []
+      try {
+        const { data: slots, error: availErr } = await serviceSupabase
+          .from('therapist_availability')
+          .select('id, therapist_code, start_utc, end_utc, status')
+          .eq('status', 'open')
+          .eq('therapist_code', code)
+          .gt('start_utc', nowISO)
+          .lt('start_utc', in72hISO)
+          .order('start_utc', { ascending: true })
+          .limit(8)
+        if (availErr) { /* noop */ }
+        list = (slots || []).map(s => ({
+          availabilityId: s.id,
+          therapistCode: s.therapist_code || code,
+          startUTC: s.start_utc,
+          endUTC: s.end_utc
+        }))
+      } catch {}
+
+      if (list.length) {
+        const text = lang.startsWith('zh')
+          ? `已为您找到 ${list.length} 个可预约时间，请选择：`
+          : `I found ${list.length} available time slots. Please pick one:`
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: true, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            output: JSON.stringify({ time_confirm: list.length })
+          })
+        } catch {}
+        res.status(200).json({
+          success: true,
+          content: text,
+          toolCalls: [],
+          toolResults: [{ type: 'TIME_CONFIRM', options: list }]
+        })
+        return
+      }
+
+      const payload = {
+        message: userMessage,
+        context: { browserTz: 'UTC', therapistCode: code, availability: [], availabilityCount: 0, lang }
+      }
+      try {
+        const resp = await openai.responses.create(
+          {
+            model: 'gpt-4o',
+            prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
+            input: [{ role: 'user', content: JSON.stringify(payload) }]
+          },
+          { timeout: 12000 }
+        )
+        // @ts-ignore
+        const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? '')
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: true, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            payload: JSON.stringify(payload).slice(0, 4000),
+            output: String(text || '').slice(0, 4000)
+          })
+        } catch {}
+        res.status(200).json({ success: true, content: text || '好的，我在这。请告诉我你更偏好的时间范围，我再帮你查。', toolCalls: [], toolResults: [] })
+        return
+      } catch (e) {
+        const fb = lang.startsWith('zh')
+          ? '抱歉，查询有点慢。您可换一个时间范围（例如“本周末下午”），或告诉我偏好的时区/咨询师，我再查一次。'
+          : 'Sorry, it’s a bit slow. Please try another time window or share your preferred timezone/therapist.'
+        try {
+          await serviceSupabase.from('ai_logs').insert({
+            scope: 'chat', ok: false, model: 'gpt-4o',
+            prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+            payload: JSON.stringify(payload).slice(0, 4000),
+            error: String(e && e.message ? e.message : e)
+          })
+        } catch {}
+        res.status(200).json({ success: true, content: fb, toolCalls: [], toolResults: [], fallback: true })
+        return
+      }
+    } catch (e) {
+    }
+    try {
+      const maybeObj = JSON.parse(userMessage || '{}')
+      if (maybeObj && maybeObj.type === 'USER_CONFIRM_TIME') {
+        const payload = maybeObj.payload || {}
+        const therapistInput = payload.therapist
+        const therapistName =
+          typeof therapistInput === 'string'
+            ? therapistInput
+            : (therapistInput?.name || therapistInput?.code || '')
+        const date = payload.date || null
+        const startTime = payload.startTime || null
+        const timezone = payload.timezone || null
+
+        if (!therapistName || !date || !startTime || !timezone) {
+          res.status(200).json({
+            success: true,
+            content: '提示：缺少必要的确认参数',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
+          return
+        }
+
+        const resolved = await resolveTherapistByNameOrPrefix(supabase, therapistName)
+        const matches = resolved.matches || []
+        if (matches.length === 0) {
+          res.status(200).json({
+            success: true,
+            content: `工具返回错误：未找到咨询师：${therapistName}`,
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
+          return
+        }
+        const picked = matches[0]
+        const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+        if (!profileId) {
+          res.status(200).json({
+            success: true,
+            content: '工具返回错误：未找到该咨询师的档案',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
+          return
+        }
+
+        const { data: availability, error: avErr } = await supabase
+          .from('availability')
+          .select('id, start_time, end_time')
+          .eq('therapist_id', profileId)
+          .or('is_booked.is.null,is_booked.eq.false')
+          .order('start_time', { ascending: true })
+        if (avErr) {
+          res.status(200).json({
+            success: true,
+            content: '工具返回错误：查询可预约时间时发生错误',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
+          return
+        }
+
+        const fmtDate = (iso, tz) => {
+          const d = new Date(iso)
+          const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).format(d)
+          return parts
+        }
+        const fmtTime = (iso, tz) => {
+          const d = new Date(iso)
+          const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: tz,
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(d)
+          return parts
+        }
+
+        let pickedIso = null
+        for (const a of availability || []) {
+          const dstr = fmtDate(a.start_time, timezone)
+          const tstr = fmtTime(a.start_time, timezone)
+          if (dstr === date && tstr.startsWith(startTime)) {
+            pickedIso = a.start_time
+            break
+          }
+        }
+
+        if (!pickedIso) {
+          res.status(200).json({
+            success: true,
+            content: '提示：未找到与所选本地时间匹配的可预约时段',
+            toolCalls: [],
+            toolResults: [],
+            fallback: true
+          })
+          return
+        }
+
+        const directResult = await createBooking(
+          { therapistName, dateTime: pickedIso },
+          userId,
+          supabase
+        )
+        if (directResult && directResult.success) {
+          res.status(200).json({
+            success: true,
+            content: directResult.data.message,
+            toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
+            toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }]
+          })
+          return
+        }
+        res.status(200).json({
+          success: true,
+          content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
+          toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
+          toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }],
+          fallback: true
+        })
+        return
+      }
+    } catch {}
+
 
     const isoMatch = /ISO:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.\d+)?(?:Z|[+\-][0-9]{2}:[0-9]{2}))/.exec(userMessage || '')
     const explicitConfirm = /确认预约/.test(userMessage || '')
@@ -85,19 +342,192 @@ export default async function handler(req, res) {
         return
       }
       res.status(200).json({
-        success: false,
-        error: (directResult && directResult.error) || '创建预约失败',
+        success: true,
+        content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
         toolCalls: [{ id: 'direct-createBooking', name: 'createBooking' }],
-        toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }]
+        toolResults: [{ id: 'direct-createBooking', name: 'createBooking', result: directResult }],
+        fallback: true
       })
       return
     }
 
-    const result = await handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase)
+    const fallback =
+      '抱歉，查询有点慢。我先给你两种选择：\n' +
+      '1) 换一个时间范围（例如“本周末下午”），我再查一次；\n' +
+      '2) 告诉我偏好的咨询师或时区，我用这个条件来筛选。'
+    const TIMEOUT_MS = 12000
+    const result = await Promise.race([
+      handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase),
+      new Promise((resolve, reject) => setTimeout(() => reject(new Error('chat_timeout')), TIMEOUT_MS)),
+    ])
+    try {
+      await serviceSupabase.from('ai_logs').insert({
+        scope: 'chat',
+        ok: true,
+        model: 'gpt-4o',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+        payload: JSON.stringify({ userId, tool, userMessage: String(userMessage || '').slice(0, 500) }),
+        output: JSON.stringify(result).slice(0, 4000)
+      })
+    } catch {}
     res.status(200).json(result)
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error', details: error.message })
+    const fb =
+      '抱歉，查询有点慢。我先给你两种选择：\n' +
+      '1) 换一个时间范围（例如“本周末下午”），我再查一次；\n' +
+      '2) 告诉我偏好的咨询师或时区，我用这个条件来筛选。'
+    try {
+      const serviceSupabase = getServiceSupabase()
+      await serviceSupabase.from('ai_logs').insert({
+        scope: 'chat',
+        ok: false,
+        model: 'gpt-4o',
+        prompt_id: process.env.OPENAI_SYSTEM_PROMPT_ID || null,
+        payload: JSON.stringify({ userId: null, tool: null, userMessage: String((req && req.body && (req.body.userMessage || req.body.message || req.body.content)) || '').slice(0, 500) }),
+        error: String(error && error.message ? error.message : error)
+      })
+    } catch {}
+    res.status(200).json({
+      success: true,
+      content: fb,
+      toolCalls: [],
+      toolResults: [],
+      fallback: true
+    })
   }
+  try {
+    const maybeObj = JSON.parse(userMessage || '{}')
+    if (maybeObj && maybeObj.type === 'USER_CONFIRM_TIME') {
+      const payload = maybeObj.payload || {}
+      const therapistInput = payload.therapist
+      const therapistName =
+        typeof therapistInput === 'string'
+          ? therapistInput
+          : (therapistInput?.name || therapistInput?.code || '')
+      const date = payload.date || null
+      const startTime = payload.startTime || null
+      const timezone = payload.timezone || null
+
+      if (!therapistName || !date || !startTime || !timezone) {
+        res.status(200).json({
+          success: true,
+          content: '提示：缺少必要的确认参数',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
+        return
+      }
+
+      const resolved = await resolveTherapistByNameOrPrefix(supabase, therapistName)
+      const matches = resolved.matches || []
+      if (matches.length === 0) {
+        res.status(200).json({
+          success: true,
+          content: `工具返回错误：未找到咨询师：${therapistName}`,
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
+        return
+      }
+      const picked = matches[0]
+      const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+      if (!profileId) {
+        res.status(200).json({
+          success: true,
+          content: '工具返回错误：未找到该咨询师的档案',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
+        return
+      }
+
+      const { data: availability, error: avErr } = await supabase
+        .from('availability')
+        .select('id, start_time, end_time')
+        .eq('therapist_id', profileId)
+        .or('is_booked.is.null,is_booked.eq.false')
+        .order('start_time', { ascending: true })
+      if (avErr) {
+        res.status(200).json({
+          success: true,
+          content: '工具返回错误：查询可预约时间时发生错误',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
+        return
+      }
+
+      const fmtDate = (iso, tz) => {
+        const d = new Date(iso)
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(d)
+        return parts
+      }
+      const fmtTime = (iso, tz) => {
+        const d = new Date(iso)
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: tz,
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(d)
+        return parts
+      }
+
+      let pickedIso = null
+      for (const a of availability || []) {
+        const dstr = fmtDate(a.start_time, timezone)
+        const tstr = fmtTime(a.start_time, timezone)
+        if (dstr === date && tstr.startsWith(startTime)) {
+          pickedIso = a.start_time
+          break
+        }
+      }
+
+      if (!pickedIso) {
+        res.status(200).json({
+          success: true,
+          content: '提示：未找到与所选本地时间匹配的可预约时段',
+          toolCalls: [],
+          toolResults: [],
+          fallback: true
+        })
+        return
+      }
+
+      const directResult = await createBooking(
+        { therapistName, dateTime: pickedIso },
+        userId,
+        supabase
+      )
+      if (directResult && directResult.success) {
+        res.status(200).json({
+          success: true,
+          content: directResult.data.message,
+          toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
+          toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }]
+        })
+        return
+      }
+      res.status(200).json({
+        success: true,
+        content: (directResult && directResult.error) ? `工具返回错误：${directResult.error}` : '创建预约失败',
+        toolCalls: [{ id: 'confirm-createBooking', name: 'createBooking' }],
+        toolResults: [{ id: 'confirm-createBooking', name: 'createBooking', result: directResult }],
+        fallback: true
+      })
+      return
+    }
+  } catch {}
+
 }
 
 async function handleChatWithTools(userMessage, userId, openai, supabase, isTherapist, serviceSupabase) {
@@ -161,6 +591,21 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
           }
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'summarizeSession',
+        description: '为当前咨询师生成结构化会前摘要（时间线/主题/风险/目标/建议议程）。',
+        parameters: {
+          type: 'object',
+          properties: {
+            clientEmail: { type: 'string' },
+            clientName: { type: 'string' },
+            limit: { type: 'number' }
+          }
+        }
+      }
     }
   ]
 
@@ -173,9 +618,13 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
         parameters: {
           type: 'object',
           properties: {
+            therapistCode: {
+              type: 'string',
+              description: '咨询师唯一代码（推荐优先使用），如 "8W79AL2B"'
+            },
             therapistName: {
               type: 'string',
-              description: '咨询师的姓名，如"Megan Chang"'
+              description: '咨询师的姓名，如"Megan Chang"（若没有代码时作为备选）'
             },
             startDate: {
               type: 'string',
@@ -185,8 +634,7 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
               type: 'string',
               description: '查询结束日期，格式为YYYY-MM-DD。如果用户只提到一个日期，可以省略此参数，系统会自动查询该日期的所有时间段'
             }
-          },
-          required: ['therapistName']
+          }
         }
       }
     },
@@ -198,9 +646,13 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
         parameters: {
           type: 'object',
           properties: {
+            therapistCode: {
+              type: 'string',
+              description: '咨询师唯一代码（推荐优先使用），如 "8W79AL2B"'
+            },
             therapistName: {
               type: 'string',
-              description: '咨询师的姓名，如"Megan Chang"'
+              description: '咨询师的姓名，如"Megan Chang"（若没有代码时作为备选）'
             },
             dateTime: {
               type: 'string',
@@ -212,7 +664,7 @@ async function handleChatWithTools(userMessage, userId, openai, supabase, isTher
               default: 60
             }
           },
-          required: ['therapistName', 'dateTime']
+          required: ['dateTime']
         }
       }
     }
@@ -266,6 +718,7 @@ Rules:
     }
   ]
 
+  const promptId = isTherapist ? process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID : process.env.OPENAI_SYSTEM_PROMPT_ID
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -286,6 +739,13 @@ Rules:
         try {
           const functionName = toolCall.function.name
           const functionArgs = JSON.parse(toolCall.function.arguments)
+
+          if ((functionName === 'getTherapistAvailability' || functionName === 'createBooking')) {
+            if (!functionArgs.therapistCode) {
+              const tokenMatch = String(userMessage || '').toUpperCase().match(/[A-Z0-9]{6,12}/)
+              if (tokenMatch) functionArgs.therapistCode = tokenMatch[0]
+            }
+          }
 
           let toolResult
           if (functionName === 'getTherapistAvailability') {
@@ -320,7 +780,7 @@ Rules:
                 .from('availability')
                 .select('id, start_time, end_time')
                 .eq('therapist_id', therapistProfileId)
-                .eq('is_booked', false)
+                .or('is_booked.is.null,is_booked.eq.false')
                 .order('start_time', { ascending: true })
               if (startDate) q = q.gte('start_time', `${startDate}T00:00:00Z`)
               if (endDate) q = q.lte('start_time', `${endDate}T23:59:59Z`)
@@ -329,6 +789,78 @@ Rules:
               else toolResult = { success: true, data: data || [] }
             } catch (e) {
               toolResult = { success: false, error: e.message || 'Unauthorized' }
+            }
+          } else if (functionName === 'summarizeSession') {
+            try {
+              const { clientEmail, clientName, limit } = functionArgs || {}
+              const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
+              const { data: tUser, error: tUserErr } = await serviceSupabase
+                .from('user_profiles')
+                .select('user_id')
+                .eq('id', therapistProfileId)
+                .single()
+              if (tUserErr || !tUser?.user_id) throw new Error('Therapist record not found')
+              const { data: therapist, error: tErr } = await serviceSupabase
+                .from('therapists')
+                .select('id')
+                .eq('user_id', tUser.user_id)
+                .maybeSingle()
+              if (tErr || !therapist) throw new Error('Therapist record not found')
+
+              let clientUserId = null
+              const { data: recent } = await serviceSupabase
+                .from('bookings')
+                .select('client_user_id')
+                .eq('therapist_id', therapist.id)
+                .order('created_at', { ascending: false })
+                .limit(100)
+              if (Array.isArray(recent)) {
+                for (const b of recent) {
+                  try {
+                    const { data: u } = await serviceSupabase.auth.admin.getUserById(b.client_user_id)
+                    const email = u?.user?.email || ''
+                    const local = email.split('@')[0] || ''
+                    if ((clientEmail && email.toLowerCase() === String(clientEmail).toLowerCase()) ||
+                        (clientName && local.toLowerCase().includes(String(clientName).toLowerCase()))) {
+                      clientUserId = b.client_user_id
+                      break
+                    }
+                  } catch {}
+                }
+              }
+
+              let transcript = ''
+              if (clientUserId) {
+                const { data: msgs } = await serviceSupabase
+                  .from('chat_messages')
+                  .select('role, message, created_at')
+                  .eq('user_id', clientUserId)
+                  .order('created_at', { ascending: false })
+                  .limit(Number(limit) || 50)
+                transcript = (msgs || []).reverse().map(m => `${m.role}: ${m.message}`).join('\n')
+              }
+
+              const sections = [
+                { title: '时间线', items: [] },
+                { title: '主题', items: [] },
+                { title: '风险', items: [] },
+                { title: '目标', items: [] },
+                { title: '建议议程', items: [] }
+              ]
+              if (transcript) {
+                sections[0].items.push('已聚合最近聊天记录与预约信息。')
+                const snippet = transcript.slice(0, 300)
+                sections[1].items.push(`近期对话片段：${snippet}`)
+              } else {
+                sections[0].items.push('暂无聊天记录。')
+              }
+              toolResult = {
+                success: true,
+                data: { sections },
+                message: 'SESSION_SUMMARY'
+              }
+            } catch (e) {
+              toolResult = { success: false, error: e.message || 'Error summarizing session' }
             }
           } else if (functionName === 'deleteAvailability') {
             try {
@@ -406,7 +938,7 @@ Rules:
                   const completion = await openai2.chat.completions.create({
                     model: 'gpt-4o',
                     messages: [
-                      { role: 'system', content: 'You are a concise clinical assistant that generates pre-session summaries.' },
+                      { role: 'system', content: (process.env.OPENAI_SYSTEM_PROMPT_THERAPIST || 'You are a helpful assistant for therapists.') },
                       { role: 'user', content: `Create a brief pre-session summary for the therapist based on this transcript.\nInclude: key themes, risks, goals, coping strategies, suggested agenda.\nTranscript:\n${transcript}` }
                     ],
                     temperature: 0.3,
@@ -446,7 +978,7 @@ Rules:
         temperature: 0.3,
         max_tokens: 500
       })
-
+      
       const finalContent = (secondCompletion.choices[0]?.message?.content || '').trim()
       let synthesized = finalContent
       if (!synthesized) {
@@ -460,11 +992,14 @@ Rules:
             } else if (tr.name === 'createBooking' && tr.result?.success) {
               const data = tr.result.data || {}
               parts.push(data.message || `预约已创建：${data.therapistName || ''} - ${data.dateTime || ''}`)
+            } else if (tr.name === 'summarizeSession' && tr.result?.success) {
+              const secs = (tr.result?.data && tr.result.data.sections) || []
+              synthesized = JSON.stringify({ type: 'SESSION_SUMMARY', payload: { sections: secs } })
             } else if (tr.result?.error) {
               parts.push(`工具返回错误：${tr.result.error}`)
             }
           }
-          if (parts.length > 0) {
+          if (!synthesized && parts.length > 0) {
             synthesized = parts.join(' ')
           }
         } catch {}
@@ -477,13 +1012,41 @@ Rules:
       }
     }
 
+    if (!isTherapist) {
+      try {
+        const upper = String(userMessage || '').toUpperCase()
+        const tokenMatch = upper.match(/[A-Z0-9]{4,12}/)
+        const codeToken = tokenMatch ? tokenMatch[0] : null
+
+        let toolResult = null
+        if (codeToken) {
+          toolResult = await getTherapistAvailability({ therapistCode: codeToken }, supabase)
+        } else {
+          const defaultCode = process.env.THERAPIST_DEFAULT_CODE || null
+          const defaultName = process.env.THERAPIST_DEFAULT_NAME || 'Hanqi Lyu'
+          const params = defaultCode ? { therapistCode: defaultCode } : { therapistName: defaultName }
+          toolResult = await getTherapistAvailability(params, supabase)
+        }
+        if (toolResult) {
+          return {
+            success: true,
+            content: toolResult.success
+              ? `已为您找到可预约时间，共 ${Array.isArray(toolResult.data?.availableSlots) ? toolResult.data.availableSlots.length : 0} 个。`
+              : `工具返回错误：${toolResult.error || '查询失败'}`,
+            toolCalls: [{ id: 'fallback', name: 'getTherapistAvailability' }],
+            toolResults: [{ id: 'fallback', name: 'getTherapistAvailability', result: toolResult }]
+          }
+        }
+      } catch {}
+    }
+
     const directCompletion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversationMessages,
       temperature: 0.3,
       max_tokens: 500
     })
-
+    
     const directContent = directCompletion.choices[0]?.message?.content || ''
     return { success: true, content: directContent }
   } catch (error) {
@@ -495,125 +1058,277 @@ Rules:
   }
 }
 
+async function resolveTherapistByNameOrPrefix(supabase, rawName) {
+  const inputRaw = String(rawName || '').trim()
+  if (!inputRaw) return { matches: [] }
+
+  const upper = inputRaw.toUpperCase()
+  let tokenMatches = upper.match(/[A-Z0-9]{6,12}/g) || []
+  const cleaned = upper.replace(/[^A-Z0-9]/g, '')
+  if (tokenMatches.length === 0 && cleaned.length >= 6 && cleaned.length <= 12) {
+    tokenMatches = [cleaned]
+  }
+  const uniqueTokens = Array.from(new Set(tokenMatches))
+
+  for (const codeToken of uniqueTokens) {
+    if (!codeToken) continue
+    let codeMatch = null
+    try {
+      const { data } = await supabase
+        .from('therapists')
+        .select('user_id, name, verified, code')
+        .eq('code', codeToken)
+        .limit(2)
+      if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
+    } catch {}
+
+    if (!codeMatch) {
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .ilike('code', codeToken)
+          .limit(2)
+        if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
+      } catch {}
+    }
+
+    if (!codeMatch) {
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .ilike('code', `%${codeToken}%`)
+          .limit(2)
+        if (Array.isArray(data) && data.length > 0) codeMatch = data[0]
+      } catch {}
+    }
+
+    if (codeMatch) {
+      return { matches: [{ user_id: codeMatch.user_id, name: codeMatch.name, verified: codeMatch.verified }] }
+    }
+  }
+
+  const { data: tMatches } = await supabase
+    .from('therapists')
+    .select('user_id, name, verified')
+    .ilike('name', `%${inputRaw}%`)
+    .limit(5)
+
+  if (Array.isArray(tMatches) && tMatches.length > 0) {
+    return { matches: tMatches.filter(m => m.verified !== false) }
+  }
+
+  const { data: pMatches } = await supabase
+    .from('user_profiles')
+    .select('user_id, display_name')
+    .ilike('display_name', `%${inputRaw}%`)
+    .limit(5)
+
+  if (!Array.isArray(pMatches) || pMatches.length === 0) return { matches: [] }
+  const userIds = pMatches.map(p => String(p.user_id)).filter(Boolean)
+  if (userIds.length === 0) return { matches: [] }
+
+  const { data: thByUsers } = await supabase
+    .from('therapists')
+    .select('user_id, name, verified')
+    .in('user_id', userIds)
+
+  const thMap = new Map((thByUsers || []).map(r => [String(r.user_id), r]))
+  const merged = pMatches.map(p => {
+    const uid = String(p.user_id)
+    const th = thMap.get(uid)
+    return {
+      user_id: uid,
+      name: (th && th.name) || p.display_name || '',
+      verified: th ? th.verified !== false : true
+    }
+  }).filter(m => m.name && (thMap.has(String(m.user_id)) ? (thMap.get(String(m.user_id)).verified !== false) : true))
+
+  return { matches: merged }
+}
+async function getCodeMatchDebugCounts(supabase, token) {
+  const host = (() => {
+    try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').host || null } catch { return null }
+  })()
+  try {
+    const exact = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .eq('code', token)
+    const ilikeOne = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', token)
+    const contains = await supabase
+      .from('therapists')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', `%${token}%`)
+    return {
+      exact: typeof exact.count === 'number' ? exact.count : null,
+      ilike: typeof ilikeOne.count === 'number' ? ilikeOne.count : null,
+      contains: typeof contains.count === 'number' ? contains.count : null,
+      host
+    }
+  } catch (e) {
+    return { exact: null, ilike: null, contains: null, host, error: e?.message || 'unknown' }
+  }
+}
+
+
+async function getUserProfileIdByUserId(supabase, userId) {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', String(userId))
+    .maybeSingle()
+  return data?.id || null
+}
+
 async function getTherapistAvailability(params, supabase) {
   try {
-    console.log('🔥 v36 - getTherapistAvailability called with params:', params)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
-    }
-    
-    const therapists = Object.keys(knownTherapists).filter(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (therapists.length === 0) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师。可用的咨询师有：${Object.keys(knownTherapists).join(', ')}`
-      }
-    }
-    
-    const therapistName = therapists[0]
-    const therapistId = knownTherapists[therapistName]
-    
-    console.log('🔥 v36 - Querying availability for therapist:', therapistName, 'ID:', therapistId)
-    
-    let availabilityQuery = supabase
-      .from('availability')
-      .select('*')
-      .eq('therapist_id', therapistId)
-      .eq('is_booked', false)
-      .order('start_time', { ascending: true })
-    
-    if (params.startDate) {
-      availabilityQuery = availabilityQuery.gte('start_time', params.startDate + 'T00:00:00Z')
-    }
-    
-    if (params.endDate) {
-      availabilityQuery = availabilityQuery.lte('start_time', params.endDate + 'T23:59:59Z')
-    }
-    
-    const { data: availability, error } = await availabilityQuery
-    
-    if (error) {
-      console.error('🔥 v36 - Database error:', error)
-      return {
-        success: false,
-        error: '查询可预约时间时发生错误'
-      }
-    }
-    
-    if (!availability || availability.length === 0) {
-      return {
-        success: true,
-        data: {
-          therapistName: therapistName,
-          availableSlots: [],
-          message: `${therapistName} 在指定时间段内暂无可预约时间。`
+    let picked = null
+
+    if (params.therapistCode) {
+      const code = String(params.therapistCode).toUpperCase()
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .eq('code', code)
+          .limit(1)
+        if (Array.isArray(data) && data.length > 0) {
+          picked = data[0]
         }
+      } catch {}
+      if (!picked) {
+        try {
+          const { data } = await supabase
+            .from('therapists')
+            .select('user_id, name, verified, code')
+            .ilike('code', code)
+            .limit(1)
+          if (Array.isArray(data) && data.length > 0) {
+            picked = data[0]
+          }
+        } catch {}
       }
     }
-    
-    const result = {
+
+    if (!picked) {
+      const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+      const matches = resolved.matches || []
+      if (matches.length === 0) {
+        const debugTokens = String(params.therapistName || '')
+          .toUpperCase()
+          .match(/[A-Z0-9]{6,12}/g) || []
+        let counts = ''
+        if (debugTokens.length > 0) {
+          const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+          const hostPart = c.host ? ` host:${c.host}` : ''
+          const errPart = c.error ? ` err:${c.error}` : ''
+          counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+        }
+        const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
+        return { success: false, error: `未找到指定的咨询师，请提供咨询师代码或更准确的姓名${hint}` }
+      }
+      if (matches.length > 1) {
+        const names = matches.map(m => m.name).join(', ')
+        return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名或提供代码` }
+      }
+      picked = matches[0]
+    }
+
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
+
+    let q = supabase
+      .from('availability')
+      .select('id, start_time, end_time')
+      .eq('therapist_id', profileId)
+      .or('is_booked.is.null,is_booked.eq.false')
+      .order('start_time', { ascending: true })
+
+    if (params.startDate) q = q.gte('start_time', `${params.startDate}T00:00:00Z`)
+    if (params.endDate) q = q.lte('start_time', `${params.endDate}T23:59:59Z`)
+
+    const { data: availability, error } = await q
+    if (error) return { success: false, error: '查询可预约时间时发生错误' }
+
+    const slots = (availability || []).map(a => ({
+      id: a.id,
+      startTime: a.start_time,
+      endTime: a.end_time
+    }))
+
+    return {
       success: true,
       data: {
-        therapistName: therapistName,
-        availableSlots: availability.map(slot => ({
-          id: slot.id,
-          startTime: slot.start_time,
-          endTime: slot.end_time,
-          date: new Date(slot.start_time).toLocaleDateString('zh-CN'),
-          time: new Date(slot.start_time).toLocaleTimeString('zh-CN', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          })
-        })),
-        message: `找到 ${availability.length} 个可预约时间段。`
+        therapistName: picked.name,
+        availableSlots: slots,
+        message: `找到 ${slots.length} 个可预约时间段。`
       }
     }
-    
-    console.log('🔥 v36 - Returning availability result:', result)
-    return result
-    
   } catch (error) {
-    console.error('🔥 v36 - Error in getTherapistAvailability:', error)
-    return {
-      success: false,
-      error: '获取咨询师可预约时间时发生错误'
-    }
+    return { success: false, error: '获取咨询师可预约时间时发生错误' }
   }
 }
 
 async function createBooking(params, userId, supabase) {
   try {
-    console.log('🔥 v36 - createBooking called with params:', params, 'userId:', userId)
-    
-    const knownTherapists = {
-      'Megan Chang': '550e8400-e29b-41d4-a716-446655440000'
-    }
-    
-    const therapist = Object.keys(knownTherapists).find(name => 
-      name.toLowerCase().includes(params.therapistName.toLowerCase())
-    )
-    
-    if (!therapist) {
-      return {
-        success: false,
-        error: `未找到名为 "${params.therapistName}" 的咨询师`
+    let picked = null
+
+    if (params.therapistCode) {
+      const code = String(params.therapistCode).toUpperCase()
+      try {
+        const { data } = await supabase
+          .from('therapists')
+          .select('user_id, name, verified, code')
+          .eq('code', code)
+          .limit(1)
+        if (Array.isArray(data) && data.length > 0) picked = data[0]
+      } catch {}
+      if (!picked) {
+        try {
+          const { data } = await supabase
+            .from('therapists')
+            .select('user_id, name, verified, code')
+            .ilike('code', code)
+            .limit(1)
+          if (Array.isArray(data) && data.length > 0) picked = data[0]
+        } catch {}
       }
     }
-    
-    const therapistId = knownTherapists[therapist]
-    
+
+    if (!picked) {
+      const resolved = await resolveTherapistByNameOrPrefix(supabase, params.therapistName)
+      const matches = resolved.matches || []
+      if (matches.length === 0) {
+        const debugTokens = String(params.therapistName || '')
+          .toUpperCase()
+          .match(/[A-Z0-9]{6,12}/g) || []
+        let counts = ''
+        if (debugTokens.length > 0) {
+          const c = await getCodeMatchDebugCounts(supabase, debugTokens[0])
+          const hostPart = c.host ? ` host:${c.host}` : ''
+          const errPart = c.error ? ` err:${c.error}` : ''
+          counts = ` [code search counts eq:${c.exact} ilike:${c.ilike} contains:${c.contains}${hostPart}${errPart}]`
+        }
+        const hint = ` [debug tokens: ${debugTokens.length ? debugTokens.join(',') : 'none'}]${counts}`
+        return { success: false, error: `未找到指定的咨询师，请提供咨询师代码或更准确的姓名${hint}` }
+      }
+      if (matches.length > 1) {
+        const names = matches.map(m => m.name).join(', ')
+        return { success: false, error: `匹配到多位咨询师：${names}。请指明具体姓名或提供代码` }
+      }
+      picked = matches[0]
+    }
+
+    const profileId = await getUserProfileIdByUserId(supabase, picked.user_id)
+    if (!profileId) return { success: false, error: '未找到该咨询师的档案' }
+
     const targetDate = new Date(params.dateTime)
-    if (isNaN(targetDate.getTime())) {
-      return {
-        success: false,
-        error: '无效的时间格式，请提供有效的 ISO 时间'
-      }
-    }
+    if (isNaN(targetDate.getTime())) return { success: false, error: '无效的时间格式，请提供有效的 ISO 时间' }
     const isoStart = targetDate.toISOString()
     const isoEnd = new Date(targetDate.getTime() + 60 * 1000).toISOString()
 
@@ -622,44 +1337,30 @@ async function createBooking(params, userId, supabase) {
       const { data, error } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', isoStart)
         .lt('start_time', isoEnd)
-        .eq('is_booked', false)
-        .maybeSingle?.() || await supabase
-        .from('availability')
-        .select('*')
-        .eq('therapist_id', therapistId)
-        .gte('start_time', isoStart)
-        .lt('start_time', isoEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .single()
-
-      if (!error && data) {
-        chosenAvailability = data
-      }
+      if (!error && data) chosenAvailability = data
     }
 
     if (!chosenAvailability) {
       const rangeStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000).toISOString()
       const rangeEnd = new Date(targetDate.getTime() + 12 * 60 * 60 * 1000).toISOString()
-      const { data: nearAvail, error: nearErr } = await supabase
+      const { data: nearAvail } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', rangeStart)
         .lte('start_time', rangeEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
-
-      if (!nearErr && Array.isArray(nearAvail) && nearAvail.length > 0) {
+      if (Array.isArray(nearAvail) && nearAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
         for (const a of nearAvail) {
           const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
-          if (diff < minDiff) {
-            minDiff = diff
-            chosenAvailability = a
-          }
+          if (diff < minDiff) { minDiff = diff; chosenAvailability = a }
         }
       }
     }
@@ -667,96 +1368,71 @@ async function createBooking(params, userId, supabase) {
     if (!chosenAvailability) {
       const dayStart = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0)).toISOString()
       const dayEnd = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59)).toISOString()
-      const { data: dayAvail, error: dayErr } = await supabase
+      const { data: dayAvail } = await supabase
         .from('availability')
         .select('*')
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', profileId)
         .gte('start_time', dayStart)
         .lte('start_time', dayEnd)
-        .eq('is_booked', false)
+        .or('is_booked.is.null,is_booked.eq.false')
         .order('start_time', { ascending: true })
-
-      if (!dayErr && Array.isArray(dayAvail) && dayAvail.length > 0) {
+      if (Array.isArray(dayAvail) && dayAvail.length > 0) {
         let minDiff = Number.POSITIVE_INFINITY
         for (const a of dayAvail) {
           const diff = Math.abs(new Date(a.start_time).getTime() - targetDate.getTime())
-          if (diff < minDiff) {
-            minDiff = diff
-            chosenAvailability = a
-          }
+          if (diff < minDiff) { minDiff = diff; chosenAvailability = a }
         }
         const threeHours = 3 * 60 * 60 * 1000
-        if (minDiff > threeHours) {
+        if (Math.abs(new Date(chosenAvailability.start_time).getTime() - targetDate.getTime()) > threeHours) {
           chosenAvailability = null
         }
       }
     }
 
     if (!chosenAvailability) {
-      return {
-        success: false,
-        error: '该时间段不可预约或已被预订'
-      }
+      return { success: false, error: '该时间段不可预约或已被预订' }
     }
 
     const { data: booking, error: bookingError } = await supabase.rpc('create_booking', {
       availability_id_to_book: chosenAvailability.id,
       client_id_to_book: userId
     })
-    
+
     if (bookingError || !booking) {
-      console.warn('🔥 v36 - RPC create_booking failed, attempting direct fallback...', bookingError)
-      const { data: updatedAvail, error: updErr } = await supabase
-        .from('availability')
-        .update({ is_booked: true, updated_at: new Date().toISOString() })
-        .eq('id', chosenAvailability.id)
-        .eq('is_booked', false)
-        .select('id, therapist_id, start_time, end_time')
-        .single()
-      
-      if (updErr || !updatedAvail) {
-        console.error('🔥 v36 - Fallback update availability failed:', updErr)
-        return {
-          success: false,
-          error: (updErr && updErr.message) || '创建预约时发生错误'
-        }
-      }
-      
-      let therapistIdForBookings = null
-      const { data: tByName, error: tNameErr } = await supabase
-        .from('therapists')
-        .select('id')
-        .ilike('name', therapist)
-        .maybeSingle?.() || await supabase
-        .from('therapists')
-        .select('id')
-        .ilike('name', therapist)
-        .single()
-      if (!tNameErr && tByName && tByName.id) {
-        therapistIdForBookings = tByName.id
-      } else {
-        const { data: up, error: upErr } = await supabase
-          .from('user_profiles')
-          .select('user_id')
-          .eq('id', updatedAvail.therapist_id)
+      let updatedAvail = null
+      {
+        const firstTry = await supabase
+          .from('availability')
+          .update({ is_booked: true, updated_at: new Date().toISOString() })
+          .eq('id', chosenAvailability.id)
+          .or('is_booked.is.null,is_booked.eq.false')
+          .select('id, therapist_id, start_time, end_time')
           .single()
-        if (!upErr && up && up.user_id) {
-          const { data: tByUser, error: tUserErr } = await supabase
-            .from('therapists')
-            .select('id')
-            .eq('user_id', String(up.user_id))
+        if (!firstTry.error && firstTry.data) {
+          updatedAvail = firstTry.data
+        } else {
+          const secondTry = await supabase
+            .from('availability')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', chosenAvailability.id)
+            .select('id, therapist_id, start_time, end_time')
             .single()
-          if (!tUserErr && tByUser && tByUser.id) {
-            therapistIdForBookings = tByUser.id
+          if (!secondTry.error && secondTry.data) {
+            updatedAvail = secondTry.data
+          } else {
+            return { success: false, error: (firstTry.error && firstTry.error.message) || (secondTry.error && secondTry.error.message) || '创建预约时发生错误' }
           }
         }
       }
-      if (!therapistIdForBookings) {
-        return {
-          success: false,
-          error: '创建预约失败：未找到对应咨询师记录'
-        }
-      }
+
+      let therapistIdForBookings = null
+      const { data: tByUser } = await supabase
+        .from('therapists')
+        .select('id')
+        .eq('user_id', String(picked.user_id))
+        .maybeSingle()
+      if (tByUser && tByUser.id) therapistIdForBookings = tByUser.id
+      if (!therapistIdForBookings) return { success: false, error: '创建预约失败：未找到对应咨询师记录' }
 
       const { data: inserted, error: insErr } = await supabase
         .from('bookings')
@@ -769,41 +1445,55 @@ async function createBooking(params, userId, supabase) {
         })
         .select('id')
         .single()
-      
-      if (insErr || !inserted) {
-        console.error('🔥 v36 - Fallback insert booking failed:', insErr)
-        return {
-          success: false,
-          error: (insErr && insErr.message) || '创建预约时发生错误'
-        }
-      }
-      
+      if (insErr || !inserted) return { success: false, error: (insErr && insErr.message) || '创建预约时发生错误' }
+
+      await supabase.from('chat_messages').insert({
+        booking_id: inserted.id,
+        user_id: String(userId),
+        role: 'system',
+        message: JSON.stringify({
+          type: 'BOOKING_SUCCESS',
+          bookingId: inserted.id,
+          therapistName: picked.name,
+          dateTime: params.dateTime,
+          durationMins: 60,
+          userId: String(userId)
+        })
+      })
       return {
         success: true,
         data: {
           bookingId: inserted.id,
-          therapistName: therapist,
+          therapistName: picked.name,
           dateTime: params.dateTime,
-          message: `预约成功！您已预约 ${therapist} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
+          message: `预约成功！您已预约 ${picked.name} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
         }
       }
     }
-    
+
+    await supabase.from('chat_messages').insert({
+      booking_id: booking,
+      user_id: String(userId),
+      role: 'system',
+      message: JSON.stringify({
+        type: 'BOOKING_SUCCESS',
+        bookingId: booking,
+        therapistName: picked.name,
+        dateTime: params.dateTime,
+        durationMins: 60,
+        userId: String(userId)
+      })
+    })
     return {
       success: true,
       data: {
         bookingId: booking,
-        therapistName: therapist,
+        therapistName: picked.name,
         dateTime: params.dateTime,
-        message: `预约成功！您已预约 ${therapist} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
+        message: `预约成功！您已预约 ${picked.name} 在 ${new Date(params.dateTime).toLocaleString('zh-CN')} 的咨询时间。`
       }
     }
-    
   } catch (error) {
-    console.error('🔥 v36 - Error in createBooking:', error)
-    return {
-      success: false,
-      error: '创建预约时发生错误'
-    }
+    return { success: false, error: '创建预约时发生错误' }
   }
 }

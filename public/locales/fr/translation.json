@@ -83,5 +83,6 @@
   "sched_end_time_label": "Heure de fin",
   "sched_adding": "Ajout...",
   "sched_add_time_slot": "Ajouter un créneau",
-  "chat_confirm_booking": "Je confirme la réservation avec {{therapistName}} à {{whenLocal}} (ISO : {{iso}})."
+  "chat_confirm_booking": "Je confirme la réservation avec {{therapistName}} à {{whenLocal}} (ISO : {{iso}}).",
+  "chat_modal_desc": "Discutez avec votre assistant IA"
 }

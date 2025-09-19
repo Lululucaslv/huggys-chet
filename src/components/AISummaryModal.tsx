@@ -35,7 +35,8 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
         },
         body: JSON.stringify({
           tool: 'generatePreSessionSummary',
-          userId: clientUserId
+          userId: clientUserId,
+          mode: 'therapist'
         })
       })
 

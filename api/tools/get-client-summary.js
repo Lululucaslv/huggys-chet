@@ -83,8 +83,8 @@ export default async function handler(req, res) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
+      prompt: process.env.OPENAI_SYSTEM_PROMPT_THERAPIST_ID,
       messages: [
-        { role: 'system', content: 'You are a concise clinical assistant that generates pre-session summaries.' },
         { role: 'user', content: `Create a brief pre-session summary for the therapist based on this transcript.\nInclude: key themes, risks, goals, coping strategies, suggested agenda.\nTranscript:\n${transcript}` }
       ],
       temperature: 0.3,
@@ -94,7 +94,13 @@ export default async function handler(req, res) {
     const content = completion.choices[0]?.message?.content || 'No summary available.'
     res.status(200).json({ success: true, data: { clientUserId, summary: content } })
   } catch (e) {
-    const code = e.code || 400
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error' })
+    const message = e && e.message ? String(e.message) : '请求失败，请稍后重试'
+    res.status(200).json({
+      success: true,
+      content: `工具返回错误：${message}`,
+      toolCalls: [],
+      toolResults: [],
+      fallback: true
+    })
   }
 }
