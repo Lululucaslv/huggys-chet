@@ -22,6 +22,8 @@ export default async function handler(req, res) {
     const inputs = body && typeof body.inputs === 'object' ? body.inputs : null
 
     const user_id =
+      (inputs && (inputs.client_user_id)) ||
+      body.client_user_id ||
       body.user_id ||
       body.userId ||
       body.user ||
