@@ -1,4 +1,4 @@
-import chatHandler from '../chat/index.js'
+import difyHandler from './chat-dify.js'
 
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
@@ -7,7 +7,7 @@ import { getServiceSupabase, getAuthUserIdFromRequest, requireTherapistProfileId
 export const runtime = 'nodejs'
 
 export default async function handler(req, res) {
-  return await chatHandler(req, res)
+  return await difyHandler(req, res)
 
   try {
     if (req.method !== 'POST') {
