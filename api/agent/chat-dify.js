@@ -25,13 +25,11 @@ export default async function handler(req, res) {
 
   const t0 = Date.now()
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})
-  const {
-    userMessage = "",
-    userId = "",
-    therapistCode = null,
-    browserTz = null,
-    mode: modeBody = "user"
-  } = body
+  const userMessage = body.userMessage ?? body.query ?? body.message ?? body.content ?? ""
+  const userId = body.userId ?? body.user_id ?? body.user ?? ""
+  const therapistCode = body.therapistCode ?? body.therapist_code ?? null
+  const browserTz = body.browserTz ?? body.browser_tz ?? null
+  const modeBody = body.mode ?? "user"
   const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined
   const modeRaw = modeQuery || modeBody
 

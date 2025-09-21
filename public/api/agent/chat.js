@@ -22,13 +22,12 @@ export default async function handler(req, res) {
   }
 
   const t0 = Date.now();
-  const {
-    userMessage = "",
-    userId = "",
-    therapistCode = null,
-    browserTz = null,
-    mode: modeBody = "user"
-  } = req.body || {};
+  const b = req.body || {};
+  const userMessage = b.userMessage ?? b.query ?? b.message ?? b.content ?? "";
+  const userId = b.userId ?? b.user_id ?? b.user ?? "";
+  const therapistCode = b.therapistCode ?? b.therapist_code ?? null;
+  const browserTz = b.browserTz ?? b.browser_tz ?? null;
+  const modeBody = b.mode ?? "user";
   const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined;
   const modeRaw = modeQuery || modeBody;
 
