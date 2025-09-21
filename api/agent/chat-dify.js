@@ -78,6 +78,7 @@ export default async function handler(req, res) {
           query: userMessage,
           user_id: userId || "anonymous",
           therapist_code: therapistCode,
+          therapistCode: therapistCode,
           browser_tz: browserTz
         },
         response_mode: "blocking",
