@@ -304,10 +304,10 @@ export default async function handler(req, res) {
   const isDifyPath = mode === "user" || mode === "therapist";
 
   if (isDifyPath) {
-    const base = (process.env.DIFY_API_BASE || "https://api.dify.ai/v1").replace(/\/+$/, "");
+    const base = (process.env.DIFY_API_BASE || "https://api.dify.ai").replace(/\/+$/, "");
     const apiKey = mode === "therapist" ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY;
     const scope = mode === "therapist" ? "agent_chat_therapist" : "agent_chat_user";
-    const url = `${base}/workflows/run`;
+    const url = `${base}/v1/workflows/run`;
     const t0 = Date.now();
 
     if (!apiKey) {
