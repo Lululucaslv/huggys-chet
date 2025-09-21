@@ -31,7 +31,9 @@ export default async function handler(req, res) {
   const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined;
   const modeRaw = modeQuery || modeBody;
 
-  const base = (process.env.DIFY_API_BASE || "https://api.dify.ai/v1").replace(/\/+$/, "");
+  const baseRaw = (process.env.DIFY_API_BASE || "https://api.dify.ai").replace(/\/+$/, "");
+  const base = baseRaw;
+  const runPath = baseRaw.endsWith("/v1") ? "/workflows/run" : "/v1/workflows/run";
   const mode = String(modeRaw || "user").toLowerCase() === "therapist" ? "therapist" : "user";
   const apiKey = mode === "therapist" ? process.env.DIFY_THERAPIST_API_KEY : process.env.DIFY_USER_API_KEY;
   const scope = mode === "therapist" ? "agent_chat_therapist" : "agent_chat_user";
@@ -60,7 +62,7 @@ export default async function handler(req, res) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
 
-    const r = await fetch(`${base}/workflows/run`, {
+    const r = await fetch(`${base}${runPath}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
