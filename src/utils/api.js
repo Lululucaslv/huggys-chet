@@ -1,32 +1,60 @@
-export async function sendChat({ userId, messages }) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15 秒超时保护
+// src/utils/api.js
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, message: messages[messages.length - 1]?.content }),
-      signal: controller.signal,
-    });
+// 统一聊天请求：/api/chat
+export async function sendChat({
+  userMessage,
+  userId,
+  therapistCode,
+  browserTz,
+  actor = "therapist",
+  targetUserId = null,
+  lang = (typeof navigator !== "undefined" ? navigator.language : "zh-CN")
+}) {
+  const r = await fetch("/api/agent/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userMessage,
+      userId,
+      therapistCode,
+      browserTz: browserTz || (typeof Intl !== "undefined" ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") : "UTC"),
+      actor,
+      targetUserId,
+      lang,
+      mode: actor === 'therapist' ? 'therapist' : 'user'
+    })
+  });
 
-    clearTimeout(timeout);
+  let data = {};
+  try { data = await r.json(); } catch {}
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("GPT 接口返回错误：", errorText);
-      throw new Error("服务器错误，请稍后重试");
-    }
+  const content =
+    typeof data.content === "string" ? data.content :
+    typeof data.text === "string" ? data.text : "";
 
-    const data = await res.json();
-    return {
-      reply: {
-        role: "assistant",
-        content: data.response
-      }
-    };
-  } catch (err) {
-    console.error("发送 GPT 消息失败：", err);
-    throw new Error("连接 GPT 接口失败");
-  }
+  const toolResults = Array.isArray(data.toolResults)
+    ? data.toolResults
+    : Array.isArray(data.blocks)
+      ? data.blocks
+      : [];
+
+  return {
+    success: data.success === true || !!content,
+    content,
+    toolResults,
+    raw: data
+  };
+}
+
+// 新增：创建预约 /api/bookings/create
+export async function createBooking({ availabilityId, therapistCode, userId, startUTC, durationMins = 60 }) {
+  const r = await fetch("/api/bookings/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ availabilityId, therapistCode, userId, startUTC, durationMins })
+  });
+
+  let data = {};
+  try { data = await r.json(); } catch {}
+  return data; // { booking } 或 { error }
 }

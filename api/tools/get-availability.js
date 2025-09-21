@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       .from('availability')
       .select('*')
       .eq('therapist_id', therapistProfileId)
-      .eq('is_booked', false)
+      .or('is_booked.is.null,is_booked.eq.false')
       .order('start_time', { ascending: true })
 
     if (startDate) q = q.gte('start_time', `${startDate}T00:00:00Z`)
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     res.status(200).json({ success: true, data: data || [] })
   } catch (e) {
     console.error('[tools/get-availability] error', e)
-    const code = e.code || 500
-    res.status(code).json({ success: false, error: e.message || 'Unexpected error', details: e.stack || null })
+    const msg = e && e.message ? e.message : '请求失败，请稍后重试'
+    res.status(200).json({ success: true, content: `工具返回错误：${msg}`, toolCalls: [], toolResults: [], fallback: true })
   }
 }

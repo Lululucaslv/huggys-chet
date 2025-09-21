@@ -6,6 +6,8 @@ import { UserProfileUpdater } from '../lib/userProfileUpdater'
 import { Send, Loader2, Camera } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { TimeConfirmCard } from '../components/chat/TimeConfirmCard'
+
 
 interface ChatMessage {
   id: string
@@ -105,6 +107,32 @@ export default function ChatPage({ session }: ChatPageProps) {
           const data = await response.clone().json()
           let assistantText = data?.content || data?.message || ''
           if (Array.isArray(data?.toolResults)) {
+          if (Array.isArray(data?.toolResults)) {
+            try {
+              const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
+              if (trTC) {
+                const opts = trTC.options
+                const slots = opts.slice(0, 8).map((o: any) => ({
+                  id: o.availabilityId || o.id || o.startUTC,
+                  availabilityId: o.availabilityId || o.id || null,
+                  therapistCode: o.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+                  startTime: o.startUTC || o.start_time || o.startTime,
+                  endTime: o.endUTC || o.end_time || o.endTime
+                }))
+                const count = slots.length
+                const nameFromOpt = (opts && opts[0] && (opts[0].therapistName || (opts[0] as any).therapist_name)) || null
+                if (count > 0) {
+                  setSlotOptions({ therapistName: nameFromOpt || t('tool_therapist_fallback'), slots })
+                } else {
+                  setSlotOptions(null)
+                }
+                if (!assistantText) {
+                  assistantText = t('tool_availability_count', { name: nameFromOpt || t('tool_therapist_fallback'), count, extra: '' })
+                }
+              }
+            } catch {}
+          }
+
             try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
@@ -199,6 +227,32 @@ export default function ChatPage({ session }: ChatPageProps) {
           let assistantText = data?.content || data?.message || ''
           if (Array.isArray(data?.toolResults)) {
             try {
+              const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
+              if (trTC) {
+                const opts = trTC.options
+                const slots = opts.slice(0, 8).map((o: any) => ({
+                  id: o.availabilityId || o.id || o.startUTC,
+                  availabilityId: o.availabilityId || o.id || null,
+                  therapistCode: o.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+                  startTime: o.startUTC || o.start_time || o.startTime,
+                  endTime: o.endUTC || o.end_time || o.endTime
+                }))
+                const count = slots.length
+                const nameFromOpt = (opts && opts[0] && (opts[0].therapistName || (opts[0] as any).therapist_name)) || null
+                if (count > 0) {
+                  setSlotOptions({ therapistName: nameFromOpt || t('tool_therapist_fallback'), slots })
+                } else {
+                  setSlotOptions(null)
+                }
+                if (!assistantText) {
+                  assistantText = t('tool_availability_count', { name: nameFromOpt || t('tool_therapist_fallback'), count, extra: '' })
+                }
+              }
+            } catch {}
+          }
+
+          if (Array.isArray(data?.toolResults)) {
+            try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
                 if (tr.name === 'getTherapistAvailability' && tr.result?.success) {
@@ -254,12 +308,51 @@ export default function ChatPage({ session }: ChatPageProps) {
   const handleBookSlot = async (therapistName: string, slot: any) => {
     if (isTyping) return
     try {
+      if (slot?.availabilityId || slot?.id) {
+        const body = {
+          availabilityId: slot.availabilityId || slot.id,
+          therapistCode: slot.therapistCode || ((window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B'),
+          userId: session.user.id,
+          startUTC: slot.startTime
+        }
+        const r = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        const data = await r.json().catch(() => ({}))
+        if (data?.booking) {
+          setSlotOptions(null)
+          const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
+          const whenLocal = new Date(data.booking.start_utc || slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
+          const okText = t('tool_booking_created', { name: therapistName || '', dateTime: whenLocal })
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            role: 'assistant',
+            message: okText,
+            message_type: 'text',
+            audio_url: ''
+          })
+          updateStreamingMessage(okText)
+          return
+        } else if (r.status === 409 || String(data?.error || '').includes('slot_unavailable')) {
+          const conflictText = t('tool_slot_taken_retry', '该时间已被占用，请再选一个')
+          updateStreamingMessage(conflictText)
+          return
+        } else {
+          const errText = t('tool_booking_failed', '预约失败，请稍后再试')
+          updateStreamingMessage(errText)
+          return
+        }
+      }
       const currentLocale = i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en'
       const whenLocal = new Date(slot.startTime).toLocaleString(currentLocale as any, { hour12: false })
       const text = t('chat_confirm_booking', { therapistName, whenLocal, iso: slot.startTime })
       setSlotOptions(null)
       await sendTextMessage(text)
     } catch (e) {
+      const errText = t('tool_booking_failed', '预约失败，请稍后再试')
+      updateStreamingMessage(errText)
     }
   }
 
@@ -387,37 +480,77 @@ export default function ChatPage({ session }: ChatPageProps) {
                   </div>
                 </div>
               </div>
+
             )}
             
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm">🤗</span>
-                  </div>
-                )}
+            {messages.map((message) => {
+              try {
+                const obj = JSON.parse(message.content || '')
+                if (obj && obj.type === 'TIME_CONFIRM') {
+                  const p = obj.payload || {}
+                  return (
+                    <div key={message.id} className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-sm">🤗</span>
+                      </div>
+                      <div className="max-w-[75%]">
+                        <TimeConfirmCard
+                          therapist={p.therapist}
+                          date={p.date || null}
+                          startTime={p.startTime || null}
+                          endTime={p.endTime || null}
+                          timezone={p.timezone || null}
+                          candidates={Array.isArray(p.candidates) ? p.candidates : []}
+                          onConfirm={(sel: any) => {
+                            const date = sel?.date || p.date || null
+                            const startTime = sel?.startTime || p.startTime || null
+                            const endTime = sel?.endTime || p.endTime || null
+                            const timezone = p.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+                            const payload = {
+                              type: 'USER_CONFIRM_TIME',
+                              payload: { therapist: p.therapist, date, startTime, endTime, timezone }
+                            }
+                            setInputMessage(JSON.stringify(payload))
+                            sendMessage()
+                          }}
+                          onCancel={() => {}}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
+              } catch {}
+              return (
                 <div
-                  className={`max-w-[75%] px-6 py-4 rounded-2xl ${
-                    message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-gray-700 text-white rounded-bl-md'
-                  }`}
-                  style={{
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                  }}
+                  key={message.id}
+                  className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
-                  {message.content}
-                </div>
-                {message.role === 'user' && (
-                  <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm">👤</span>
+                  {message.role === 'assistant' && (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm">🤗</span>
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] px-6 py-4 rounded-2xl ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white rounded-br-md'
+                        : 'bg-gray-700 text-white rounded-bl-md'
+                    }`}
+                    style={{
+                      fontFamily:
+                        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                    }}
+                  >
+                    {message.content}
                   </div>
-                )}
-              </div>
-            ))}
+                  {message.role === 'user' && (
+                    <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm">👤</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             
             {isTyping && (
               <div className="flex items-start gap-4">
@@ -441,7 +574,9 @@ export default function ChatPage({ session }: ChatPageProps) {
                       disabled={isTyping}
                       className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md text-sm transition-colors"
                     >
-                      {new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
+                      {slotOptions.therapistName
+                        ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}`
+                        : new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
                     </button>
                   ))}
                 </div>
