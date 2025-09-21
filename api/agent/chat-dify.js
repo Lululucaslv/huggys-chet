@@ -121,21 +121,20 @@ export default async function handler(req, res) {
       }
     }
 
-    let reply
+    let text = ""
+    let tc = null
     if (out && typeof out === "object" && out.type === "TIME_CONFIRM") {
-      reply = {
-        role: "assistant",
-        content: out.message || "请从下面的时间中选择：",
+      tc = {
         type: "TIME_CONFIRM",
-        options: Array.isArray(out.options) ? out.options : []
+        options: Array.isArray(out.options) ? out.options : [],
+        message: out.message || "请从下面的时间中选择："
       }
+      text = tc.message
     } else {
-      let text = ""
       if (typeof out === "string") text = out
       else if (typeof dj?.data?.output_text === "string") text = dj.data.output_text
       else if (out && typeof out === "object" && (out.message || out.text)) text = out.message || out.text
       if (!text) text = "我在，愿意听你说说。"
-      reply = { role: "assistant", content: text }
     }
 
     try {
@@ -166,12 +165,16 @@ export default async function handler(req, res) {
           browserTz,
           elapsed_ms: Date.now() - t0
         }).slice(0, 4000),
-        output: JSON.stringify({ reply, raw: dj }).slice(0, 4000),
+        output: JSON.stringify({ text, timeConfirm: !!tc, raw: dj }).slice(0, 4000),
         ms: Date.now() - t0
       })
     } catch {}
 
-    return res.status(200).json({ reply })
+    const compat = tc
+      ? { ok: true, source: "dify", type: "TIME_CONFIRM", options: tc.options, text, raw: dj, reply: { role: "assistant", content: text, type: "TIME_CONFIRM", options: tc.options } }
+      : { ok: true, source: "dify", text, raw: dj, reply: { role: "assistant", content: text } }
+
+    return res.status(200).json(compat)
   } catch (e) {
     const errMsg = String(e?.message || e)
     if (mode === "user") {
