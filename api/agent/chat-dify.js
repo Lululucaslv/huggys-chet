@@ -85,7 +85,9 @@ export default async function handler(req, res) {
       signal: controller.signal
     }).finally(() => clearTimeout(timeout))
 
-    const dj = await r.json().catch(() => ({}))
+    const respText = await r.text().catch(() => "")
+    let dj = {}
+    try { dj = respText ? JSON.parse(respText) : {} } catch { dj = {} }
 
     const outputs = dj?.data?.outputs
     const outputsArr = Array.isArray(outputs) ? outputs : []
@@ -163,7 +165,7 @@ export default async function handler(req, res) {
           browserTz,
           elapsed_ms: Date.now() - t0
         }).slice(0, 4000),
-        output: JSON.stringify({ text, timeConfirm: !!tc, raw: dj }).slice(0, 4000),
+        output: JSON.stringify({ text, timeConfirm: !!tc, raw: dj, status: r.status, respLen: (respText||'').length }).slice(0, 4000),
         ms: Date.now() - t0
       })
     } catch {}

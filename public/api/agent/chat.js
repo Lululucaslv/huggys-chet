@@ -81,7 +81,9 @@ export default async function handler(req, res) {
       signal: controller.signal
     }).finally(() => clearTimeout(timeout));
 
-    const dj = await r.json().catch(() => ({}));
+    const respText = await r.text().catch(() => "");
+    let dj = {};
+    try { dj = respText ? JSON.parse(respText) : {}; } catch { dj = {}; }
 
     const outputsArr = Array.isArray(dj?.data?.outputs) ? dj.data.outputs : [];
     const outputsObj = dj?.data?.outputs && !Array.isArray(dj.data.outputs) && typeof dj.data.outputs === "object" ? dj.data.outputs : null;
@@ -134,7 +136,7 @@ export default async function handler(req, res) {
         outputsKeys, hasOutputText, outputTextLen, difyStatus,
         userId, therapistCode, browserTz, elapsed_ms: Date.now() - t0
       }).slice(0,4000),
-      output: JSON.stringify({ text, timeConfirm: !!tc, raw: dj }).slice(0,4000), ms: Date.now() - t0
+      output: JSON.stringify({ text, timeConfirm: !!tc, raw: dj, status: r.status, respLen: (respText||'').length }).slice(0,4000), ms: Date.now() - t0
     });
 
     const compat = tc
