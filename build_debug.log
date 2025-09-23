@@ -1,0 +1,13 @@
+
+> therapist-schedule-app@0.0.0 build
+> tsc -b && vite build
+
+vite v6.3.5 building for production...
+transforming...
+✓ 1654 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:   0.30 kB
+dist/assets/index-CH8jabyP.css   67.78 kB │ gzip:  10.83 kB
+dist/assets/index-BrKPgGPL.js   470.43 kB │ gzip: 145.46 kB
+✓ built in 3.30s

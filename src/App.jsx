@@ -69,6 +69,7 @@ const App = () => {
         userId,
         therapistCode: undefined, // 可不传，服务端有 THERAPIST_DEFAULT_CODE 兜底
         browserTz,
+        actor: "user"
       });
 
       const aiText =
@@ -76,8 +77,11 @@ const App = () => {
           ? res.content
           : "我在这，先陪你聊聊。";
 
-      const toolResults = Array.isArray(res?.toolResults)
-        ? res.toolResults
+      const toolResults =
+        Array.isArray(res?.toolResults) ? res.toolResults
+        : Array.isArray(res?.raw?.toolResults) ? res.raw.toolResults
+        : Array.isArray(res?.raw?.blocks) ? res.raw.blocks
+        : Array.isArray(res?.blocks) ? res.blocks
         : [];
 
       setMessages((prev) => [

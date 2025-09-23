@@ -1,6 +1,13 @@
 {
   "version": 2,
+  "functions": {
+    "api/**/*.{js,ts,mjs}": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "routes": [
+    { "src": "^/api/agent/chat$", "dest": "/api/agent/chat.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" }
   ]
 }
