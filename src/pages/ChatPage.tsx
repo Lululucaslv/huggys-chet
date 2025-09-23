@@ -105,8 +105,9 @@ export default function ChatPage({ session }: ChatPageProps) {
         const contentType = response.headers.get('content-type') || ''
         if (contentType.includes('application/json') || !response.body) {
           const data = await response.clone().json()
-          let assistantText = data?.content || data?.message || ''
-          if (Array.isArray(data?.toolResults)) {
+          let assistantText = String(
+            (data && (data.text ?? data.reply?.content ?? data.content ?? data.response ?? '')) || ''
+          ).trim()
           if (Array.isArray(data?.toolResults)) {
             try {
               const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
@@ -131,8 +132,6 @@ export default function ChatPage({ session }: ChatPageProps) {
                 }
               }
             } catch {}
-          }
-
             try {
               const parts: string[] = []
               for (const tr of data.toolResults) {
@@ -158,23 +157,18 @@ export default function ChatPage({ session }: ChatPageProps) {
                   parts.push(t('tool_error', { error: tr.result.error }))
                 }
               }
-              if (parts.length > 0) assistantText = parts.join(' ')
+              if (!assistantText && parts.length > 0) assistantText = parts.join(' ')
             } catch {}
           }
-          if (assistantText) {
-            await supabase.from('chat_messages').insert({
-              user_id: session.user.id,
-              role: 'assistant',
-              message: assistantText,
-              message_type: 'text',
-              audio_url: ''
-            })
-            updateStreamingMessage(assistantText)
-          } else if (data?.error) {
-            updateStreamingMessage(t('chat_error_generic'))
-          } else {
-            console.warn('JSON response missing expected content field:', data)
-          }
+          if (!assistantText) assistantText = '我在，愿意听你说说。'
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            role: 'assistant',
+            message: assistantText,
+            message_type: 'text',
+            audio_url: ''
+          })
+          updateStreamingMessage(assistantText)
         } else {
           await handleStreamingResponse(response)
         }
@@ -224,7 +218,9 @@ export default function ChatPage({ session }: ChatPageProps) {
         const contentType = response.headers.get('content-type') || ''
         if (contentType.includes('application/json') || !response.body) {
           const data = await response.clone().json()
-          let assistantText = data?.content || data?.message || ''
+          let assistantText = String(
+            (data && (data.text ?? data.reply?.content ?? data.content ?? data.response ?? '')) || ''
+          ).trim()
           if (Array.isArray(data?.toolResults)) {
             try {
               const trTC = data.toolResults.find((tr: any) => tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options))
@@ -277,23 +273,18 @@ export default function ChatPage({ session }: ChatPageProps) {
                   parts.push(t('tool_error', { error: tr.result.error }))
                 }
               }
-              if (parts.length > 0) assistantText = parts.join(' ')
+              if (!assistantText && parts.length > 0) assistantText = parts.join(' ')
             } catch {}
           }
-          if (assistantText) {
-            await supabase.from('chat_messages').insert({
-              user_id: session.user.id,
-              role: 'assistant',
-              message: assistantText,
-              message_type: 'text',
-              audio_url: ''
-            })
-            updateStreamingMessage(assistantText)
-          } else if (data?.error) {
-            updateStreamingMessage(t('chat_error_generic'))
-          } else {
-            console.warn('JSON response missing expected content field:', data)
-          }
+          if (!assistantText) assistantText = '我在，愿意听你说说。'
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            role: 'assistant',
+            message: assistantText,
+            message_type: 'text',
+            audio_url: ''
+          })
+          updateStreamingMessage(assistantText)
         } else {
           await handleStreamingResponse(response)
         }

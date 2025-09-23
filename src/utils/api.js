@@ -1,3 +1,12 @@
+export function parseAgentReply(payload) {
+  const text =
+    (payload && (payload.text ?? payload?.reply?.content ?? payload.content ?? payload.message ?? payload.response)) || "";
+  const blocks =
+    (payload && (payload.blocks ?? payload.toolResults)) ||
+    (payload && payload.type === "TIME_CONFIRM" ? [{ type: "TIME_CONFIRM", options: payload.options || [] }] : []);
+  return { text, blocks, raw: payload };
+}
+
 // src/utils/api.js
 
 // 统一聊天请求：/api/chat
@@ -28,9 +37,13 @@ export async function sendChat({
   let data = {};
   try { data = await r.json(); } catch {}
 
-  const content =
-    typeof data.content === "string" ? data.content :
-    typeof data.text === "string" ? data.text : "";
+  const contentRaw =
+    (typeof data.text === "string" && data.text) ||
+    (data?.reply?.content) ||
+    (typeof data.content === "string" && data.content) ||
+    (typeof data.response === "string" && data.response) ||
+    "";
+  const content = String(contentRaw).trim();
 
   const toolResults = Array.isArray(data.toolResults)
     ? data.toolResults

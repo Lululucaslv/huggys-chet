@@ -134,7 +134,9 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
         )}
 
         {/* 文本内容 */}
-        {message.content && <span>{message.content}</span>}
+        <span>
+          {((message.text || message.content || (message.reply && message.reply.content) || '').trim()) || '我在，愿意听你说说。'}
+        </span>
 
         {/* TIME_CONFIRM 芯片（有就渲染） */}
         {tcBlock && (

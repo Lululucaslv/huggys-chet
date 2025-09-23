@@ -161,7 +161,7 @@ export default async function handler(req, res) {
     } else if (typeof dj?.data?.output_text === "string") {
       text = dj.data.output_text
     }
-    if (!text) text = "（暂无可显示内容）"
+    if (!text) text = "我在，愿意听你说说。"
 
     try {
       const keyHint = (apiKey || "").slice(-6)
