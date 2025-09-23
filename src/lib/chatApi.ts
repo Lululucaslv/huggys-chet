@@ -56,9 +56,8 @@ export class ChatAPI {
         body: JSON.stringify({
           userMessage: userMessage,
           userId: (userProfile?.id) || 'anonymous',
-          browserTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-          therapistCode: (window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B',
-          lang: navigator.language || 'zh-CN',
+          therapistCode: (typeof window !== 'undefined' && (window as any)?.__THERAPIST_DEFAULT_CODE__) || '8W79AL2B',
+          browserTz: (typeof Intl !== 'undefined' ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') : 'UTC'),
           actor: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user',
           mode: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user'
         })
@@ -81,12 +80,33 @@ export class ChatAPI {
         headers: Object.fromEntries(response.headers.entries())
       })
       
-      const responseData = await response.json()
+      const data = await response.json().catch(() => ({} as any))
       console.log('Response data successfully parsed')
-      
-      return new Response(JSON.stringify(responseData), {
-        status: response.status,
-        statusText: response.statusText,
+
+      let text = ''
+      if (typeof data?.text === 'string') text = data.text
+      else if (data?.reply?.content) text = String(data.reply.content)
+      else if (typeof data?.content === 'string') text = data.content
+      else if (typeof data?.response === 'string') text = data.response
+      text = (text || '').trim()
+
+      let blocks: any[] = Array.isArray(data?.blocks) ? data.blocks : (Array.isArray(data?.toolResults) ? data.toolResults : [])
+      if (data?.type === 'TIME_CONFIRM') {
+        blocks = [{ type: 'TIME_CONFIRM', options: data?.options || [] }]
+        if (!text) text = '请从下面的时间中选择：'
+      }
+
+      if (!text) text = '我在，愿意听你说说。'
+
+      const normalized = {
+        ok: (data?.ok ?? data?.success ?? response.ok),
+        text,
+        blocks,
+        raw: data
+      }
+
+      return new Response(JSON.stringify(normalized), {
+        status: 200,
         headers: { 'Content-Type': 'application/json' }
       })
 
