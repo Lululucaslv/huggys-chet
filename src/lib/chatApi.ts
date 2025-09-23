@@ -29,9 +29,10 @@ export class ChatAPI {
   }
 
   async sendMessage(
-    messages: ChatMessage[], 
+    messages: ChatMessage[],
     userProfile: UserProfile | null | undefined,
-    stream: boolean = false
+    stream: boolean = false,
+    opts?: { mode?: 'user' | 'therapist'; actor?: 'user' | 'therapist'; browserTz?: string; therapistCode?: string }
   ): Promise<Response> {
     try {
       const userMessage = messages[messages.length - 1]?.content || ''
@@ -47,6 +48,8 @@ export class ChatAPI {
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token || ''
 
+      const roleFromWindow = (typeof window !== 'undefined' && (window as any).__APP_ROLE__) || 'user'
+      const finalMode = (opts?.mode as any) || (opts?.actor as any) || (roleFromWindow === 'therapist' ? 'therapist' : 'user')
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: {
@@ -56,10 +59,10 @@ export class ChatAPI {
         body: JSON.stringify({
           userMessage: userMessage,
           userId: (userProfile?.id) || 'anonymous',
-          therapistCode: (typeof window !== 'undefined' && (window as any)?.__THERAPIST_DEFAULT_CODE__) || '8W79AL2B',
-          browserTz: (typeof Intl !== 'undefined' ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') : 'UTC'),
-          actor: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user',
-          mode: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user'
+          therapistCode: opts?.therapistCode || (typeof window !== 'undefined' && (window as any)?.__THERAPIST_DEFAULT_CODE__) || '8W79AL2B',
+          browserTz: opts?.browserTz || (typeof Intl !== 'undefined' ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') : 'UTC'),
+          actor: finalMode,
+          mode: finalMode
         })
       })
 
