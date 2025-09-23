@@ -59,8 +59,8 @@ export class ChatAPI {
           browserTz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           therapistCode: (window as any)?.__THERAPIST_DEFAULT_CODE__ || '8W79AL2B',
           lang: navigator.language || 'zh-CN',
-          actor: 'user',
-          mode: 'user'
+          actor: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user',
+          mode: ((typeof window !== 'undefined' && (window as any).__APP_ROLE__) === 'therapist') ? 'therapist' : 'user'
         })
       })
 
