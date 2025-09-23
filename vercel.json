@@ -3,9 +3,6 @@
   "functions": {
     "api/**/*.{js,ts,mjs}": {
       "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/agent/chat.js": {
       "maxDuration": 60
     }
   },
