@@ -101,6 +101,13 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
       .single()
     
     setUserProfile(data)
+  useEffect(() => {
+    if (userProfile && typeof window !== 'undefined') {
+      const ls = String(userProfile?.life_status || '').toLowerCase()
+      ;(window as any).__APP_ROLE__ = ls === 'therapist' ? 'therapist' : 'user'
+    }
+  }, [userProfile])
+
   }
 
   const fetchChatHistory = async () => {
@@ -224,9 +231,18 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
         }
       } else {
         const assistantText =
-          (data && (data.content || data.text)) ? String(data.content || data.text) : ''
+          (data && (data.text || data.content || (data.reply && data.reply.content)))
+            ? String(data.text || data.content || (data.reply && data.reply.content))
+            : ''
         if (assistantText) {
           setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            role: 'assistant',
+            message: assistantText,
+            message_type: 'text',
+            audio_url: ''
+          })
         } else {
           const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
           setError(new Error(errMsg))
