@@ -151,7 +151,6 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
         false
       )
       const data = await resp.json()
-      const ok = !!(data && (data.ok === true || data.success === true))
       const blocks = Array.isArray(data?.blocks) ? data.blocks : (Array.isArray(data?.toolResults) ? data.toolResults : [])
       let assistantText = String(
         (data && (data.text ?? data.reply?.content ?? data.content ?? data.response ?? '')) || ''
