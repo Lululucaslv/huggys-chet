@@ -203,10 +203,12 @@ export default async function handler(req, res) {
     return res.status(200).json(compat)
   } catch (e) {
     const errMsg = String(e?.message || e)
+    const suspicious = !!therapistCode && mode !== "therapist"
     if (mode === "user") {
       try {
         await supabase.from("ai_logs").insert({
           scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, userId, therapistCode, browserTz, suspicious }).slice(0, 4000),
           error: errMsg, ms: Date.now() - t0
         })
       } catch {}
@@ -217,6 +219,7 @@ export default async function handler(req, res) {
       try {
         await supabase.from("ai_logs").insert({
           scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, userId, therapistCode, browserTz, suspicious }).slice(0, 4000),
           error: errMsg, ms: Date.now() - t0
         })
       } catch {}

@@ -102,9 +102,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
     
     setUserProfile(data)
   useEffect(() => {
-    if (userProfile && typeof window !== 'undefined') {
-      const ls = String(userProfile?.life_status || '').toLowerCase()
-      ;(window as any).__APP_ROLE__ = ls === 'therapist' ? 'therapist' : 'user'
+    if (typeof window !== 'undefined') {
+      ;(window as any).__APP_ROLE__ = 'therapist'
     }
   }, [userProfile])
 
