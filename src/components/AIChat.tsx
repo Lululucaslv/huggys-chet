@@ -151,102 +151,89 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
         false
       )
       const data = await resp.json()
-      if (data && data.success) {
-        let assistantText = (data.content || '').toString()
-        if (Array.isArray(data.toolResults)) {
-          try {
-            const parts: string[] = []
-            let hasTimeConfirm = false
-            for (const tr of data.toolResults) {
-              if (tr?.name === 'getAvailability' && tr.result?.success) {
-                const arr = Array.isArray(tr.result.data) ? tr.result.data : []
-                const slots = arr.map((r: any) => ({
-                  id: r.id,
-                  startTime: r.start_time || r.startTime,
-                  endTime: r.end_time || r.endTime
-                })).filter((s: any) => s.startTime)
-                const displayName = getSafeDisplayName(session, userProfile, t)
-                parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
-                if (slots.length > 0) {
-                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
-                } else {
-                  setSlotOptions(null)
-                }
-              } else if (tr?.name === 'createBooking' && tr.result?.success) {
-                const d = tr.result.data || {}
-                parts.push(d.message || t('tool_booking_created', { name: d.therapistName || '', dateTime: d.dateTime || '' }))
+      const ok = !!(data && (data.ok === true || data.success === true))
+      const blocks = Array.isArray(data?.blocks) ? data.blocks : (Array.isArray(data?.toolResults) ? data.toolResults : [])
+      let assistantText = String(
+        (data && (data.text ?? data.reply?.content ?? data.content ?? data.response ?? '')) || ''
+      ).trim()
+
+      if (blocks.length) {
+        try {
+          const parts: string[] = []
+          let hasTimeConfirm = false
+          for (const tr of blocks) {
+            if (tr?.name === 'getAvailability' && tr.result?.success) {
+              const arr = Array.isArray(tr.result.data) ? tr.result.data : []
+              const slots = arr.map((r: any) => ({
+                id: r.id,
+                startTime: r.start_time || r.startTime,
+                endTime: r.end_time || r.endTime
+              })).filter((s: any) => s.startTime)
+              const displayName = getSafeDisplayName(session, userProfile, t)
+              parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
+              if (slots.length > 0) {
+                setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8) })
+              } else {
                 setSlotOptions(null)
-                if (typeof onAfterToolAction === 'function') onAfterToolAction()
-              } else if (tr?.name === 'getTherapistAvailability' && tr.result?.success) {
-                const d = tr.result.data || {}
-                const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
-                parts.push(t('tool_availability_count', { name: d.therapistName || t('tool_therapist_fallback'), count, extra: d.message || '' }))
-                if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
-                  setSlotOptions({
-                    therapistName: d.therapistName || t('tool_therapist_fallback'),
-                    slots: d.availableSlots.slice(0, 8)
-                  })
-                } else {
-                  setSlotOptions(null)
-                }
-              } else if (tr?.type === 'TIME_CONFIRM' && Array.isArray(tr.options)) {
-                const slots = tr.options.map((opt: any) => ({
-                  id: opt.availabilityId,
-                  startTime: opt.startUTC,
-                  endTime: opt.endUTC,
-                  therapistCode: opt.therapistCode
-                })).filter((s: any) => s.startTime)
-                const nameFromOpt = (tr.options && tr.options[0] && (tr.options[0].therapistName || tr.options[0].therapist_name)) || null
-                const displayName = nameFromOpt || getSafeDisplayName(session, userProfile, t)
-                parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
-                if (slots.length > 0) {
-                  setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8), createEnabled: !!tr.createEnabled, targetUserId: tr.targetUserId || null })
-                } else {
-                  setSlotOptions(null)
-                }
-                hasTimeConfirm = true
-              } else if (tr?.result?.error) {
-                parts.push(t('tool_error', { error: tr.result.error }))
               }
+            } else if (tr?.name === 'createBooking' && tr.result?.success) {
+              const d = tr.result.data || {}
+              parts.push(d.message || t('tool_booking_created', { name: d.therapistName || '', dateTime: d.dateTime || '' }))
+              setSlotOptions(null)
+              if (typeof onAfterToolAction === 'function') onAfterToolAction()
+            } else if (tr?.name === 'getTherapistAvailability' && tr.result?.success) {
+              const d = tr.result.data || {}
+              const count = Array.isArray(d.availableSlots) ? d.availableSlots.length : 0
+              parts.push(t('tool_availability_count', { name: d.therapistName || t('tool_therapist_fallback'), count, extra: d.message || '' }))
+              if (Array.isArray(d.availableSlots) && d.availableSlots.length > 0) {
+                setSlotOptions({
+                  therapistName: d.therapistName || t('tool_therapist_fallback'),
+                  slots: d.availableSlots.slice(0, 8)
+                })
+              } else {
+                setSlotOptions(null)
+              }
+            } else if ((tr?.type === 'TIME_CONFIRM' || tr?.name === 'TIME_CONFIRM') && Array.isArray(tr.options)) {
+              const slots = tr.options.map((opt: any) => ({
+                id: opt.availabilityId,
+                startTime: opt.startUTC,
+                endTime: opt.endUTC,
+                therapistCode: opt.therapistCode
+              })).filter((s: any) => s.startTime)
+              const nameFromOpt = (tr.options && tr.options[0] && (tr.options[0].therapistName || tr.options[0].therapist_name)) || null
+              const displayName = nameFromOpt || getSafeDisplayName(session, userProfile, t)
+              parts.push(t('tool_availability_count', { name: displayName, count: slots.length, extra: '' }))
+              if (slots.length > 0) {
+                setSlotOptions({ therapistName: displayName, slots: slots.slice(0, 8), createEnabled: !!tr.createEnabled, targetUserId: tr.targetUserId || null })
+              } else {
+                setSlotOptions(null)
+              }
+              hasTimeConfirm = true
+            } else if (tr?.result?.error) {
+              parts.push(t('tool_error', { error: tr.result.error }))
             }
-            if (hasTimeConfirm && parts.length > 0) {
-              assistantText = parts.join(' ')
-            } else if (!assistantText && parts.length > 0) {
-              assistantText = parts.join(' ')
-            }
-          } catch {}
-        }
-        setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
-        await supabase.from('chat_messages').insert({
-          user_id: session.user.id,
-          role: 'assistant',
-          message: assistantText,
-          message_type: 'text',
-          audio_url: ''
-        })
-        const names = Array.isArray(data.toolResults) ? data.toolResults.map((r: any) => r?.name || r?.function?.name) : []
-        const modified = names.some((n: string) => ['setAvailability', 'deleteAvailability'].includes(String(n)))
-        if (modified && typeof onAfterToolAction === 'function') {
-          onAfterToolAction()
-        }
-      } else {
-        const assistantText =
-          (data && (data.text || data.content || (data.reply && data.reply.content)))
-            ? String(data.text || data.content || (data.reply && data.reply.content))
-            : ''
-        if (assistantText) {
-          setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
-          await supabase.from('chat_messages').insert({
-            user_id: session.user.id,
-            role: 'assistant',
-            message: assistantText,
-            message_type: 'text',
-            audio_url: ''
-          })
-        } else {
-          const errMsg = (data && (data.error || data.details)) ? String(data.error || data.details) : 'Unknown error'
-          setError(new Error(errMsg))
-        }
+          }
+          if ((hasTimeConfirm || !assistantText) && parts.length > 0) {
+            assistantText = parts.join(' ')
+          }
+        } catch {}
+      }
+
+      if (!assistantText) assistantText = '我在，愿意听你说说。'
+
+      setMessages(prev => [...prev, { id: String(Date.now() + 1), role: 'assistant', content: assistantText }])
+      await supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'assistant',
+        message: assistantText,
+        message_type: 'text',
+        audio_url: ''
+      })
+
+      const names = blocks.map((r: any) => r?.name || r?.function?.name).filter(Boolean)
+      const modified = names.some((n: string) => ['setAvailability', 'deleteAvailability'].includes(String(n)))
+      if (modified && typeof onAfterToolAction === 'function') {
+        onAfterToolAction()
       }
     } catch (e: any) {
       setError(e instanceof Error ? e : new Error(String(e)))
