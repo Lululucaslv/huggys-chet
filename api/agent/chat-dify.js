@@ -95,49 +95,73 @@ export default async function handler(req, res) {
     const outputsArr = Array.isArray(outputs) ? outputs : []
     const outputsObj = outputs && !Array.isArray(outputs) && typeof outputs === "object" ? outputs : null
 
-    const pickFromArray = (arr, key) => {
-      const byKey = arr.find(o => (o?.name || o?.key) === key)
-      if (byKey && byKey.value) return byKey.value
-      const firstWithValue = arr.find(o => o && o.value)
-      return firstWithValue ? firstWithValue.value : null
+    const candidates = []
+
+    if (typeof dj?.data?.output_text === "string" && dj.data.output_text.trim()) {
+      candidates.push(dj.data.output_text.trim())
     }
-    const pickFromObject = (obj, key) => {
-      if (!obj) return null
-      if (obj[key] != null) return obj[key]
-      const vals = Object.values(obj)
-      return vals.length ? vals[0] : null
+    const topFields = [dj?.result?.reply, dj?.result?.text, dj?.message, dj?.text]
+    for (const v of topFields) {
+      if (typeof v === "string" && v.trim()) candidates.push(v.trim())
     }
 
-    let out =
-      (outputsArr.length ? (pickFromArray(outputsArr, "reply") ?? null) : null) ??
-      (typeof dj?.data?.output_text === "string" ? dj.data.output_text : null) ??
-      (outputsArr.length ? (pickFromArray(outputsArr, "answer") ?? null) : null) ??
-      (dj?.result && (dj.result.reply || dj.result.text) ? (dj.result.reply || dj.result.text) : null) ??
-      (outputsObj ? (pickFromObject(outputsObj, "reply") ?? pickFromObject(outputsObj, "answer")) : null) ??
-      (dj?.message || dj?.text || null)
+    const pushValue = (val) => {
+      if (!val) return
+      if (typeof val === "string" && val.trim()) {
+        candidates.push(val.trim())
+        return
+      }
+      if (typeof val === "object" && val) {
+        if (typeof val.text === "string" && val.text.trim()) {
+          candidates.push(val.text.trim())
+          return
+        }
+        if (Array.isArray(val)) {
+          const joined = val.filter(x => typeof x === "string" && x.trim()).join("\n")
+          if (joined) candidates.push(joined)
+        }
+      }
+    }
+
+    const preferred = ["reply", "answer", "final", "final_text", "text", "message"]
+
+    if (outputsArr.length) {
+      for (const key of preferred) {
+        const found = outputsArr.find(o => (o?.name || o?.key) === key)
+        if (found) pushValue(found.value)
+      }
+      for (const o of outputsArr) pushValue(o?.value)
+    } else if (outputsObj) {
+      for (const key of preferred) pushValue(outputsObj[key])
+      for (const [, v] of Object.entries(outputsObj)) pushValue(v)
+    }
+
+    const first = candidates.find(Boolean)
+    let out = first
+    let tc = null
 
     if (typeof out === "string") {
       const s = out.trim()
       if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
-        try { out = JSON.parse(out) } catch {}
+        try {
+          const j = JSON.parse(s)
+          if (j && typeof j === "object" && j.type === "TIME_CONFIRM") tc = j
+          else out = j
+        } catch {}
       }
     }
 
     let text = ""
-    let tc = null
-    if (out && typeof out === "object" && out.type === "TIME_CONFIRM") {
-      tc = {
-        type: "TIME_CONFIRM",
-        options: Array.isArray(out.options) ? out.options : [],
-        message: out.message || "请从下面的时间中选择："
-      }
-      text = tc.message
-    } else {
-      if (typeof out === "string") text = out
-      else if (typeof dj?.data?.output_text === "string") text = dj.data.output_text
-      else if (out && typeof out === "object" && (out.message || out.text)) text = out.message || out.text
-      if (!text) text = "我在，愿意听你说说。"
+    if (tc) {
+      text = tc.message || "请从下面的时间中选择："
+    } else if (typeof out === "string") {
+      text = out
+    } else if (out && typeof out === "object" && (out.message || out.text)) {
+      text = out.message || out.text
+    } else if (typeof dj?.data?.output_text === "string") {
+      text = dj.data.output_text
     }
+    if (!text) text = "（暂无可显示内容）"
 
     try {
       const keyHint = (apiKey || "").slice(-6)
