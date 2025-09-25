@@ -102,9 +102,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
     
     setUserProfile(data)
   useEffect(() => {
-    if (userProfile && typeof window !== 'undefined') {
-      const ls = String(userProfile?.life_status || '').toLowerCase()
-      ;(window as any).__APP_ROLE__ = ls === 'therapist' ? 'therapist' : 'user'
+    if (typeof window !== 'undefined') {
+      ;(window as any).__APP_ROLE__ = 'therapist'
     }
   }, [userProfile])
 
@@ -148,7 +147,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
       const resp = await chatApi.sendMessage(
         nextMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
         { ...(userProfile || {}), id: session.user.id },
-        false
+        false,
+        { mode: 'therapist' }
       )
       const data = await resp.json()
       const blocks = Array.isArray(data?.blocks) ? data.blocks : (Array.isArray(data?.toolResults) ? data.toolResults : [])

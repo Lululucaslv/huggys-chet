@@ -29,9 +29,10 @@ export default async function handler(req, res) {
   const userId = body.userId ?? body.user_id ?? body.user ?? ""
   const therapistCode = body.therapistCode ?? body.therapist_code ?? null
   const browserTz = body.browserTz ?? body.browser_tz ?? null
-  const modeBody = body.mode ?? "user"
   const modeQuery = (req.query && (req.query.mode || req.query.m)) || undefined
-  const modeRaw = modeQuery || modeBody
+  const fromBody = body.mode || body.actor
+  const inferred = /therapist/i.test(String(req.headers?.referer || "")) ? "therapist" : "user"
+  const modeRaw = modeQuery || fromBody || inferred
 
   const baseRaw = String(process.env.DIFY_API_BASE || "https://api.dify.ai").replace(/\/+$/, "")
   const base = baseRaw
@@ -203,10 +204,12 @@ export default async function handler(req, res) {
     return res.status(200).json(compat)
   } catch (e) {
     const errMsg = String(e?.message || e)
+    const suspicious = !!therapistCode && mode !== "therapist"
     if (mode === "user") {
       try {
         await supabase.from("ai_logs").insert({
           scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, userId, therapistCode, browserTz, suspicious }).slice(0, 4000),
           error: errMsg, ms: Date.now() - t0
         })
       } catch {}
@@ -217,6 +220,7 @@ export default async function handler(req, res) {
       try {
         await supabase.from("ai_logs").insert({
           scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, userId, therapistCode, browserTz, suspicious }).slice(0, 4000),
           error: errMsg, ms: Date.now() - t0
         })
       } catch {}
