@@ -24,6 +24,16 @@ export default async function handler(req, res) {
     }
 
     if (bearer(req) !== process.env.MEMORY_WRITE_KEY) {
+      try {
+        const supabase = getServiceSupabase()
+        await supabase.from('ai_logs').insert({
+          scope: 'memory_upsert',
+          ok: false,
+          model: 'n/a',
+          payload: JSON.stringify({ hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']), authPrefix: String(req.headers['authorization'] || req.headers['Authorization'] || '').slice(0, 10) }).slice(0, 4000),
+          error: 'unauthorized'
+        })
+      } catch {}
       return res.status(401).json({ error: 'unauthorized' })
     }
 
