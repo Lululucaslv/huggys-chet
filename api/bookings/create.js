@@ -35,6 +35,11 @@ export default async function handler(req, res) {
       const tryLegacy = async () => {
         let updated = null
         let updErr = null
+        const pre = await supabase
+          .from('availability')
+          .select('id,is_booked,start_time,end_time')
+          .eq('id', idFilter)
+          .maybeSingle()
         {
           const resp = await supabase
             .from('availability')
@@ -58,7 +63,17 @@ export default async function handler(req, res) {
           updErr = resp2.error || null
         }
         if (updErr || !updated) {
-          res.status(409).json({ error: 'slot_unavailable', detail: updErr?.message || null })
+          const post = await supabase
+            .from('availability')
+            .select('id,is_booked')
+            .eq('id', idFilter)
+            .maybeSingle()
+          res.status(409).json({
+            error: 'slot_unavailable',
+            detail: updErr?.message || null,
+            pre: pre?.data || null,
+            post: post?.data || null
+          })
           return true
         }
         const duration = Math.max(1, Math.round((new Date(updated.end_time).getTime() - new Date(updated.start_time).getTime()) / 60000))
