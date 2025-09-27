@@ -30,23 +30,7 @@ export default async function handler(req, res) {
     const supabase = getServiceSupabase()
 
     if (availabilityId) {
-      try {
-        const { data: booked, error: rpcErr } = await supabase.rpc('book_from_slot', {
-          p_availability_id: availabilityId,
-          p_user_id: userId,
-          p_therapist_code: therapistCode,
-        })
-        if (rpcErr) {
-          const msg = (rpcErr.message || '').toLowerCase()
-          if (msg.includes('slot_unavailable')) {
-            res.status(409).json({ error: 'slot_unavailable' })
-            return
-          }
-          throw rpcErr
-        }
-        res.status(200).json({ booking: booked })
-        return
-      } catch (rpcFailure) {
+      const tryLegacy = async () => {
         const { data: updated, error: updErr } = await supabase
           .from('availability')
           .update({ is_booked: true })
@@ -56,7 +40,7 @@ export default async function handler(req, res) {
           .single()
         if (updErr || !updated) {
           res.status(409).json({ error: 'slot_unavailable' })
-          return
+          return true
         }
         const duration = Math.max(1, Math.round((new Date(updated.end_time).getTime() - new Date(updated.start_time).getTime()) / 60000))
         const { data: dup } = await supabase
@@ -69,7 +53,7 @@ export default async function handler(req, res) {
           .maybeSingle()
         if (dup) {
           res.status(200).json({ booking: dup })
-          return
+          return true
         }
         const { data: booking, error: insErr } = await supabase
           .from('bookings')
@@ -82,8 +66,10 @@ export default async function handler(req, res) {
           })
           .select()
           .single()
-        if (insErr) throw insErr
-
+        if (insErr) {
+          res.status(500).json({ error: insErr.message || 'insert_failed' })
+          return true
+        }
         await supabase.from('chat_messages').insert({
           booking_id: booking.id,
           user_id: booking.user_id,
@@ -97,8 +83,38 @@ export default async function handler(req, res) {
             userId: booking.user_id,
           }),
         })
-
         res.status(200).json({ booking })
+        return true
+      }
+
+      try {
+        const { data: booked, error: rpcErr } = await supabase.rpc('book_from_slot', {
+          p_availability_id: availabilityId,
+          p_user_id: userId,
+          p_therapist_code: therapistCode,
+        })
+        if (rpcErr) {
+          const msg = (rpcErr.message || '').toLowerCase()
+          const legacyMode = (process.env.SCHEMA_MODE || 'legacy').toLowerCase() !== 'new'
+          if (msg.includes('slot_unavailable') && legacyMode) {
+            const handled = await tryLegacy()
+            if (handled) return
+          }
+          if (msg.includes('slot_unavailable')) {
+            res.status(409).json({ error: 'slot_unavailable' })
+            return
+          }
+          throw rpcErr
+        }
+        res.status(200).json({ booking: booked })
+        return
+      } catch {
+        const legacyMode = (process.env.SCHEMA_MODE || 'legacy').toLowerCase() !== 'new'
+        if (legacyMode) {
+          const handled = await tryLegacy()
+          if (handled) return
+        }
+        res.status(500).json({ error: 'rpc_failed' })
         return
       }
     }
