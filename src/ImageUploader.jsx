@@ -38,7 +38,7 @@ const ImageUploader = ({ onImage, imagePreview, onRemoveImage }) => {
           />
           <button
             type="button"
-            className="absolute top-0 right-0 bg-white rounded-full text-red-500 px-1"
+            className="absolute top-0 right-0 bg-gray-800 rounded-full text-red-400 px-1 border border-gray-700"
             onClick={onRemoveImage}
           >
             ×
