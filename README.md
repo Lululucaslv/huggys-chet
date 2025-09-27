@@ -1,1 +1,1 @@
-# Huggy Chat is Live
+# huggys Chat is Live
