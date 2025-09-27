@@ -55,7 +55,7 @@ export default function TherapistCodeDisplay({ userId }: { userId: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-gray-900">{code}</span>
+      <span className="font-mono text-white">{code}</span>
       <Button variant="outline" size="sm" onClick={onCopy} disabled={!code || code === '—' || copying}>
         <Copy className="h-4 w-4 mr-1" />
         {copying ? '已复制' : '复制'}
