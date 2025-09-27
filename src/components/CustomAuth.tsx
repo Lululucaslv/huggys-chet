@@ -27,7 +27,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
-      setError('请填写邮箱和密码')
+      setError('Please enter email and password')
       return
     }
 
@@ -47,7 +47,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
 
       onAuthSuccess()
     } catch (err) {
-      setError('登录失败，请重试')
+      setError('Login failed, please try again')
     } finally {
       setLoading(false)
     }
@@ -56,28 +56,28 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password || !confirmPassword) {
-      setError('请填写所有必填字段')
+      setError('Please fill in all required fields')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('密码确认不匹配')
+      setError('Password confirmation does not match')
       return
     }
 
     if (password.length < 6) {
-      setError('密码长度至少6位')
+      setError('Password must be at least 6 characters')
       return
     }
 
     if (userRole === 'therapist') {
       const validInviteCode = 'THERAPIST2024'
       if (!inviteCode || inviteCode !== validInviteCode) {
-        setError('治疗师邀请码无效')
+        setError('Invalid therapist invite code')
         return
       }
       if (userRole === 'therapist' && !displayName.trim()) {
-        setError('请填写姓名')
+        setError('Please enter your name')
         return
       }
     }
@@ -149,7 +149,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
         onAuthSuccess()
       }
     } catch (err) {
-      setError('注册失败，请重试')
+      setError('Registration failed, please try again')
     } finally {
       setLoading(false)
     }
@@ -159,7 +159,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
-          MoreThanHugs 疗愈平台
+          Huggys.ai
         </h1>
         
         <Card>
@@ -168,17 +168,17 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
               {isLogin ? (
                 <>
                   <LogIn className="h-5 w-5" />
-                  登录
+                  Login
                 </>
               ) : (
                 <>
                   <UserPlus className="h-5 w-5" />
-                  注册
+                  Register
                 </>
               )}
             </CardTitle>
             <CardDescription>
-              {isLogin ? '登录您的账户' : '创建新账户'}
+              {isLogin ? 'Sign in to your account' : 'Create a new account'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -190,7 +190,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
 
             <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-4">
               <div>
-                <Label htmlFor="email">邮箱地址</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -202,13 +202,13 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
               </div>
 
               <div>
-                <Label htmlFor="password">密码</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="请输入密码"
+                  placeholder="Enter password"
                   required
                 />
               </div>
@@ -216,19 +216,19 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
               {!isLogin && (
                 <>
                   <div>
-                    <Label htmlFor="confirmPassword">确认密码</Label>
+                    <Label htmlFor="confirmPassword">Confirm password</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="请再次输入密码"
+                      placeholder="Re-enter password"
                       required
                     />
                   </div>
 
                   <div>
-                    <Label>选择角色</Label>
+                    <Label>Select role</Label>
                     <RadioGroup
                       value={userRole}
                       onValueChange={(value) => setUserRole(value as 'client' | 'therapist')}
@@ -238,14 +238,14 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                         <RadioGroupItem value="client" id="client" />
                         <Label htmlFor="client" className="flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          来访者 (客户)
+                          Client
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="therapist" id="therapist" />
                         <Label htmlFor="therapist" className="flex items-center gap-2">
                           <Shield className="h-4 w-4" />
-                          治疗师
+                          Therapist
                         </Label>
                       </div>
                     </RadioGroup>
@@ -253,31 +253,29 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
 
                   {userRole === 'therapist' && (
                     <div>
-                      <Label htmlFor="inviteCode">治疗师邀请码</Label>
+                      <Label htmlFor="inviteCode">Therapist invite code</Label>
                       <Input
                         id="inviteCode"
                         type="text"
                         value={inviteCode}
                         onChange={(e) => setInviteCode(e.target.value)}
-                        placeholder="请输入邀请码"
+                        placeholder="Enter invite code"
                         required
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        注册治疗师账户需要有效的邀请码
-                  {userRole === 'therapist' && (
-                    <div>
-                      <Label htmlFor="displayName">姓名</Label>
-                      <Input
-                        id="displayName"
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="例如：Hanqi Lyu"
-                        required
-                      />
-                    </div>
-                  )}
+                        A valid invite code is required to register as a therapist
                       </p>
+                      <div>
+                        <Label htmlFor="displayName">Name</Label>
+                        <Input
+                          id="displayName"
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="e.g., Hanqi Lyu"
+                          required
+                        />
+                      </div>
                     </div>
                   )}
                 </>
@@ -288,7 +286,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                 disabled={loading}
                 className="w-full"
               >
-                {loading ? (isLogin ? '登录中...' : '注册中...') : (isLogin ? '登录' : '注册')}
+                {loading ? (isLogin ? 'Logging in...' : 'Registering...') : (isLogin ? 'Login' : 'Register')}
               </Button>
             </form>
 
@@ -305,7 +303,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                 }}
                 className="text-blue-600 hover:text-blue-700 text-sm"
               >
-                {isLogin ? '没有账户？点击注册' : '已有账户？点击登录'}
+                {isLogin ? 'No account? Register' : 'Already have an account? Login'}
               </button>
             </div>
           </CardContent>

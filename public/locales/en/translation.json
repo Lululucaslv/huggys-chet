@@ -70,7 +70,7 @@
   "tool_availability_count": "{{name}} has {{count}} available time slots. {{extra}}",
   "tool_booking_created": "Booking created: {{name}} - {{dateTime}}",
   "tool_error": "Tool error: {{error}}",
-  "auth_app_title": "MoreThanHugs Platform",
+  "auth_app_title": "Huggys.ai",
   "sched_my_availability": "My availability",
   "sched_my_availability_desc": "Manage your available time slots; booked slots will not appear here",
   "sched_no_availability_slots": "No availability slots yet",

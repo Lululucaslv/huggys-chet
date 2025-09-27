@@ -74,7 +74,7 @@
   "tool_availability_count": "{{name}} 可预约时段共 {{count}} 个。{{extra}}",
   "tool_booking_created": "预约已创建：{{name}} - {{dateTime}}",
   "tool_error": "工具返回错误：{{error}}",
-  "auth_app_title": "MoreThanHugs 疗愈平台",
+  "auth_app_title": "Huggys.ai",
   "sched_my_availability": "我的可预约时间",
   "sched_my_availability_desc": "管理您的可预约时间段，已被预约的时间段不会显示在此列表中",
   "sched_no_availability_slots": "暂无可预约时间段",
