@@ -96,9 +96,9 @@ function App() {
           element={
             session ? (
               roleLoading ? (
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
                   <div className="text-center">
-                    <p className="text-gray-500">{t('loading_user')}</p>
+                    <p className="text-gray-300">{t('loading_user')}</p>
                   </div>
                 </div>
               ) : (
@@ -126,11 +126,11 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+      <header style={{ background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(75, 0, 130, 0.8))' }} className="relative backdrop-blur-sm border-b border-purple-400/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-white">
               {pageTitle}
             </h1>
             <div className="flex items-center gap-4">
