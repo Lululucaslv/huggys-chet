@@ -31,15 +31,32 @@ export default async function handler(req, res) {
 
     if (availabilityId) {
       const tryLegacy = async () => {
-        const { data: updated, error: updErr } = await supabase
-          .from('availability')
-          .update({ is_booked: true })
-          .eq('id', availabilityId)
-          .or('is_booked.is.null,is_booked.eq.false')
-          .select('id, therapist_id, start_time, end_time')
-          .single()
+        let updated = null
+        let updErr = null
+        {
+          const resp = await supabase
+            .from('availability')
+            .update({ is_booked: true })
+            .eq('id', availabilityId)
+            .eq('is_booked', false)
+            .select('id, therapist_id, start_time, end_time')
+            .maybeSingle()
+          updated = resp.data || null
+          updErr = resp.error || null
+        }
+        if (!updated && !updErr) {
+          const resp2 = await supabase
+            .from('availability')
+            .update({ is_booked: true })
+            .eq('id', availabilityId)
+            .is('is_booked', null)
+            .select('id, therapist_id, start_time, end_time')
+            .maybeSingle()
+          updated = resp2.data || null
+          updErr = resp2.error || null
+        }
         if (updErr || !updated) {
-          res.status(409).json({ error: 'slot_unavailable' })
+          res.status(409).json({ error: 'slot_unavailable', detail: updErr?.message || null })
           return true
         }
         const duration = Math.max(1, Math.round((new Date(updated.end_time).getTime() - new Date(updated.start_time).getTime()) / 60000))
