@@ -149,7 +149,7 @@ export class ChatAPI {
   }
 
   private buildSystemPrompt(userProfile: Partial<UserProfile> | null | undefined): string {
-    const systemPromptContent = import.meta.env.VITE_OPENAI_SYSTEM_PROMPT || `你是Huggy AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
+    const systemPromptContent = import.meta.env.VITE_OPENAI_SYSTEM_PROMPT || `你是huggys AI，一个专业而温暖的AI心理咨询伙伴。你具有以下特殊能力：
 
 🧠 **记忆与成长能力**：
 - 你能完整记住与每个用户的所有对话历史
