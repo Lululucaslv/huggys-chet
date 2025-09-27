@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       const startUTC = toUTC(r.start_local, r.tz || tz)
       const endUTC = toUTC(r.end_local, r.tz || tz)
       if (!startUTC || !endUTC) continue
-      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, booked: false })
+      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, status: 'open' })
     }
     if (!inserts.length) return res.status(400).json({ error: 'no valid ranges' })
 
