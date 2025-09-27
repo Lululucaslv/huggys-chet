@@ -30,6 +30,8 @@ export default async function handler(req, res) {
     const supabase = getServiceSupabase()
 
     if (availabilityId) {
+      const availIdNum = Number(availabilityId)
+      const idFilter = Number.isFinite(availIdNum) ? availIdNum : availabilityId
       const tryLegacy = async () => {
         let updated = null
         let updErr = null
@@ -37,7 +39,7 @@ export default async function handler(req, res) {
           const resp = await supabase
             .from('availability')
             .update({ is_booked: true })
-            .eq('id', availabilityId)
+            .eq('id', idFilter)
             .eq('is_booked', false)
             .select('id, therapist_id, start_time, end_time')
             .maybeSingle()
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
           const resp2 = await supabase
             .from('availability')
             .update({ is_booked: true })
-            .eq('id', availabilityId)
+            .eq('id', idFilter)
             .is('is_booked', null)
             .select('id, therapist_id, start_time, end_time')
             .maybeSingle()
