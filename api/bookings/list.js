@@ -68,15 +68,18 @@ export default async function handler(req, res) {
     const endISO = end.toISOString()
 
     let q = supabase
-      .from('therapist_availability')
-      .select('id,therapist_code,start_utc,end_utc,booked')
-      .eq('booked', false)
-      .gte('start_utc', startISO)
-      .lte('start_utc', endISO)
-      .order('start_utc', { ascending: true })
+      .from('availability')
+      .select('id,therapist_id,start_time,end_time,is_booked')
+      .or('is_booked.is.null,is_booked.eq.false')
+      .gte('start_time', startISO)
+      .lte('start_time', endISO)
+      .order('start_time', { ascending: true })
       .limit(Number(limit || 8))
 
-    if (therapistCode) q = q.eq('therapist_code', therapistCode)
+    if (therapistCode) {
+      const { data: th } = await supabase.from('therapists').select('id').eq('code', therapistCode).maybeSingle()
+      if (th?.id) q = q.eq('therapist_id', th.id)
+    }
 
     const { data: slots, error } = await q
     if (error) {
@@ -84,25 +87,25 @@ export default async function handler(req, res) {
       return
     }
 
-    const codes = [...new Set((slots || []).map(s => s.therapist_code))].filter(Boolean)
-    let tzByCode = {}
-    if (codes.length) {
+    const therapistIds = [...new Set((slots || []).map(s => s.therapist_id))].filter(Boolean)
+    let tzById = {}
+    if (therapistIds.length) {
       const { data: thRows } = await supabase
         .from('therapists')
-        .select('code, timezone')
-        .in('code', codes)
-      tzByCode = Object.fromEntries((thRows || []).map(r => [r.code, r.timezone || 'UTC']))
+        .select('id, code, timezone')
+        .in('id', therapistIds)
+      tzById = Object.fromEntries((thRows || []).map(r => [r.id, r.timezone || 'UTC']))
     }
 
     const data = (slots || []).map(s => {
-      const tz = tzByCode[s.therapist_code] || 'UTC'
+      const tz = tzById[s.therapist_id] || 'UTC'
       return {
         availabilityId: s.id,
-        therapistCode: s.therapist_code,
-        startUTC: s.start_utc,
-        endUTC: s.end_utc,
+        therapistId: s.therapist_id,
+        startUTC: s.start_time,
+        endUTC: s.end_time,
         timeZone: tz,
-        display: fmtDisplay(s.start_utc, user_tz || tz),
+        display: fmtDisplay(s.start_time, user_tz || tz),
       }
     })
 
