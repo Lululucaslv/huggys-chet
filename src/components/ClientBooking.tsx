@@ -298,12 +298,12 @@ export default function ClientBooking({ session }: ClientBookingProps) {
               {availableSlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-800/60"
                 >
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-gray-400" />
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-white">
                         {slot.therapist_name || t('therapist_fallback')}
                       </p>
                       <p className="text-sm text-gray-600">

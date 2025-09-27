@@ -104,12 +104,12 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
         {summary && (
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">整体情况摘要</h3>
-              <p className="text-gray-700 bg-gray-50 p-3 rounded">{summary.summary}</p>
+              <h3 className="font-semibold text-white mb-2">整体情况摘要</h3>
+              <p className="text-gray-300 bg-gray-800 p-3 rounded border border-gray-700">{summary.summary}</p>
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">主要讨论话题</h3>
+              <h3 className="font-semibold text-white mb-2">主要讨论话题</h3>
               <div className="flex flex-wrap gap-2">
                 {summary.keyTopics.map((topic, index) => (
                   <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
@@ -120,13 +120,13 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">情绪状态评估</h3>
-              <p className="text-gray-700 bg-yellow-50 p-3 rounded">{summary.emotionalState}</p>
+              <h3 className="font-semibold text-white mb-2">情绪状态评估</h3>
+              <p className="text-gray-300 bg-gray-800 p-3 rounded border border-gray-700">{summary.emotionalState}</p>
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">关注领域</h3>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
+              <h3 className="font-semibold text-white mb-2">关注领域</h3>
+              <ul className="list-disc list-inside text-gray-300 space-y-1">
                 {summary.concernAreas.map((area, index) => (
                   <li key={index}>{area}</li>
                 ))}
@@ -134,8 +134,8 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">建议</h3>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
+              <h3 className="font-semibold text-white mb-2">建议</h3>
+              <ul className="list-disc list-inside text-gray-300 space-y-1">
                 {summary.recommendations.map((rec, index) => (
                   <li key={index}>{rec}</li>
                 ))}
