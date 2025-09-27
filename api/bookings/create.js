@@ -95,12 +95,9 @@ export default async function handler(req, res) {
         })
         if (rpcErr) {
           const msg = (rpcErr.message || '').toLowerCase()
-          const legacyMode = (process.env.SCHEMA_MODE || 'legacy').toLowerCase() !== 'new'
-          if (msg.includes('slot_unavailable') && legacyMode) {
+          if (msg.includes('slot_unavailable')) {
             const handled = await tryLegacy()
             if (handled) return
-          }
-          if (msg.includes('slot_unavailable')) {
             res.status(409).json({ error: 'slot_unavailable' })
             return
           }
@@ -109,11 +106,8 @@ export default async function handler(req, res) {
         res.status(200).json({ booking: booked })
         return
       } catch {
-        const legacyMode = (process.env.SCHEMA_MODE || 'legacy').toLowerCase() !== 'new'
-        if (legacyMode) {
-          const handled = await tryLegacy()
-          if (handled) return
-        }
+        const handled = await tryLegacy()
+        if (handled) return
         res.status(500).json({ error: 'rpc_failed' })
         return
       }
