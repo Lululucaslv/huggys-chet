@@ -67,6 +67,8 @@ export default async function handler(req, res) {
     const startISO = now.toISOString()
     const endISO = end.toISOString()
 
+    const tCode = therapistCode || body?.therapist_code || body?.therapistCode || body?.therapistHint || ''
+
     let q = supabase
       .from('availability')
       .select('id,therapist_id,start_time,end_time,is_booked')
@@ -76,9 +78,8 @@ export default async function handler(req, res) {
       .order('start_time', { ascending: true })
       .limit(Number(limit || 8))
 
-    if (therapistCode) {
-      const { data: th } = await supabase.from('therapists').select('id').eq('code', therapistCode).maybeSingle()
-      if (th?.id) q = q.eq('therapist_id', th.id)
+    if (tCode) {
+      q = q.eq('therapist_id', tCode)
     }
 
     const { data: slots, error } = await q
@@ -87,25 +88,15 @@ export default async function handler(req, res) {
       return
     }
 
-    const therapistIds = [...new Set((slots || []).map(s => s.therapist_id))].filter(Boolean)
-    let tzById = {}
-    if (therapistIds.length) {
-      const { data: thRows } = await supabase
-        .from('therapists')
-        .select('id, code, timezone')
-        .in('id', therapistIds)
-      tzById = Object.fromEntries((thRows || []).map(r => [r.id, r.timezone || 'UTC']))
-    }
-
     const data = (slots || []).map(s => {
-      const tz = tzById[s.therapist_id] || 'UTC'
+      const tz = user_tz || 'UTC'
       return {
         availabilityId: s.id,
         therapistId: s.therapist_id,
         startUTC: s.start_time,
         endUTC: s.end_time,
         timeZone: tz,
-        display: fmtDisplay(s.start_time, user_tz || tz),
+        display: fmtDisplay(s.start_time, tz),
       }
     })
 

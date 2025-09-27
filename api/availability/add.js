@@ -77,7 +77,7 @@ export default async function handler(req, res) {
       if ((error.code || '').toString() === '23505') {
         return res.status(200).json({ ok: true, data: [], conflicts: true, invalids })
       }
-      return res.status(500).json({ error: 'insert_failed', details: error.message })
+      return res.status(500).json({ error: 'insert_failed', details: error.message, code: error.code })
     }
 
     const response = (data || []).map(s => ({
