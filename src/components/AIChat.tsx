@@ -325,7 +325,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           })}
           {(status === 'streaming' || status === 'submitted') && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
+              <div className="bg-gray-800 text-white border border-gray-700 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t('chat_thinking')}
               </div>
@@ -334,7 +334,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           
           {error && (
             <div className="flex justify-start">
-              <div className="bg-red-100 p-3 rounded-lg text-red-700">
+              <div className="bg-red-900/40 p-3 rounded-lg text-red-300 border border-red-800">
                 {t('chat_error_generic')} 错误: {error.message}
               </div>
             </div>
