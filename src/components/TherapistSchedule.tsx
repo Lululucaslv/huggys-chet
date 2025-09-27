@@ -367,7 +367,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1">{t('therapist_name')}</label>
-              <div className="text-gray-900 font-medium">
+              <div className="text-white font-medium">
                 {(userProfile?.display_name?.trim?.() || (session.user.email || '').split('@')[0] || t('therapist_fallback'))}
               </div>
             </div>
@@ -404,12 +404,12 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
               {upcomingBookings.map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-800"
                 >
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-gray-400" />
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-white">
                         {booking.client_name}
                       </p>
                       <p className="text-sm text-gray-600">
@@ -533,12 +533,12 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
               {availabilitySlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-800"
                 >
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-gray-400" />
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-white">
                         {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
                       </p>
                       <p className="text-sm text-gray-500">
