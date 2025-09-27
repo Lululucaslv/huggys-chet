@@ -22,7 +22,7 @@ const InputArea = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-2 p-2 bg-white rounded-lg shadow mt-2">
+    <div className="flex flex-col md:flex-row items-center gap-2 p-2 bg-gray-800 rounded-lg shadow mt-2">
       <textarea
         ref={inputRef}
         className="flex-1 resize-none border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
