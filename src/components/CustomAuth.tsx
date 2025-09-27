@@ -156,10 +156,10 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
-          MoreThanHugs 疗愈平台
+    <div style={{ backgroundColor: '#0a0a0a' }} className="min-h-screen flex items-center justify-center">
+      <div style={{ backgroundColor: '#111111' }} className="max-w-md w-full rounded-lg p-6 border border-purple-400/30">
+        <h1 className="text-2xl font-bold text-center mb-6 text-white">
+          Huggys.ai
         </h1>
         
         <Card>
@@ -264,20 +264,18 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         注册治疗师账户需要有效的邀请码
-                  {userRole === 'therapist' && (
-                    <div>
-                      <Label htmlFor="displayName">姓名</Label>
-                      <Input
-                        id="displayName"
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="例如：Hanqi Lyu"
-                        required
-                      />
-                    </div>
-                  )}
                       </p>
+                      <div>
+                        <Label htmlFor="displayName">姓名</Label>
+                        <Input
+                          id="displayName"
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="例如：Hanqi Lyu"
+                          required
+                        />
+                      </div>
                     </div>
                   )}
                 </>
