@@ -44,8 +44,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'therapist_code and time_ranges required' })
     }
 
-    const { data: th } = await supabase.from('therapists').select('id, code').eq('code', therapist_code).maybeSingle()
-    const therapist_id = th?.id ?? therapist_code
+    let therapist_id = null
+    const { data: th } = await supabase.from('therapists').select('user_id, code').eq('code', therapist_code).maybeSingle()
+    if (th?.user_id) {
+      const { data: prof } = await supabase.from('user_profiles').select('id').eq('user_id', th.user_id).maybeSingle()
+      therapist_id = prof?.id || null
+    }
+    if (!therapist_id) {
+      therapist_id = /^[0-9a-fA-F-]{36}$/.test(String(therapist_code)) ? therapist_code : null
+    }
+    if (!therapist_id) {
+      return res.status(400).json({ error: 'therapist_code not resolvable' })
+    }
 
     const ranges = localRanges.some(r => r && r.start_local)
       ? localRanges.map(r => ({

@@ -79,7 +79,15 @@ export default async function handler(req, res) {
       .limit(Number(limit || 8))
 
     if (tCode) {
-      q = q.eq('therapist_id', tCode)
+      let therapistIdFilter = null
+      const { data: thx } = await supabase.from('therapists').select('user_id, code').eq('code', tCode).maybeSingle()
+      if (thx?.user_id) {
+        const { data: prof } = await supabase.from('user_profiles').select('id').eq('user_id', thx.user_id).maybeSingle()
+        therapistIdFilter = prof?.id || null
+      } else if (/^[0-9a-fA-F-]{36}$/.test(String(tCode))) {
+        therapistIdFilter = tCode
+      }
+      if (therapistIdFilter) q = q.eq('therapist_id', therapistIdFilter)
     }
 
     const { data: slots, error } = await q
