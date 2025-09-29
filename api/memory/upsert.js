@@ -11,6 +11,8 @@ function withCors(res) {
 function bearer(req) {
   const h = req.headers['authorization'] || req.headers['Authorization']
   if (typeof h === 'string' && h.startsWith('Bearer ')) return h.slice(7).trim()
+  const alt = req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']
+  if (typeof alt === 'string' && alt.trim()) return alt.trim()
   return null
 }
 

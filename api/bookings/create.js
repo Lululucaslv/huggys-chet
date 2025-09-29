@@ -122,30 +122,10 @@ export default async function handler(req, res) {
         return true
       }
 
-      try {
-        const { data: booked, error: rpcErr } = await supabase.rpc('book_from_slot', {
-          p_availability_id: availabilityId,
-          p_user_id: userId,
-          p_therapist_code: therapistCode,
-        })
-        if (rpcErr) {
-          const msg = (rpcErr.message || '').toLowerCase()
-          if (msg.includes('slot_unavailable')) {
-            const handled = await tryLegacy()
-            if (handled) return
-            res.status(409).json({ error: 'slot_unavailable' })
-            return
-          }
-          throw rpcErr
-        }
-        res.status(200).json({ booking: booked })
-        return
-      } catch {
-        const handled = await tryLegacy()
-        if (handled) return
-        res.status(500).json({ error: 'rpc_failed' })
-        return
-      }
+      const handled = await tryLegacy()
+      if (handled) return
+      res.status(409).json({ error: 'slot_unavailable' })
+      return
     }
 
     const { data: dup } = await supabase
