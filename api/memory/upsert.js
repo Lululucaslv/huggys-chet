@@ -8,12 +8,23 @@ function withCors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Memory-Write-Key')
 }
 
-function readToken(req) {
-  const h = req.headers['authorization'] || req.headers['Authorization']
-  if (typeof h === 'string' && /^Bearer\s+/i.test(h)) return h.replace(/^Bearer\s+/i, '').trim()
-  const alt = req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']
-  if (typeof alt === 'string' && alt.trim()) return alt.trim()
-  return null
+function readRawAuth(req) {
+  return (
+    req.headers['authorization'] ||
+    req.headers['Authorization'] ||
+    req.headers['x-memory-write-key'] ||
+    req.headers['X-Memory-Write-Key'] ||
+    ''
+  )
+}
+
+function normalizeToken(s) {
+  if (typeof s !== 'string') s = String(s || '')
+  return s
+    .replace(/^Bearer\s+/i, '')
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
 }
 
 export default async function handler(req, res) {
@@ -25,21 +36,30 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' })
     }
 
-    const token = readToken(req)
-    const expected = (process.env.MEMORY_WRITE_KEY || '').trim()
+    const expectedRaw = process.env.MEMORY_WRITE_KEY ?? ''
+    const authRaw = readRawAuth(req) ?? ''
+    const expected = normalizeToken(expectedRaw)
+    const token = normalizeToken(authRaw)
 
-    if (token !== expected) {
+    const same = expected === token
+    const diag = {
+      envPrefix: expected.slice(0, 8),
+      envSuffix: expected.slice(-4),
+      tokPrefix: token.slice(0, 8),
+      tokSuffix: token.slice(-4),
+      lenEnv: expected.length,
+      lenTok: token.length,
+      same
+    }
+
+    if (!same) {
       try {
         const supabase = getServiceSupabase()
         await supabase.from('ai_logs').insert({
           scope: 'memory_upsert',
           ok: false,
           model: 'auth',
-          payload: JSON.stringify({
-            hasAuth: !!(req.headers['authorization'] || req.headers['Authorization'] || req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']),
-            tokPrefix: String(token || '').slice(0, 8),
-            envPrefix: String(expected || '').slice(0, 8)
-          }).slice(0, 4000),
+          payload: JSON.stringify(diag).slice(0, 4000),
           error: 'unauthorized'
         })
       } catch {}
@@ -52,10 +72,7 @@ export default async function handler(req, res) {
         scope: 'memory_upsert',
         ok: true,
         model: 'auth',
-        payload: JSON.stringify({
-          tokPrefix: String(token || '').slice(0, 8),
-          envPrefix: String(expected || '').slice(0, 8)
-        })
+        payload: JSON.stringify(diag).slice(0, 4000)
       })
     } catch {}
 
