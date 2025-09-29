@@ -99,11 +99,24 @@ export default async function handler(req, res) {
           res.status(200).json({ booking: dup })
           return true
         }
+        let finalTherapistId = updated.therapist_id || therapistProfileId
+        if (finalTherapistId) {
+          const { data: profCheck } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('id', finalTherapistId)
+            .maybeSingle()
+          if (!profCheck) {
+            finalTherapistId = therapistProfileId || null
+          }
+        } else {
+          finalTherapistId = therapistProfileId || null
+        }
         const { data: booking, error: insErr } = await supabase
           .from('bookings')
           .insert({
             therapist_code: therapistCode,
-            therapist_id: updated.therapist_id || therapistProfileId,
+            therapist_id: finalTherapistId,
             start_utc: updated.start_time,
             session_date: new Date(updated.start_time).toISOString().slice(0, 10),
             duration_mins: duration,
