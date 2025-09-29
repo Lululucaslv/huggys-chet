@@ -28,6 +28,16 @@ export default async function handler(req, res) {
     }
 
     const supabase = getServiceSupabase()
+    let therapistProfileId = null
+    try {
+      const { data: th } = await supabase.from('therapists').select('user_id,code').eq('code', therapistCode).maybeSingle()
+      if (th?.user_id) {
+        const { data: prof } = await supabase.from('user_profiles').select('id').eq('user_id', th.user_id).maybeSingle()
+        therapistProfileId = prof?.id || null
+      } else if (/^[0-9a-fA-F-]{36}$/.test(String(therapistCode))) {
+        therapistProfileId = therapistCode
+      }
+    } catch {}
 
     if (availabilityId) {
       const availIdNum = Number(availabilityId)
@@ -93,6 +103,7 @@ export default async function handler(req, res) {
           .from('bookings')
           .insert({
             therapist_code: therapistCode,
+            therapist_id: therapistProfileId,
             start_utc: updated.start_time,
             duration_mins: duration,
             user_id: userId,
@@ -145,6 +156,7 @@ export default async function handler(req, res) {
       .from('bookings')
       .insert({
         therapist_code: therapistCode,
+        therapist_id: therapistProfileId,
         start_utc: startUTC,
         duration_mins: durationMins,
         user_id: userId,
