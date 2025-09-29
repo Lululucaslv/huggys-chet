@@ -103,7 +103,7 @@ export default async function handler(req, res) {
           .from('bookings')
           .insert({
             therapist_code: therapistCode,
-            therapist_id: therapistProfileId,
+            therapist_id: updated.therapist_id || therapistProfileId,
             start_utc: updated.start_time,
             duration_mins: duration,
             user_id: userId,
