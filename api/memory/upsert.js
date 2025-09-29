@@ -36,7 +36,7 @@ function onlySafeChars(s) {
 function constantTimeEq(a, b) {
 function firstDiff(a, b) {
   const n = Math.min(a.length, b.length)
-  for (let i = 0; i &lt; n; i++) {
+  for (let i = 0; i < n; i++) {
     if (a[i] !== b[i]) {
       return { i, a: a[i], b: b[i], aCode: a.charCodeAt(i), bCode: b.charCodeAt(i) }
     }
