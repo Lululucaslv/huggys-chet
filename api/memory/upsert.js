@@ -5,12 +5,12 @@ export const runtime = 'nodejs'
 function withCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Memory-Write-Key')
 }
 
-function bearer(req) {
+function readToken(req) {
   const h = req.headers['authorization'] || req.headers['Authorization']
-  if (typeof h === 'string' && h.startsWith('Bearer ')) return h.slice(7).trim()
+  if (typeof h === 'string' && /^Bearer\s+/i.test(h)) return h.replace(/^Bearer\s+/i, '').trim()
   const alt = req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']
   if (typeof alt === 'string' && alt.trim()) return alt.trim()
   return null
@@ -25,23 +25,39 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' })
     }
 
-    if (bearer(req) !== process.env.MEMORY_WRITE_KEY) {
+    const token = readToken(req)
+    const expected = (process.env.MEMORY_WRITE_KEY || '').trim()
+
+    if (token !== expected) {
       try {
         const supabase = getServiceSupabase()
         await supabase.from('ai_logs').insert({
           scope: 'memory_upsert',
           ok: false,
-          model: 'n/a',
+          model: 'auth',
           payload: JSON.stringify({
-            hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']),
-            authPrefix: String(req.headers['authorization'] || req.headers['Authorization'] || '').slice(0, 12),
-            envPrefix: String(process.env.MEMORY_WRITE_KEY || '').slice(0, 6)
+            hasAuth: !!(req.headers['authorization'] || req.headers['Authorization'] || req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']),
+            tokPrefix: String(token || '').slice(0, 8),
+            envPrefix: String(expected || '').slice(0, 8)
           }).slice(0, 4000),
           error: 'unauthorized'
         })
       } catch {}
       return res.status(401).json({ error: 'unauthorized' })
     }
+
+    try {
+      const supabase = getServiceSupabase()
+      await supabase.from('ai_logs').insert({
+        scope: 'memory_upsert',
+        ok: true,
+        model: 'auth',
+        payload: JSON.stringify({
+          tokPrefix: String(token || '').slice(0, 8),
+          envPrefix: String(expected || '').slice(0, 8)
+        })
+      })
+    } catch {}
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const {
