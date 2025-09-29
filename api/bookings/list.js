@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     const startISO = now.toISOString()
     const endISO = end.toISOString()
 
-    const tCode = therapistCode || body?.therapist_code || body?.therapistCode || body?.therapistHint || ''
+    const tCode = body?.therapist_code || body?.therapistCode || body?.therapistHint || therapistCode || ''
 
     let q = supabase
       .from('availability')
