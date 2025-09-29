@@ -18,13 +18,35 @@ function readRawAuth(req) {
   )
 }
 
+function toNFKC(s) {
+  try { return typeof s === 'string' && s.normalize ? s.normalize('NFKC') : s } catch { return s }
+}
+function stripZeroWidth(s) {
+  return String(s || '').replace(/[\u200B-\u200D\uFEFF\u2060\u180E]/g, '')
+}
+function collapseSpaces(s) {
+  return String(s || '').replace(/[ \t\r\n]+/g, ' ')
+}
 function normalizeToken(s) {
   if (typeof s !== 'string') s = String(s || '')
-  return s
-    .replace(/^Bearer\s+/i, '')
-    .replace(/^["']|["']$/g, '')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .trim()
+  s = toNFKC(s)
+  s = s.replace(/^Bearer\s+/i, '')
+       .replace(/^["']|["']$/g, '')
+       .replace(/[\u0000-\u001F\u007F]/g, '')
+  s = stripZeroWidth(s)
+  s = collapseSpaces(s)
+  return s.trim()
+}
+function constantTimeEq(a, b) {
+  if (a.length !== b.length) return false
+  let r = 0
+  for (let i = 0; i < a.length; i++) r |= (a.charCodeAt(i) ^ b.charCodeAt(i))
+  return r === 0
+}
+function firstDiffIndex(a, b) {
+  const n = Math.min(a.length, b.length)
+  for (let i = 0; i < n; i++) if (a[i] !== b[i]) return i
+  return a.length === b.length ? -1 : n
 }
 
 export default async function handler(req, res) {
@@ -41,15 +63,24 @@ export default async function handler(req, res) {
     const expected = normalizeToken(expectedRaw)
     const token = normalizeToken(authRaw)
 
-    const same = expected === token
+    const same = constantTimeEq(expected, token)
+    const diffIdx = same ? -1 : firstDiffIndex(expected, token)
+    const hdrsSeen = {
+      authorization: !!(req.headers['authorization'] || req.headers['Authorization']),
+      xMemoryWriteKey: !!(req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']),
+      xApiKey: !!(req.headers['x-api-key'] || req.headers['X-API-KEY'])
+    }
     const diag = {
+      hasAuth: !!authRaw,
+      hdrsSeen,
       envPrefix: expected.slice(0, 8),
       envSuffix: expected.slice(-4),
       tokPrefix: token.slice(0, 8),
       tokSuffix: token.slice(-4),
       lenEnv: expected.length,
       lenTok: token.length,
-      same
+      same,
+      diffIdx
     }
 
     if (!same) {
