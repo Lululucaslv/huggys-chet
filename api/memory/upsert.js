@@ -27,17 +27,23 @@ function stripZeroWidth(s) {
 function collapseSpaces(s) {
   return String(s || '').replace(/[ \t\r\n]+/g, ' ')
 }
-function normalizeToken(s) {
+function onlySafeChars(s) {
   if (typeof s !== 'string') s = String(s || '')
-  s = toNFKC(s)
   s = s.replace(/^Bearer\s+/i, '')
-       .replace(/^["']|["']$/g, '')
-       .replace(/[\u0000-\u001F\u007F]/g, '')
-  s = stripZeroWidth(s)
-  s = collapseSpaces(s)
-  return s.trim()
+  s = s.replace(/[^A-Za-z0-9_]/g, '')
+  return s
 }
 function constantTimeEq(a, b) {
+function firstDiff(a, b) {
+  const n = Math.min(a.length, b.length)
+  for (let i = 0; i &lt; n; i++) {
+    if (a[i] !== b[i]) {
+      return { i, a: a[i], b: b[i], aCode: a.charCodeAt(i), bCode: b.charCodeAt(i) }
+    }
+  }
+  return { i: n, a: null, b: null, aCode: null, bCode: null }
+}
+
   if (a.length !== b.length) return false
   let r = 0
   for (let i = 0; i < a.length; i++) r |= (a.charCodeAt(i) ^ b.charCodeAt(i))
@@ -70,8 +76,8 @@ export default async function handler(req, res) {
 
     const expectedRaw = process.env.MEMORY_WRITE_KEY ?? ''
     const authRaw = readRawAuth(req) ?? ''
-    const expected = normalizeToken(expectedRaw)
-    const token = normalizeToken(authRaw)
+    const expected = onlySafeChars(expectedRaw)
+    const token = onlySafeChars(authRaw)
 
     const same = constantTimeEq(expected, token)
     const diffIdx = same ? -1 : firstDiffIndex(expected, token)
@@ -100,13 +106,23 @@ export default async function handler(req, res) {
     if (!same) {
       try {
         const supabase = getServiceSupabase()
-        await supabase.from('ai_logs').insert({
-          scope: 'memory_upsert',
-          ok: false,
-          model: 'auth',
-          payload: JSON.stringify(diag).slice(0, 4000),
-          error: 'unauthorized'
-        })
+        const diff = firstDiff(expected, token)
+        await supabase.from('ai_logs').insert([
+          {
+            scope: 'memory_upsert',
+            ok: false,
+            model: 'auth',
+            payload: JSON.stringify(diag).slice(0, 4000),
+            error: 'unauthorized'
+          },
+          {
+            scope: 'memory_upsert',
+            ok: false,
+            model: 'auth-diff',
+            payload: JSON.stringify({ ...diag, diff }).slice(0, 4000),
+            error: 'unauthorized'
+          }
+        ])
       } catch {}
       return res.status(401).json({ error: 'unauthorized' })
     }
