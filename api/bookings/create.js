@@ -99,19 +99,6 @@ export default async function handler(req, res) {
           res.status(200).json({ booking: dup })
           return true
         }
-        let finalTherapistId = updated.therapist_id || therapistProfileId
-        if (finalTherapistId) {
-          const { data: profCheck } = await supabase
-            .from('user_profiles')
-            .select('id')
-            .eq('id', finalTherapistId)
-            .maybeSingle()
-          if (!profCheck) {
-            finalTherapistId = therapistProfileId || null
-          }
-        } else {
-          finalTherapistId = therapistProfileId || null
-        }
         const baseInsert = {
           therapist_code: therapistCode,
           start_utc: updated.start_time,
@@ -121,7 +108,6 @@ export default async function handler(req, res) {
           client_user_id: userId,
           status: 'confirmed',
         }
-        if (finalTherapistId) baseInsert.therapist_id = finalTherapistId
         const { data: booking, error: insErr } = await supabase
           .from('bookings')
           .insert(baseInsert)
