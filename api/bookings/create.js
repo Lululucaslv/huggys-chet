@@ -96,6 +96,7 @@ export default async function handler(req, res) {
             start_utc: updated.start_time,
             duration_mins: duration,
             user_id: userId,
+            client_user_id: userId,
             status: 'confirmed',
           })
           .select()
@@ -167,6 +168,7 @@ export default async function handler(req, res) {
         start_utc: startUTC,
         duration_mins: durationMins,
         user_id: userId,
+        client_user_id: userId,
         status: 'confirmed',
       })
       .select()

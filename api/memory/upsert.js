@@ -30,7 +30,11 @@ export default async function handler(req, res) {
           scope: 'memory_upsert',
           ok: false,
           model: 'n/a',
-          payload: JSON.stringify({ hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']), authPrefix: String(req.headers['authorization'] || req.headers['Authorization'] || '').slice(0, 10) }).slice(0, 4000),
+          payload: JSON.stringify({
+            hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']),
+            authPrefix: String(req.headers['authorization'] || req.headers['Authorization'] || '').slice(0, 12),
+            envPrefix: String(process.env.MEMORY_WRITE_KEY || '').slice(0, 6)
+          }).slice(0, 4000),
           error: 'unauthorized'
         })
       } catch {}
