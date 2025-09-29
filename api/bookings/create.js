@@ -112,18 +112,19 @@ export default async function handler(req, res) {
         } else {
           finalTherapistId = therapistProfileId || null
         }
+        const baseInsert = {
+          therapist_code: therapistCode,
+          start_utc: updated.start_time,
+          session_date: new Date(updated.start_time).toISOString().slice(0, 10),
+          duration_mins: duration,
+          user_id: userId,
+          client_user_id: userId,
+          status: 'confirmed',
+        }
+        if (finalTherapistId) baseInsert.therapist_id = finalTherapistId
         const { data: booking, error: insErr } = await supabase
           .from('bookings')
-          .insert({
-            therapist_code: therapistCode,
-            therapist_id: finalTherapistId,
-            start_utc: updated.start_time,
-            session_date: new Date(updated.start_time).toISOString().slice(0, 10),
-            duration_mins: duration,
-            user_id: userId,
-            client_user_id: userId,
-            status: 'confirmed',
-          })
+          .insert(baseInsert)
           .select()
           .single()
         if (insErr) {
@@ -166,18 +167,19 @@ export default async function handler(req, res) {
       return
     }
 
+    const baseInsert = {
+      therapist_code: therapistCode,
+      start_utc: startUTC,
+      session_date: new Date(startUTC).toISOString().slice(0, 10),
+      duration_mins: durationMins,
+      user_id: userId,
+      client_user_id: userId,
+      status: 'confirmed',
+    }
+    if (therapistProfileId) baseInsert.therapist_id = therapistProfileId
     const { data: booking, error } = await supabase
       .from('bookings')
-      .insert({
-        therapist_code: therapistCode,
-        therapist_id: therapistProfileId,
-        start_utc: startUTC,
-        session_date: new Date(startUTC).toISOString().slice(0, 10),
-        duration_mins: durationMins,
-        user_id: userId,
-        client_user_id: userId,
-        status: 'confirmed',
-      })
+      .insert(baseInsert)
       .select()
       .single()
     if (error) throw error
