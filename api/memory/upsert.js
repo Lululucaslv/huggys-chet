@@ -48,6 +48,16 @@ function firstDiffIndex(a, b) {
   for (let i = 0; i < n; i++) if (a[i] !== b[i]) return i
   return a.length === b.length ? -1 : n
 }
+function codePointAtSafe(s, i) {
+  try {
+    if (typeof s !== 'string') s = String(s || '')
+    if (i < 0 || i >= s.length) return null
+    return s.codePointAt(i)
+  } catch {
+    return null
+  }
+}
+
 
 export default async function handler(req, res) {
   withCors(res)
@@ -70,6 +80,8 @@ export default async function handler(req, res) {
       xMemoryWriteKey: !!(req.headers['x-memory-write-key'] || req.headers['X-Memory-Write-Key']),
       xApiKey: !!(req.headers['x-api-key'] || req.headers['X-API-KEY'])
     }
+    const envCp = diffIdx >= 0 ? codePointAtSafe(expected, diffIdx) : null
+    const tokCp = diffIdx >= 0 ? codePointAtSafe(token, diffIdx) : null
     const diag = {
       hasAuth: !!authRaw,
       hdrsSeen,
@@ -80,7 +92,9 @@ export default async function handler(req, res) {
       lenEnv: expected.length,
       lenTok: token.length,
       same,
-      diffIdx
+      diffIdx,
+      envCp,
+      tokCp
     }
 
     if (!same) {
