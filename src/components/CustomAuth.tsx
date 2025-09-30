@@ -156,8 +156,8 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
   }
 
   return (
-    <div style={{ backgroundColor: '#0a0a0a' }} className="min-h-screen flex items-center justify-center">
-      <div style={{ backgroundColor: '#111111' }} className="max-w-md w-full rounded-lg p-6 border border-purple-400/30">
+    <div className="min-h-screen flex items-center justify-center bg-purple-900 text-white">
+      <div className="max-w-md w-full rounded-lg p-6 border border-purple-400/30 bg-purple-800 text-white">
         <h1 className="text-2xl font-bold text-center mb-6 text-white">
           Huggys.ai
         </h1>

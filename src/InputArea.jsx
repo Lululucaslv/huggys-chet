@@ -22,7 +22,7 @@ const InputArea = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-2 p-2 bg-gray-800 rounded-lg shadow mt-2">
+    <div className="flex flex-col md:flex-row items-center gap-2 p-2 bg-purple-800 text-white rounded-lg shadow mt-2">
       <textarea
         ref={inputRef}
         className="flex-1 resize-none border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -34,7 +34,7 @@ const InputArea = ({
         disabled={loading}
       />
       <button
-        className={`px-4 py-2 rounded-lg ml-1 ${loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+        className={`px-4 py-2 rounded-lg ml-1 ${loading ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'} text-white`}
         onClick={onSend}
         disabled={loading}
       >

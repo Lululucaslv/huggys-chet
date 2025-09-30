@@ -46,7 +46,7 @@ const VoiceInput = ({ onVoice, setInput, inputRef }) => {
   return (
     <button
       type="button"
-      className={`ml-1 px-3 py-2 rounded-lg border ${listening ? "bg-green-200" : "bg-gray-100"} hover:bg-green-100`}
+      className={`ml-1 px-3 py-2 rounded-lg border ${listening ? "bg-pink-300 text-purple-900" : "bg-pink-200 text-purple-900"} hover:bg-pink-300`}
       onClick={handleVoice}
       title="语音输入"
     >

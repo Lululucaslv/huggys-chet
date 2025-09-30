@@ -41,7 +41,7 @@ NavigationMenuList.displayName = NavigationMenuPrimitive.List.displayName
 const NavigationMenuItem = NavigationMenuPrimitive.Item
 
 const navigationMenuTriggerStyle = cva(
-  "group inline-flex h-9 w-max items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:bg-zinc-100 focus:text-zinc-900 focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=open]:text-zinc-900 data-[state=open]:bg-zinc-100/50 data-[state=open]:hover:bg-zinc-100 data-[state=open]:focus:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus:bg-zinc-800 dark:focus:text-zinc-50 dark:data-[state=open]:text-zinc-50 dark:data-[state=open]:bg-zinc-800/50 dark:data-[state=open]:hover:bg-zinc-800 dark:data-[state=open]:focus:bg-zinc-800"
+  "group inline-flex h-9 w-max items-center justify-center rounded-md bg-pink-200 px-4 py-2 text-sm font-medium transition-colors hover:bg-pink-300 hover:text-purple-900 focus:bg-pink-300 focus:text-purple-900 focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=open]:text-purple-900 data-[state=open]:bg-pink-300/50 data-[state=open]:hover:bg-pink-300 data-[state=open]:focus:bg-pink-300 dark:bg-zinc-950 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 dark:focus:bg-zinc-800 dark:focus:text-zinc-50 dark:data-[state=open]:text-zinc-50 dark:data-[state=open]:bg-zinc-800/50 dark:data-[state=open]:hover:bg-zinc-800 dark:data-[state=open]:focus:bg-zinc-800"
 )
 
 const NavigationMenuTrigger = React.forwardRef<
@@ -86,7 +86,7 @@ const NavigationMenuViewport = React.forwardRef<
   <div className={cn("absolute left-0 top-full flex justify-center")}>
     <NavigationMenuPrimitive.Viewport
       className={cn(
-        "origin-top-center relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border border-zinc-200 bg-white text-zinc-950 shadow data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50",
+        "origin-top-center relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border border-pink-300 bg-pink-200 text-purple-900 shadow data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50",
         className
       )}
       ref={ref}

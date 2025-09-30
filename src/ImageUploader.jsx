@@ -24,7 +24,7 @@ const ImageUploader = ({ onImage, imagePreview, onRemoveImage }) => {
 
   return (
     <div className="flex items-center ml-1">
-      <label className="cursor-pointer px-3 py-2 rounded-lg border bg-gray-100 hover:bg-blue-100">
+      <label className="cursor-pointer px-3 py-2 rounded-lg border bg-pink-200 hover:bg-pink-300 text-purple-900">
         📷
         <input type="file" accept="image/*" className="hidden" onChange={handleChange} />
       </label>
@@ -38,7 +38,7 @@ const ImageUploader = ({ onImage, imagePreview, onRemoveImage }) => {
           />
           <button
             type="button"
-            className="absolute top-0 right-0 bg-gray-800 rounded-full text-red-400 px-1 border border-gray-700"
+            className="absolute top-0 right-0 bg-purple-800 rounded-full text-red-400 px-1 border border-purple-700"
             onClick={onRemoveImage}
           >
             ×

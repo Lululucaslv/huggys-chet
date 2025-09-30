@@ -404,7 +404,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
               {upcomingBookings.map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-800"
+                  className="flex items-center justify-between p-4 border border-purple-700 rounded-lg hover:bg-purple-800"
                 >
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-gray-400" />
@@ -533,7 +533,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
               {availabilitySlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-800"
+                  className="flex items-center justify-between p-4 border border-purple-700 rounded-lg hover:bg-purple-800"
                 >
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-gray-400" />

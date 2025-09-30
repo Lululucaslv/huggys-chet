@@ -105,7 +105,7 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
           <div className="space-y-4">
             <div>
               <h3 className="font-semibold text-white mb-2">整体情况摘要</h3>
-              <p className="text-gray-300 bg-gray-800 p-3 rounded border border-gray-700">{summary.summary}</p>
+              <p className="text-white bg-purple-800 p-3 rounded border border-purple-700">{summary.summary}</p>
             </div>
 
             <div>
@@ -121,7 +121,7 @@ export default function AISummaryModal({ clientUserId, clientName, disabled }: A
 
             <div>
               <h3 className="font-semibold text-white mb-2">情绪状态评估</h3>
-              <p className="text-gray-300 bg-gray-800 p-3 rounded border border-gray-700">{summary.emotionalState}</p>
+              <p className="text-white bg-purple-800 p-3 rounded border border-purple-700">{summary.emotionalState}</p>
             </div>
 
             <div>

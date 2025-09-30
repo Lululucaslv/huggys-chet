@@ -287,7 +287,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
               const sections = Array.isArray(summary.payload?.sections) ? summary.payload.sections : []
               return (
                 <div key={message.id} className="flex justify-start">
-                  <div className="max-w-[80%] p-3 rounded-lg bg-gray-800 text-white border border-gray-700">
+                  <div className="max-w-[80%] p-3 rounded-lg bg-pink-200 text-purple-900 border border-pink-300">
                     <div className="space-y-2">
                       {sections.map((s: any, i: number) => (
                         <div key={i} className="rounded-lg border p-3">
@@ -314,8 +314,8 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                 <div
                   className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                     message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-800 text-white border border-gray-700'
+                      ? 'bg-purple-700 text-white'
+                      : 'bg-pink-200 text-purple-900 border border-pink-300'
                   }`}
                 >
                   {message.content}
@@ -325,7 +325,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           })}
           {(status === 'streaming' || status === 'submitted') && (
             <div className="flex justify-start">
-              <div className="bg-gray-800 text-white border border-gray-700 p-3 rounded-lg flex items-center gap-2">
+              <div className="bg-purple-800 text-white border border-purple-700 p-3 rounded-lg flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t('chat_thinking')}
               </div>
@@ -361,7 +361,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           )}
           
           {import.meta.env.DEV && (
-            <div className="flex justify-center mt-4 mb-2 p-2 bg-gray-800 rounded-lg">
+            <div className="flex justify-center mt-4 mb-2 p-2 bg-purple-800 text-white rounded-lg">
               <button 
                 onClick={async () => {
                   try {
@@ -375,7 +375,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
                     alert('添加测试数据时发生错误: ' + (error instanceof Error ? error.message : String(error)));
                   }
                 }}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm"
               >
                 🔧 添加测试数据
               </button>
@@ -383,7 +383,7 @@ export default function AIChat({ session, onAfterToolAction }: AIChatProps) {
           )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="sticky bottom-0 border-t border-purple-400/30 bg-[#0a0a0a] p-3 z-10 backdrop-blur-sm">
+        <div className="sticky bottom-0 border-t border-purple-400/30 bg-purple-900 text-white p-3 z-10 backdrop-blur-sm">
           <div className="flex gap-2">
             <Input
               value={inputMessage}

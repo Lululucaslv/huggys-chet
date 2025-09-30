@@ -103,7 +103,7 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnab
 const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => {
   const containerClass = `flex mb-3 ${isSelf ? "justify-end" : "justify-start"}`;
   const bubbleClass = `max-w-[75%] break-words rounded-2xl px-4 py-2 shadow ${
-    isSelf ? "bg-blue-500 text-white rounded-br-none" : "bg-gray-800 text-white rounded-bl-none border border-gray-700"
+    isSelf ? "bg-purple-700 text-white rounded-br-none" : "bg-purple-800 text-white rounded-bl-none border border-purple-700"
   }`;
 
   // 从消息对象里拿 TIME_CONFIRM 结构化块
