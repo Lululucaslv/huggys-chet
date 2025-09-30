@@ -67,16 +67,28 @@ export default async function handler(req, res) {
     const startISO = now.toISOString()
     const endISO = end.toISOString()
 
+    const tCode = body?.therapist_code || body?.therapistCode || body?.therapistHint || therapistCode || ''
+
     let q = supabase
-      .from('therapist_availability')
-      .select('id,therapist_code,start_utc,end_utc,booked')
-      .eq('booked', false)
-      .gte('start_utc', startISO)
-      .lte('start_utc', endISO)
-      .order('start_utc', { ascending: true })
+      .from('availability')
+      .select('id,therapist_id,start_time,end_time,is_booked')
+      .or('is_booked.is.null,is_booked.eq.false')
+      .gte('start_time', startISO)
+      .lte('start_time', endISO)
+      .order('start_time', { ascending: true })
       .limit(Number(limit || 8))
 
-    if (therapistCode) q = q.eq('therapist_code', therapistCode)
+    if (tCode) {
+      let therapistIdFilter = null
+      const { data: thx } = await supabase.from('therapists').select('user_id, code').eq('code', tCode).maybeSingle()
+      if (thx?.user_id) {
+        const { data: prof } = await supabase.from('user_profiles').select('id').eq('user_id', thx.user_id).maybeSingle()
+        therapistIdFilter = prof?.id || null
+      } else if (/^[0-9a-fA-F-]{36}$/.test(String(tCode))) {
+        therapistIdFilter = tCode
+      }
+      if (therapistIdFilter) q = q.eq('therapist_id', therapistIdFilter)
+    }
 
     const { data: slots, error } = await q
     if (error) {
@@ -84,25 +96,15 @@ export default async function handler(req, res) {
       return
     }
 
-    const codes = [...new Set((slots || []).map(s => s.therapist_code))].filter(Boolean)
-    let tzByCode = {}
-    if (codes.length) {
-      const { data: thRows } = await supabase
-        .from('therapists')
-        .select('code, timezone')
-        .in('code', codes)
-      tzByCode = Object.fromEntries((thRows || []).map(r => [r.code, r.timezone || 'UTC']))
-    }
-
     const data = (slots || []).map(s => {
-      const tz = tzByCode[s.therapist_code] || 'UTC'
+      const tz = user_tz || 'UTC'
       return {
         availabilityId: s.id,
-        therapistCode: s.therapist_code,
-        startUTC: s.start_utc,
-        endUTC: s.end_utc,
+        therapistId: s.therapist_id,
+        startUTC: s.start_time,
+        endUTC: s.end_time,
         timeZone: tz,
-        display: fmtDisplay(s.start_utc, user_tz || tz),
+        display: fmtDisplay(s.start_time, tz),
       }
     })
 
