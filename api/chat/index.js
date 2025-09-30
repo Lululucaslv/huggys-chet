@@ -297,6 +297,33 @@ export default async function handler(req, res) {
       }).finally(() => clearTimeout(timeout))
 
       const dj = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        const rawMsg = String(dj?.message || dj?.error || '').toLowerCase()
+        const isLen48 = rawMsg.includes('less than 48') || rawMsg.includes('input form must be less than 48')
+        if (isLen48 && process.env.OPENAI_API_KEY) {
+          try {
+            const payload = { userMessage, userId, therapistCode, browserTz, role }
+            const resp = await openai.responses.create(
+              {
+                model: 'gpt-4o',
+                prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
+                input: [{ role: 'user', content: JSON.stringify(payload) }]
+              },
+              { timeout: 12000 }
+            )
+            const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? '')
+            try {
+              await supabase.from('ai_logs').insert({
+                scope, ok: true, model: 'fallback-openai',
+                payload: JSON.stringify({ reason: 'dify_len_48', ...payload }).slice(0, 4000),
+                output: String(text || '').slice(0, 4000),
+                ms: Date.now() - t0
+              })
+            } catch {}
+            return res.status(200).json(compat(text || (lang.startsWith('zh') ? '我在，愿意听你说说。' : 'I’m here and listening.'), []))
+          } catch {}
+        }
+      }
       const outputs = dj?.data?.outputs
       const outputsKeys = Array.isArray(outputs) ? outputs.map(o => o?.name || o?.key).filter(Boolean) : (outputs && typeof outputs === 'object' ? Object.keys(outputs) : [])
       const hasOutputText = typeof dj?.data?.output_text === 'string'

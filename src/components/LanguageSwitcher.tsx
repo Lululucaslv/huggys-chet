@@ -17,7 +17,7 @@ export default function LanguageSwitcher() {
         <button
           key={l.code}
           onClick={() => i18n.changeLanguage(l.code)}
-          className={`px-2 py-1 rounded text-sm ${current === l.code ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-800'}`}
+          className={`px-2 py-1 rounded text-sm ${current === l.code ? 'bg-purple-900 text-white' : 'bg-pink-200 text-purple-900'}`}
           aria-pressed={current === l.code}
         >
           {l.label}

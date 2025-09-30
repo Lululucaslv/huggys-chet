@@ -111,7 +111,7 @@ const App = () => {
   }, [loading, input, imagePreview, userId]);
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-gray-100">
+    <div className="flex flex-col h-screen max-h-screen bg-pink-200 text-purple-900">
       <ChatBox
         messages={messages}
         userId={userId}

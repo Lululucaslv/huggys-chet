@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import OpenAI from "openai"
 
 export const runtime = "nodejs"
 
@@ -13,6 +14,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false } }
 )
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export default async function handler(req, res) {
   withCors(res)
@@ -91,6 +93,43 @@ export default async function handler(req, res) {
     const respText = await r.text().catch(() => "")
     let dj = {}
     try { dj = respText ? JSON.parse(respText) : {} } catch { dj = {} }
+
+    if (!r.ok) {
+      const rawMsg = String(dj?.message || dj?.error || "").toLowerCase()
+      const isLen48 = rawMsg.includes("less than 48") || rawMsg.includes("input form must be less than 48")
+      if (isLen48 && process.env.OPENAI_API_KEY) {
+        try {
+          const payload = { userMessage, userId, therapistCode, browserTz, mode }
+          const resp = await openai.responses.create(
+            {
+              model: "gpt-4o",
+              prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
+              input: [{ role: "user", content: JSON.stringify(payload) }]
+            },
+            { timeout: 12000 }
+          )
+          const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? "我在，愿意听你说说。")
+          try {
+            await supabase.from("ai_logs").insert({
+              scope, ok: true, model: "fallback-openai",
+              payload: JSON.stringify({ reason: "dify_len_48", ...payload }).slice(0, 4000),
+              output: String(text || "").slice(0, 4000),
+              ms: Date.now() - t0
+            })
+          } catch {}
+          return res.status(200).json({ ok: true, source: "openai-fallback", text, reply: { role: "assistant", content: text } })
+        } catch {}
+      }
+      const fallbackText = "我在，愿意听你说说。"
+      try {
+        await supabase.from("ai_logs").insert({
+          scope, ok: false, model: "dify-workflow",
+          payload: JSON.stringify({ mode, userId, therapistCode, browserTz, url, status: r.status }).slice(0, 4000),
+          error: String(dj?.message || dj?.error || "dify_non_ok"), ms: Date.now() - t0
+        })
+      } catch {}
+      return res.status(200).json({ ok: true, source: "dify-fallback", text: fallbackText, reply: { role: "assistant", content: fallbackText }, fallback: true })
+    }
 
     const outputs = dj?.data?.outputs
     const outputsArr = Array.isArray(outputs) ? outputs : []
@@ -205,6 +244,32 @@ export default async function handler(req, res) {
   } catch (e) {
     const errMsg = String(e?.message || e)
     const suspicious = !!therapistCode && mode !== "therapist"
+    const lint = errMsg.toLowerCase()
+    const isLen48 = lint.includes('less than 48') || lint.includes('input form must be less than 48')
+    if (isLen48 && process.env.OPENAI_API_KEY) {
+      try {
+        const payload = { userMessage, userId, therapistCode, browserTz, mode }
+        const resp = await openai.responses.create(
+          {
+            model: "gpt-4o",
+            prompt: { id: process.env.OPENAI_SYSTEM_PROMPT_ID },
+            input: [{ role: "user", content: JSON.stringify(payload) }]
+          },
+          { timeout: 12000 }
+        )
+        const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? "我在，愿意听你说说。")
+        try {
+          await supabase.from("ai_logs").insert({
+            scope, ok: true, model: "fallback-openai",
+            payload: JSON.stringify({ reason: "dify_len_48", ...payload }).slice(0, 4000),
+            output: String(text || "").slice(0, 4000),
+            ms: Date.now() - t0
+          })
+        } catch {}
+        return res.status(200).json({ ok: true, source: "openai-fallback", text, reply: { role: "assistant", content: text } })
+      } catch (fe) {
+      }
+    }
     if (mode === "user") {
       try {
         await supabase.from("ai_logs").insert({

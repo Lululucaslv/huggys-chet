@@ -421,7 +421,7 @@ export default function ChatPage({ session }: ChatPageProps) {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+    <div className="min-h-screen bg-purple-900">
       {/* Header */}
       <header style={{ background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(75, 0, 130, 0.8))' }} className="relative backdrop-blur-sm border-b border-purple-400/30 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -459,7 +459,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                   <h2 className="text-2xl font-bold mb-4">{t('chat_intro_title')}</h2>
                   <p className="text-gray-300 mb-6">{t('chat_intro_subtitle')}</p>
                   
-                  <div className="memory-info text-left max-w-2xl mx-auto bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                  <div className="memory-info text-left max-w-2xl mx-auto bg-purple-800/50 text-white rounded-lg p-6 border border-purple-700">
                     <p className="text-white font-semibold mb-4">{t('chat_intro_superpowers')}</p>
                     <ul className="text-left space-y-2 text-gray-300">
                       <li>✅ <strong>{t('chat_intro_power_memory')}</strong></li>
@@ -524,8 +524,8 @@ export default function ChatPage({ session }: ChatPageProps) {
                   <div
                     className={`max-w-[75%] px-6 py-4 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-md'
-                        : 'bg-gray-700 text-white rounded-bl-md'
+                        ? 'bg-purple-700 text-white rounded-br-md'
+                        : 'bg-purple-700 text-white rounded-bl-md'
                     }`}
                     style={{
                       fontFamily:
@@ -548,7 +548,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 animate-spin">
                   <span className="text-white text-sm">🤗</span>
                 </div>
-                <div className="bg-gray-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
+                <div className="bg-purple-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                   <span className="text-white">{t('chat_thinking')}</span>
                 </div>
@@ -584,25 +584,25 @@ export default function ChatPage({ session }: ChatPageProps) {
                 <div className="flex flex-wrap justify-center gap-3 mb-4">
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_feeling_tired'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_feeling_tired')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_want_chat'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_want_chat')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_share_today'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_share_today')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_worried'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_worried')}
                   </button>
@@ -612,9 +612,9 @@ export default function ChatPage({ session }: ChatPageProps) {
           )}
           
           {/* Input Area */}
-          <div className="border-t border-gray-700 bg-gray-900 p-6">
+          <div className="border-t border-purple-700 bg-purple-900 p-6">
             <div className="flex gap-4 items-end">
-              <button className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+              <button className="p-3 bg-purple-700 hover:bg-purple-600 rounded-full transition-colors">
                 <Camera className="w-5 h-5 text-white" />
               </button>
               <div className="flex-1">
@@ -624,7 +624,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                   placeholder={t('chat_input_placeholder')}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                   disabled={isTyping}
-                  className="w-full bg-gray-800 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 resize-none focus:border-purple-400 focus:ring-purple-400/20 focus:outline-none"
+                  className="w-full bg-purple-800 border border-purple-600 text-white placeholder-purple-200 rounded-lg px-4 py-3 resize-none focus:border-pink-400 focus:ring-pink-400/20 focus:outline-none"
                   rows={3}
                   maxLength={2000}
                   style={{
