@@ -87,8 +87,11 @@ export default async function handler(req, res) {
       }
 
       if (!startUTC || !endUTC) continue
-      if (DateTime.fromISO(startUTC).diff(nowUtc).as('seconds') <= 0) continue
-      if (DateTime.fromISO(endUTC) <= DateTime.fromISO(startUTC)) continue
+      const sUtc = DateTime.fromISO(startUTC, { zone: 'utc' }).toUTC()
+      const eUtc = DateTime.fromISO(endUTC, { zone: 'utc' }).toUTC()
+      if (!sUtc.isValid || !eUtc.isValid) continue
+      if (sUtc.toMillis() <= nowUtc.toMillis()) continue
+      if (eUtc.toMillis() <= sUtc.toMillis()) continue
 
       inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC })
       auditLocals.push({ start_local: startLocalStr, end_local: endLocalStr })
@@ -159,6 +162,7 @@ export default async function handler(req, res) {
       availabilityId: s.id,
       therapistCode: s.therapist_code,
       tz_used: tz,
+      timeZone: tz,
       startUTC: s.start_utc,
       endUTC: s.end_utc,
       start_local_canonical: auditLocals[i]?.start_local || null,
