@@ -30,77 +30,26 @@ export default async function handler(req, res) {
     const supabase = getServiceSupabase()
 
     if (availabilityId) {
-      try {
-        const { data: booked, error: rpcErr } = await supabase.rpc('book_from_slot', {
-          p_availability_id: availabilityId,
-          p_user_id: userId,
-          p_therapist_code: therapistCode,
-        })
-        if (rpcErr) {
-          const msg = (rpcErr.message || '').toLowerCase()
-          if (msg.includes('slot_unavailable')) {
-            res.status(409).json({ error: 'slot_unavailable' })
-            return
-          }
-          throw rpcErr
-        }
-        res.status(200).json({ booking: booked })
-        return
-      } catch (rpcFailure) {
-        const { data: updated, error: updErr } = await supabase
-          .from('availability')
-          .update({ is_booked: true })
-          .eq('id', availabilityId)
-          .or('is_booked.is.null,is_booked.eq.false')
-          .select('id, therapist_id, start_time, end_time')
-          .single()
-        if (updErr || !updated) {
+      const { data: booked, error: rpcErr } = await supabase.rpc('book_from_slot', {
+        p_availability_id: availabilityId,
+        p_user_id: userId,
+        p_therapist_code: therapistCode,
+      })
+      if (rpcErr) {
+        const msg = (rpcErr.message || '').toLowerCase()
+        if (msg.includes('slot_unavailable')) {
           res.status(409).json({ error: 'slot_unavailable' })
           return
         }
-        const duration = Math.max(1, Math.round((new Date(updated.end_time).getTime() - new Date(updated.start_time).getTime()) / 60000))
-        const { data: dup } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('therapist_code', therapistCode)
-          .eq('start_utc', updated.start_time)
-          .eq('status', 'confirmed')
-          .maybeSingle()
-        if (dup) {
-          res.status(200).json({ booking: dup })
-          return
-        }
-        const { data: booking, error: insErr } = await supabase
-          .from('bookings')
-          .insert({
-            therapist_code: therapistCode,
-            start_utc: updated.start_time,
-            duration_mins: duration,
-            user_id: userId,
-            status: 'confirmed',
-          })
-          .select()
-          .single()
-        if (insErr) throw insErr
-
-        await supabase.from('chat_messages').insert({
-          booking_id: booking.id,
-          user_id: booking.user_id,
-          role: 'system',
-          message: JSON.stringify({
-            type: 'BOOKING_SUCCESS',
-            bookingId: booking.id,
-            therapistCode: booking.therapist_code,
-            startUTC: booking.start_utc,
-            durationMins: booking.duration_mins,
-            userId: booking.user_id,
-          }),
-        })
-
-        res.status(200).json({ booking })
+        res.status(500).json({ error: 'booking_failed' })
         return
       }
+      if (!booked || !booked.id) {
+        res.status(500).json({ error: 'booking_failed' })
+        return
+      }
+      res.status(200).json({ booking: booked })
+      return
     }
 
     const { data: dup } = await supabase
