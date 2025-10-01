@@ -1,4 +1,5 @@
 import { getServiceSupabase } from '../_utils/supabaseServer.js'
+import { getServiceSupabase } from '../_utils/supabaseServer.js'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +38,17 @@ export default async function handler(req, res) {
       })
       if (rpcErr) {
         const msg = (rpcErr.message || '').toLowerCase()
+        try {
+          await supabase.from('ai_logs').insert({
+            scope: 'booking',
+            ok: false,
+            model: 'rpc:book_from_slot',
+            prompt_id: null,
+            payload: JSON.stringify({ availabilityId, userId, therapistCode }),
+            output: null,
+            error: rpcErr.message || null,
+          })
+        } catch (_) {}
         if (msg.includes('slot_unavailable')) {
           res.status(409).json({ error: 'slot_unavailable' })
           return
