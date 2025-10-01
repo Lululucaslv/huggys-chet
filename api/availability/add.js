@@ -132,7 +132,14 @@ export default async function handler(req, res) {
     data = resp.data
     error = resp.error
 
-    if (!data || error) return res.status(500).json({ error: 'insert_failed' })
+    if (!data || error) {
+      const msg = (error && (error.message || error.details || error.code || '')) || ''
+      const m = String(msg).toLowerCase()
+      if (m.includes('no_overlap_per_therapist') || m.includes('overlap') || m.includes('&&') || m.includes('duplicate key value violates unique constraint')) {
+        return res.status(409).json({ error: 'slot_overlap' })
+      }
+      return res.status(500).json({ error: 'insert_failed' })
+    }
 
     const response = (data || []).map((s, i) => ({
       availabilityId: s.id,
