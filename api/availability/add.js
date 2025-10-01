@@ -61,7 +61,27 @@ export default async function handler(req, res) {
     }
     if (!inserts.length) return res.status(400).json({ error: 'no valid ranges' })
 
-    const { data, error } = await supabase.from('therapist_availability').insert(inserts).select()
+    const { data: statusCol } = await supabase
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'therapist_availability')
+      .eq('column_name', 'status')
+      .maybeSingle()
+
+    const useStatus = !!statusCol
+
+    const payloads = inserts.map(r => {
+      if (useStatus) {
+        const { therapist_code, start_utc, end_utc } = r
+        return { therapist_code, start_utc, end_utc, status: 'open' }
+      } else {
+        const { therapist_code, start_utc, end_utc } = r
+        return { therapist_code, start_utc, end_utc, booked: false }
+      }
+    })
+
+    const { data, error } = await supabase.from('therapist_availability').insert(payloads).select()
     if (error) return res.status(500).json({ error: 'insert_failed' })
 
     const response = (data || []).map(s => ({
