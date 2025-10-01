@@ -1,5 +1,4 @@
 import { getServiceSupabase } from '../_utils/supabaseServer.js'
-import { getServiceSupabase } from '../_utils/supabaseServer.js'
 
 export const runtime = 'nodejs'
 
