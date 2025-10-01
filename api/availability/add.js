@@ -39,15 +39,48 @@ export default async function handler(req, res) {
     const supabase = getServiceSupabase()
     const inserts = []
     for (const r of time_ranges) {
-      const startUTC = toUTC(r.start_local, r.tz || tz)
-      const endUTC = toUTC(r.end_local, r.tz || tz)
+      let startUTC = null
+      let endUTC = null
+
+      if (r.start && r.end) {
+        try {
+          const s = DateTime.fromISO(r.start, { zone: 'utc' }).toUTC().toISO()
+          const e = DateTime.fromISO(r.end, { zone: 'utc' }).toUTC().toISO()
+          startUTC = s
+          endUTC = e
+        } catch (_) {}
+      }
+
+      if ((!startUTC || !endUTC) && (r.start_local || r.end_local)) {
+        startUTC = toUTC(r.start_local, r.tz || tz)
+        endUTC = toUTC(r.end_local, r.tz || tz)
+      }
+
       if (!startUTC || !endUTC) continue
-      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, booked: false })
+      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, status: 'open' })
     }
     if (!inserts.length) return res.status(400).json({ error: 'no valid ranges' })
 
-    const { data, error } = await supabase.from('therapist_availability').insert(inserts).select()
-    if (error) return res.status(500).json({ error: 'insert_failed' })
+    const payloadsStatus = inserts.map(({ therapist_code, start_utc, end_utc }) => ({
+      therapist_code, start_utc, end_utc, status: 'open'
+    }))
+    const payloadsBooked = inserts.map(({ therapist_code, start_utc, end_utc }) => ({
+      therapist_code, start_utc, end_utc, booked: false
+    }))
+
+    let data = null
+    let error = null
+
+    const tryStatus = await supabase.from('therapist_availability').insert(payloadsStatus).select()
+    if (tryStatus.error) {
+      const tryBooked = await supabase.from('therapist_availability').insert(payloadsBooked).select()
+      data = tryBooked.data
+      error = tryBooked.error
+    } else {
+      data = tryStatus.data
+    }
+
+    if (!data || error) return res.status(500).json({ error: 'insert_failed' })
 
     const response = (data || []).map(s => ({
       availabilityId: s.id,
