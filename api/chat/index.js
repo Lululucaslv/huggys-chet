@@ -100,7 +100,7 @@ async function resolveTherapistFromText(text) {
   return null;
 }
 
-async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
+async function fetchSlotsWithNames(code, limit = 8, windowHours = 168) {
   const supabase = getSupabase();
   const nowISO = new Date().toISOString();
   const endISO = new Date(Date.now() + windowHours * 3600 * 1000).toISOString();
@@ -108,9 +108,9 @@ async function fetchSlotsWithNames(code, limit = 8, windowHours = 72) {
   if (code) {
     const { data: ts } = await supabase
       .from("therapist_availability")
-      .select("id, therapist_code, start_utc, end_utc, status")
+      .select("id, therapist_code, start_utc, end_utc, booked")
       .eq("therapist_code", code)
-      .or("status.eq.open,status.eq.available,status.is.null")
+      .or("booked.is.null,booked.eq.false")
       .gt("start_utc", nowISO)
       .lt("start_utc", endISO)
       .order("start_utc", { ascending: true })
