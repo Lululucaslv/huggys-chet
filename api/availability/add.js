@@ -61,28 +61,26 @@ export default async function handler(req, res) {
     }
     if (!inserts.length) return res.status(400).json({ error: 'no valid ranges' })
 
-    const { data: statusCol } = await supabase
-      .from('information_schema.columns')
-      .select('column_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', 'therapist_availability')
-      .eq('column_name', 'status')
-      .maybeSingle()
+    const payloadsStatus = inserts.map(({ therapist_code, start_utc, end_utc }) => ({
+      therapist_code, start_utc, end_utc, status: 'open'
+    }))
+    const payloadsBooked = inserts.map(({ therapist_code, start_utc, end_utc }) => ({
+      therapist_code, start_utc, end_utc, booked: false
+    }))
 
-    const useStatus = !!statusCol
+    let data = null
+    let error = null
 
-    const payloads = inserts.map(r => {
-      if (useStatus) {
-        const { therapist_code, start_utc, end_utc } = r
-        return { therapist_code, start_utc, end_utc, status: 'open' }
-      } else {
-        const { therapist_code, start_utc, end_utc } = r
-        return { therapist_code, start_utc, end_utc, booked: false }
-      }
-    })
+    const tryStatus = await supabase.from('therapist_availability').insert(payloadsStatus).select()
+    if (tryStatus.error) {
+      const tryBooked = await supabase.from('therapist_availability').insert(payloadsBooked).select()
+      data = tryBooked.data
+      error = tryBooked.error
+    } else {
+      data = tryStatus.data
+    }
 
-    const { data, error } = await supabase.from('therapist_availability').insert(payloads).select()
-    if (error) return res.status(500).json({ error: 'insert_failed' })
+    if (!data || error) return res.status(500).json({ error: 'insert_failed' })
 
     const response = (data || []).map(s => ({
       availabilityId: s.id,
