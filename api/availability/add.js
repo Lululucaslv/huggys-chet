@@ -39,10 +39,25 @@ export default async function handler(req, res) {
     const supabase = getServiceSupabase()
     const inserts = []
     for (const r of time_ranges) {
-      const startUTC = toUTC(r.start_local, r.tz || tz)
-      const endUTC = toUTC(r.end_local, r.tz || tz)
+      let startUTC = null
+      let endUTC = null
+
+      if (r.start && r.end) {
+        try {
+          const s = DateTime.fromISO(r.start, { zone: 'utc' }).toUTC().toISO()
+          const e = DateTime.fromISO(r.end, { zone: 'utc' }).toUTC().toISO()
+          startUTC = s
+          endUTC = e
+        } catch (_) {}
+      }
+
+      if ((!startUTC || !endUTC) && (r.start_local || r.end_local)) {
+        startUTC = toUTC(r.start_local, r.tz || tz)
+        endUTC = toUTC(r.end_local, r.tz || tz)
+      }
+
       if (!startUTC || !endUTC) continue
-      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, booked: false })
+      inserts.push({ therapist_code, start_utc: startUTC, end_utc: endUTC, status: 'open' })
     }
     if (!inserts.length) return res.status(400).json({ error: 'no valid ranges' })
 
