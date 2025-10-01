@@ -94,6 +94,20 @@ export default async function handler(req, res) {
       auditLocals.push({ start_local: startLocalStr, end_local: endLocalStr })
     }
 
+    for (const r of inserts) {
+      const overlap = await supabase
+        .from('therapist_availability')
+        .select('id', { count: 'exact', head: true })
+        .eq('therapist_code', r.therapist_code)
+        .lt('start_utc', r.end_utc)
+        .gt('end_utc', r.start_utc)
+
+      if (overlap?.error) break
+      if (typeof overlap?.count === 'number' && overlap.count > 0) {
+        return res.status(409).json({ error: 'slot_overlap' })
+      }
+    }
+
     if (!inserts.length) return res.status(400).json({ error: 'no_valid_future_ranges' })
 
     const payloadsStatusFull = inserts.map((r, i) => ({
