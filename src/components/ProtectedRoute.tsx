@@ -23,9 +23,9 @@ export default function ProtectedRoute({
 
   if (roleLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
         <div className="text-center">
-          <p className="text-gray-500">加载用户信息中...</p>
+          <p className="text-gray-300">加载用户信息中...</p>
         </div>
       </div>
     )
