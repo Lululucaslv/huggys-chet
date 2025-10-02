@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import AIChat from './components/AIChat'
 import SettingsPage from './pages/SettingsPage'
-import SettingsPage from './pages/SettingsPage'
 import { Dialog, DialogContent } from './components/ui/dialog'
 import { MessageCircle } from 'lucide-react'
 
@@ -106,19 +105,6 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute
-              session={session}
-              userRole={userRole}
-              requiredRole="therapist"
-              roleLoading={roleLoading}
-            >
-              <SettingsPage session={session!} />
-            </ProtectedRoute>
-          }
-        />
         <Route 
           path="/" 
           element={
@@ -142,14 +128,6 @@ function App() {
   )
 }
 
-              {isTherapist && (
-                <Link 
-                  to="/settings"
-                  className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md"
-                >
-                  {t('nav_settings') || 'Settings'}
-                </Link>
-              )}
 function MainDashboard({ session, userRole }: { session: Session, userRole: string | null }) {
   const { t } = useTranslation()
   const isTherapist = userRole === 'therapist'
@@ -179,6 +157,14 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
                   className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 transform hover:scale-105"
                 >
                   {t('nav_chat')}
+                </Link>
+              )}
+              {isTherapist && (
+                <Link
+                  to="/settings"
+                  className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md"
+                >
+                  {t('nav_settings') || 'Settings'}
                 </Link>
               )}
               <span className="text-sm text-gray-500">

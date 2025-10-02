@@ -24,7 +24,6 @@ export default function SettingsPage({ session }: { session: Session }) {
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => setDisplayName(data?.display_name || ''))
-      .catch(() => {})
   }, [session.user.id])
 
   const saveProfile = async () => {
