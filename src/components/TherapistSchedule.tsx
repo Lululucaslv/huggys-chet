@@ -40,8 +40,6 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
-  const [sliceHourly, setSliceHourly] = useState(false)
-  const [presetSaving, setPresetSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -238,66 +236,32 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
     }
   }
 
-  const addPresetAvailability = async (pairs: { startLocal: string; endLocal: string }[]) => {
-    if (!userProfile || !pairs.length) return
-    setPresetSaving(true)
-    try {
-      const rows = pairs.map(p => ({
-        therapist_id: userProfile.id,
-        start_time: convertLocalToUTC(p.startLocal, selectedTimezone),
-        end_time: convertLocalToUTC(p.endLocal, selectedTimezone),
-        is_booked: false,
-      }))
-      const { error } = await supabase.from('availability').insert(rows).select()
-      if (!error) {
-        fetchAvailabilitySlots()
-      }
-    } finally {
-      setPresetSaving(false)
-    }
-  }
-
   const setPresetRange = (preset: 'today' | 'tomorrow' | 'weekdays') => {
-    const makeLocal = (d: Date, h: number, m: number) => {
+    const formatForInput = (d: Date, h: number, m: number) => {
       const yyyy = d.getFullYear()
       const mm = String(d.getMonth() + 1).padStart(2, '0')
       const dd = String(d.getDate()).padStart(2, '0')
       const hh = String(h).padStart(2, '0')
       const mi = String(m).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
-    }
-    const mkPairsForDay = (d: Date) => {
-      if (!sliceHourly) {
-        return [{ startLocal: makeLocal(d, 8, 0), endLocal: makeLocal(d, 17, 0) }]
-      }
-      const pairs: { startLocal: string; endLocal: string }[] = []
-      for (let h = 8; h < 17; h++) {
-        pairs.push({ startLocal: makeLocal(d, h, 0), endLocal: makeLocal(d, h + 1, 0) })
-      }
-      return pairs
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
     }
 
     if (preset === 'today') {
       const d = new Date()
-      return addPresetAvailability(mkPairsForDay(d))
-    }
-    if (preset === 'tomorrow') {
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
+    } else if (preset === 'tomorrow') {
       const d = new Date()
       d.setDate(d.getDate() + 1)
-      return addPresetAvailability(mkPairsForDay(d))
-    }
-    if (preset === 'weekdays') {
-      const start = new Date()
-      const day = start.getDay()
-      const offsetToMon = ((1 - day + 7) % 7)
-      start.setDate(start.getDate() + offsetToMon)
-      const pairs: { startLocal: string; endLocal: string }[] = []
-      for (let i = 0; i < 5; i++) {
-        const d = new Date(start)
-        d.setDate(start.getDate() + i)
-        pairs.push(...mkPairsForDay(d))
-      }
-      return addPresetAvailability(pairs)
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
+    } else if (preset === 'weekdays') {
+      const d = new Date()
+      const day = d.getDay()
+      const offsetToMon = ((1 - day + 7) % 7) || 7
+      d.setDate(d.getDate() + offsetToMon)
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
     }
   }
   const addAvailabilitySlot = async () => {
@@ -503,26 +467,22 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                     </SelectItem>
                   ))}
                 </SelectContent>
-          <div className="space-y-3">
-            <div className="text-sm text-gray-600">{t('sched_presets') || 'Presets'}</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" disabled={presetSaving} onClick={() => setPresetRange('today')}>
-                {t('preset_today_fullday') || 'Today (08:00–17:00)'}
-              </Button>
-              <Button variant="secondary" disabled={presetSaving} onClick={() => setPresetRange('tomorrow')}>
-                {t('preset_tomorrow_fullday') || 'Tomorrow (08:00–17:00)'}
-              </Button>
-              <Button variant="secondary" disabled={presetSaving} onClick={() => setPresetRange('weekdays')}>
-                {t('preset_weekdays_fullday') || 'Weekdays (08:00–17:00)'}
-              </Button>
-              <label className="ml-auto inline-flex items-center gap-2 text-sm text-gray-600">
-                <input type="checkbox" checked={sliceHourly} onChange={(e) => setSliceHourly(e.target.checked)} />
-                {t('preset_slice_hourly') || 'Slice hourly'}
-              </label>
-            </div>
-          </div>
-
               </Select>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm text-gray-700 font-medium">{t('sched_presets') || 'Presets'}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" onClick={() => setPresetRange('today')}>
+                  {t('preset_today_fullday') || 'Today (08:00–17:00)'}
+                </Button>
+                <Button variant="secondary" onClick={() => setPresetRange('tomorrow')}>
+                  {t('preset_tomorrow_fullday') || 'Tomorrow (08:00–17:00)'}
+                </Button>
+                <Button variant="secondary" onClick={() => setPresetRange('weekdays')}>
+                  {t('preset_weekdays_fullday') || 'Next Monday (08:00–17:00)'}
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -537,6 +497,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                 type="datetime-local"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                step="600"
                 className="w-full"
               />
             </div>
@@ -549,6 +510,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                 type="datetime-local"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                step="600"
                 className="w-full"
               />
             </div>
