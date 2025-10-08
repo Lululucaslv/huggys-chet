@@ -421,22 +421,29 @@ export default function ChatPage({ session }: ChatPageProps) {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+    <div className="relative min-h-screen bg-slate-950 text-slate-100">
+      {/* Layered gradient background blur effects */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-cyan-500/40 blur-3xl" />
+        <div className="absolute top-1/4 -right-20 h-96 w-96 rounded-full bg-fuchsia-500/30 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-500/20 blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header style={{ background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(75, 0, 130, 0.8))' }} className="relative backdrop-blur-sm border-b border-purple-400/30 sticky top-0 z-10">
+      <header className="relative z-10 backdrop-blur-sm border-b border-cyan-400/20 sticky top-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-lg">🤗</span>
               </div>
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-xl font-semibold tracking-wide text-cyan-200">
                 {t('chat_header_title')}
               </h1>
             </div>
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
-              <div className="flex items-center gap-2 text-sm text-white">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <span>{t('chat_status_online')}</span>
               </div>
@@ -446,28 +453,28 @@ export default function ChatPage({ session }: ChatPageProps) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col h-[calc(100vh-140px)]">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto space-y-6">
             {messages.length === 0 && (
               <div className="text-center py-8">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-3xl">🤗</span>
                 </div>
-                <div className="message-content text-white">
-                  <h2 className="text-2xl font-bold mb-4">{t('chat_intro_title')}</h2>
-                  <p className="text-gray-300 mb-6">{t('chat_intro_subtitle')}</p>
+                <div className="message-content text-slate-100">
+                  <h2 className="text-2xl font-semibold tracking-wide text-cyan-200 mb-4">{t('chat_intro_title')}</h2>
+                  <p className="text-slate-300 mb-6">{t('chat_intro_subtitle')}</p>
                   
-                  <div className="memory-info text-left max-w-2xl mx-auto bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                    <p className="text-white font-semibold mb-4">{t('chat_intro_superpowers')}</p>
-                    <ul className="text-left space-y-2 text-gray-300">
+                  <div className="memory-info text-left max-w-2xl mx-auto bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
+                    <p className="text-cyan-200 font-semibold mb-4">{t('chat_intro_superpowers')}</p>
+                    <ul className="text-left space-y-2 text-slate-300">
                       <li>✅ <strong>{t('chat_intro_power_memory')}</strong></li>
                       <li>✅ <strong>{t('chat_intro_power_personality')}</strong></li>
                       <li>✅ <strong>{t('chat_intro_power_interests')}</strong></li>
                       <li>✅ <strong>{t('chat_intro_power_online')}</strong></li>
                     </ul>
-                    <p className="text-gray-300 mt-6">{t('chat_intro_closing')}</p>
+                    <p className="text-slate-300 mt-6">{t('chat_intro_closing')}</p>
                   </div>
                 </div>
               </div>
@@ -481,7 +488,7 @@ export default function ChatPage({ session }: ChatPageProps) {
                   const p = obj.payload || {}
                   return (
                     <div key={message.id} className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-white text-sm">🤗</span>
                       </div>
                       <div className="max-w-[75%]">
@@ -517,15 +524,15 @@ export default function ChatPage({ session }: ChatPageProps) {
                   className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-sm">🤗</span>
                     </div>
                   )}
                   <div
-                    className={`max-w-[75%] px-6 py-4 rounded-2xl ${
+                    className={`max-w-[75%] px-6 py-4 rounded-2xl backdrop-blur-sm ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-md'
-                        : 'bg-gray-700 text-white rounded-bl-md'
+                        ? 'bg-cyan-600/80 text-white rounded-br-md border border-cyan-400/30'
+                        : 'bg-slate-800/60 text-slate-100 rounded-bl-md border border-slate-700/50'
                     }`}
                     style={{
                       fontFamily:
@@ -545,25 +552,25 @@ export default function ChatPage({ session }: ChatPageProps) {
             
             {isTyping && (
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 animate-spin">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 animate-spin">
                   <span className="text-white text-sm">🤗</span>
                 </div>
-                <div className="bg-gray-700 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-white">{t('chat_thinking')}</span>
+                <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                  <span className="text-slate-100">{t('chat_thinking')}</span>
                 </div>
               </div>
             )}
             {slotOptions && slotOptions.slots?.length > 0 && (
               <div className="mt-4 mb-2">
-                <div className="text-gray-300 text-sm mb-2">{t('chat_choose_slot')}</div>
+                <div className="text-slate-300 text-sm mb-2">{t('chat_choose_slot')}</div>
                 <div className="flex flex-wrap gap-2">
                   {slotOptions.slots.map((s) => (
                     <button
                       key={s.id || s.startTime}
                       onClick={() => handleBookSlot(slotOptions.therapistName, s)}
                       disabled={isTyping}
-                      className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md text-sm transition-colors"
+                      className="px-3 py-2 bg-cyan-700/80 hover:bg-cyan-600 backdrop-blur-sm border border-cyan-400/30 text-white rounded-md text-sm transition-colors"
                     >
                       {slotOptions.therapistName
                         ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}`
@@ -580,29 +587,29 @@ export default function ChatPage({ session }: ChatPageProps) {
           {messages.length === 0 && (
             <div className="px-6 pb-4">
               <div className="text-center">
-                <small className="text-gray-500 block mb-4">{t('chat_quick_user_label')}</small>
+                <small className="text-slate-400 block mb-4">{t('chat_quick_user_label')}</small>
                 <div className="flex flex-wrap justify-center gap-3 mb-4">
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_feeling_tired'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_feeling_tired')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_want_chat'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_want_chat')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_share_today'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_share_today')}
                   </button>
                   <button 
                     onClick={() => handleQuickReply(t('chat_quick_worried'))}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full text-sm transition-colors"
+                    className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_worried')}
                   </button>
@@ -612,9 +619,9 @@ export default function ChatPage({ session }: ChatPageProps) {
           )}
           
           {/* Input Area */}
-          <div className="border-t border-gray-700 bg-gray-900 p-6">
+          <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-sm p-6">
             <div className="flex gap-4 items-end">
-              <button className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+              <button className="p-3 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 rounded-full transition-colors">
                 <Camera className="w-5 h-5 text-white" />
               </button>
               <div className="flex-1">
@@ -624,14 +631,14 @@ export default function ChatPage({ session }: ChatPageProps) {
                   placeholder={t('chat_input_placeholder')}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                   disabled={isTyping}
-                  className="w-full bg-gray-800 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 resize-none focus:border-purple-400 focus:ring-purple-400/20 focus:outline-none"
+                  className="w-full bg-slate-800/60 backdrop-blur-sm border border-slate-600/50 text-slate-100 placeholder-slate-400 rounded-lg px-4 py-3 resize-none focus:border-cyan-400/50 focus:ring-cyan-400/20 focus:outline-none"
                   rows={3}
                   maxLength={2000}
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                   }}
                 />
-                <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+                <div className="flex justify-between items-center mt-2 text-sm text-slate-400">
                   <span>{t('chat_char_count', { count: inputMessage.length, max: 2000 })}</span>
                   <span>🔒 {t('chat_privacy_notice')}</span>
                 </div>
@@ -639,7 +646,7 @@ export default function ChatPage({ session }: ChatPageProps) {
               <button 
                 onClick={sendMessage} 
                 disabled={isTyping || !inputMessage.trim()}
-                className="p-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 rounded-full transition-colors"
+                className="p-3 bg-cyan-600/80 hover:bg-cyan-700 disabled:bg-slate-600 disabled:opacity-50 backdrop-blur-sm border border-cyan-400/30 rounded-full transition-colors"
               >
                 <Send className="h-5 w-5 text-white" />
               </button>
