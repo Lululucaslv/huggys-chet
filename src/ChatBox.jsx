@@ -14,7 +14,7 @@ const ChatBox = ({ messages, userId, therapistCode, onBooked }) => {
   return (
     <div
       ref={chatRef}
-      className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg shadow-inner max-w-4xl mx-auto"
+      className="flex-1 overflow-y-auto rounded-3xl border border-cyan-300/20 bg-white/5 p-4 shadow-[0_0_35px_rgba(6,182,212,0.2)] backdrop-blur-xl transition-all duration-300 md:p-6"
     >
       {messages.map((msg, idx) => (
         <MessageBubble

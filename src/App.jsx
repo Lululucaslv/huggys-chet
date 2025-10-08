@@ -111,32 +111,51 @@ const App = () => {
   }, [loading, input, imagePreview, userId]);
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-gray-100">
-      <ChatBox
-        messages={messages}
-        userId={userId}
-        // therapistCode 可选；不传走默认 8W79AL2B
-        onBooked={handleBooked}
-      />
+    <div className="relative flex h-screen max-h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-cyan-500/40 blur-3xl" />
+        <div className="absolute top-1/4 -right-20 h-96 w-96 rounded-full bg-fuchsia-500/30 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-500/20 blur-3xl" />
+      </div>
 
-      <InputArea
-        input={input}
-        setInput={setInput}
-        onSend={handleSend}
-        onImage={setImagePreview}
-        imagePreview={imagePreview}
-        onRemoveImage={() => setImagePreview(null)}
-        onVoice={setInput}
-        loading={loading}
-      />
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-col gap-4 px-4 py-6 md:px-8 md:py-10">
+        <header className="flex flex-col gap-2 text-center md:text-left">
+          <h1 className="text-3xl font-semibold tracking-wide text-cyan-200 md:text-4xl">
+            未来感对话体验
+          </h1>
+          <p className="text-sm text-slate-300 md:text-base">
+            借助智能语音与图像识别，让每一次交流都充满科技与温度。
+          </p>
+        </header>
 
-      {messages.length > 0 &&
-        messages[messages.length - 1].role === "assistant" && (
-          <AudioPlayer
-            text={messages[messages.length - 1].content || ""}
-            play={playing}
+        <div className="flex flex-1 flex-col gap-4">
+          <ChatBox
+            messages={messages}
+            userId={userId}
+            // therapistCode 可选；不传走默认 8W79AL2B
+            onBooked={handleBooked}
           />
-        )}
+
+          <InputArea
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            onImage={setImagePreview}
+            imagePreview={imagePreview}
+            onRemoveImage={() => setImagePreview(null)}
+            onVoice={setInput}
+            loading={loading}
+          />
+        </div>
+
+        {messages.length > 0 &&
+          messages[messages.length - 1].role === "assistant" && (
+            <AudioPlayer
+              text={messages[messages.length - 1].content || ""}
+              play={playing}
+            />
+          )}
+      </div>
     </div>
   );
 };

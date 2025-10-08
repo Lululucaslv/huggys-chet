@@ -46,7 +46,11 @@ const VoiceInput = ({ onVoice, setInput, inputRef }) => {
   return (
     <button
       type="button"
-      className={`ml-1 px-3 py-2 rounded-lg border ${listening ? "bg-green-200" : "bg-gray-100"} hover:bg-green-100`}
+      className={`ml-1 flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-lg transition-all duration-300 ${
+        listening
+          ? "bg-emerald-400/30 text-emerald-100 shadow-[0_0_25px_rgba(16,185,129,0.45)]"
+          : "bg-white/10 text-cyan-200 hover:border-cyan-200/60 hover:shadow-[0_0_25px_rgba(56,189,248,0.35)]"
+      }`}
       onClick={handleVoice}
       title="语音输入"
     >

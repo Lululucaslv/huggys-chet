@@ -63,15 +63,17 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnab
   };
 
   return (
-    <div className="mt-2">
+    <div className="mt-3">
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
           <button
             key={opt.availabilityId}
             onClick={() => pick(opt)}
             disabled={busyId === opt.availabilityId || !createEnabled}
-            className={`px-3 py-1 rounded-lg text-white ${
-              busyId === opt.availabilityId || !createEnabled ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:opacity-90"
+            className={`group relative overflow-hidden rounded-xl px-4 py-2 text-sm font-medium tracking-wide transition-all duration-300 ${
+              busyId === opt.availabilityId || !createEnabled
+                ? "cursor-not-allowed bg-fuchsia-500/40 text-white/70"
+                : "bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 text-white shadow-[0_0_25px_rgba(147,197,253,0.35)] hover:shadow-[0_0_35px_rgba(99,102,241,0.55)]"
             }`}
             title={opt.startUTC}
           >
@@ -81,13 +83,13 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnab
       </div>
 
       {status === "ok" && (
-        <div className="text-green-500 text-sm mt-2">预约成功！我已为你锁定该时间。</div>
+        <div className="mt-2 text-sm text-emerald-300">预约成功！我已为你锁定该时间。</div>
       )}
       {status === "conflict" && (
-        <div className="text-yellow-400 text-sm mt-2">刚刚被别人抢订了 😥 请再选一个时间。</div>
+        <div className="mt-2 text-sm text-amber-300">刚刚被别人抢订了 😥 请再选一个时间。</div>
       )}
       {status === "error" && (
-        <div className="text-red-400 text-sm mt-2">预约失败，请重试或换个时间范围。</div>
+        <div className="mt-2 text-sm text-rose-300">预约失败，请重试或换个时间范围。</div>
       )}
     </div>
   );
@@ -101,10 +103,12 @@ function TimeConfirm({ options = [], userId, therapistCode, onBooked, createEnab
  *  - onBooked: 预约成功回调
  */
 const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => {
-  const containerClass = `flex mb-3 ${isSelf ? "justify-end" : "justify-start"}`;
-  const bubbleClass = `max-w-[75%] break-words rounded-2xl px-4 py-2 shadow ${
-    isSelf ? "bg-blue-500 text-white rounded-br-none" : "bg-white text-gray-900 rounded-bl-none"
-  }`;
+  const containerClass = `group relative mb-4 flex ${isSelf ? "justify-end" : "justify-start"}`;
+  const bubbleBase =
+    "relative max-w-[75%] break-words rounded-3xl border px-5 py-3 shadow-lg transition-all duration-300 backdrop-blur-xl";
+  const bubbleClass = isSelf
+    ? `${bubbleBase} rounded-br-none border-white/20 bg-gradient-to-r from-indigo-500/90 via-purple-500/80 to-fuchsia-500/80 text-white shadow-[0_0_35px_rgba(129,140,248,0.4)] group-hover:-translate-y-0.5`
+    : `${bubbleBase} rounded-bl-none border-white/10 bg-white/8 text-slate-100 shadow-[0_0_35px_rgba(6,182,212,0.35)] group-hover:-translate-y-0.5`;
 
   // 从消息对象里拿 TIME_CONFIRM 结构化块
   const tcBlock = Array.isArray(message?.toolResults)
@@ -117,7 +121,7 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
         <img
           src={message.avatar || "/ai-avatar.png"}
           alt="AI头像"
-          className="w-8 h-8 rounded-full mr-2 self-end"
+          className="mr-3 h-9 w-9 self-end rounded-full border border-cyan-200/30 bg-white/10 p-[2px] shadow-[0_0_20px_rgba(6,182,212,0.35)]"
           loading="lazy"
         />
       )}
@@ -134,7 +138,7 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
         )}
 
         {/* 文本内容 */}
-        <span>
+        <span className="leading-relaxed">
           {((message.text || message.content || (message.reply && message.reply.content) || '').trim()) || '我在，愿意听你说说。'}
         </span>
 
@@ -152,7 +156,9 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
 
         {/* 时间戳（保持你原样式） */}
         {message.time && (
-          <div className="text-xs text-gray-400 mt-1 text-right">{message.time}</div>
+          <div className="mt-2 text-right text-[0.65rem] uppercase tracking-[0.2em] text-slate-300/70">
+            {message.time}
+          </div>
         )}
       </div>
 
@@ -160,7 +166,7 @@ const MessageBubble = ({ message, isSelf, userId, therapistCode, onBooked }) => 
         <img
           src={message.avatar || "/user-avatar.png"}
           alt="用户头像"
-          className="w-8 h-8 rounded-full ml-2 self-end"
+          className="ml-3 h-9 w-9 self-end rounded-full border border-fuchsia-200/40 bg-white/10 p-[2px] shadow-[0_0_20px_rgba(217,70,239,0.35)]"
           loading="lazy"
         />
       )}
