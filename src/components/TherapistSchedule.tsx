@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar, Clock, Plus, Trash2, Globe, Users, User, Loader2 } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, convertLocalToUTC, TimezoneOption } from '../lib/timezone'
 import AISummaryModal from './AISummaryModal'
-import TherapistCodeDisplay from './fragments/TherapistCodeDisplay'
 import { useTranslation } from 'react-i18next'
 
 
@@ -237,6 +236,34 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
     }
   }
 
+  const setPresetRange = (preset: 'today' | 'tomorrow' | 'weekdays') => {
+    const formatForInput = (d: Date, h: number, m: number) => {
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      const hh = String(h).padStart(2, '0')
+      const mi = String(m).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+    }
+
+    if (preset === 'today') {
+      const d = new Date()
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
+    } else if (preset === 'tomorrow') {
+      const d = new Date()
+      d.setDate(d.getDate() + 1)
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
+    } else if (preset === 'weekdays') {
+      const d = new Date()
+      const day = d.getDay()
+      const offsetToMon = ((1 - day + 7) % 7) || 7
+      d.setDate(d.getDate() + offsetToMon)
+      setStartTime(formatForInput(d, 8, 0))
+      setEndTime(formatForInput(d, 17, 0))
+    }
+  }
   const addAvailabilitySlot = async () => {
     if (!startTime || !endTime || !userProfile) {
       setError(t('sched_fill_start_end'))
@@ -313,6 +340,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
     }
   }
 
+
   const formatDateTime = (dateTimeString: string) => {
     return formatDisplayDateTime(dateTimeString, selectedTimezone)
   }
@@ -353,32 +381,6 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   return (
     <div className="space-y-6">
       <Card>
-      <Card className="border-amber-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {t('therapist_profile')}
-          </CardTitle>
-          <CardDescription>
-            {t('therapist_profile_desc')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">{t('therapist_name')}</label>
-              <div className="text-gray-900 font-medium">
-                {(userProfile?.display_name?.trim?.() || (session.user.email || '').split('@')[0] || t('therapist_fallback'))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">{t('therapist_code')}</label>
-              <TherapistCodeDisplay userId={session.user.id} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -467,8 +469,24 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-3">
+              <div className="text-sm text-gray-700 font-medium">{t('sched_presets') || 'Presets'}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" onClick={() => setPresetRange('today')}>
+                  {t('preset_today_fullday') || 'Today (08:00–17:00)'}
+                </Button>
+                <Button variant="secondary" onClick={() => setPresetRange('tomorrow')}>
+                  {t('preset_tomorrow_fullday') || 'Tomorrow (08:00–17:00)'}
+                </Button>
+                <Button variant="secondary" onClick={() => setPresetRange('weekdays')}>
+                  {t('preset_weekdays_fullday') || 'Next Monday (08:00–17:00)'}
+                </Button>
+              </div>
+            </div>
           </div>
           
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="start-time" className="block text-sm font-medium text-gray-700 mb-1">
@@ -479,6 +497,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                 type="datetime-local"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                step="600"
                 className="w-full"
               />
             </div>
@@ -491,6 +510,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
                 type="datetime-local"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                step="600"
                 className="w-full"
               />
             </div>
@@ -532,6 +552,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
             <div className="space-y-3">
               {availabilitySlots.map((slot) => (
                 <div
+
                   key={slot.id}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
