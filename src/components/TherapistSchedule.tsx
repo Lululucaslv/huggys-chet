@@ -229,7 +229,7 @@ const fetchAvailability = useCallback(async () => {
       timezone: item.tz_used || timezone,
       repeat: item.repeat === 'weekly' ? 'weekly' : null,
       weekdays: item.weekday_mask || item.weekdays || [],
-      source: 'api',
+      source: item.source || 'api',
     }))
     setAvailability(slots.sort(availabilitySort))
   } catch (error) {
