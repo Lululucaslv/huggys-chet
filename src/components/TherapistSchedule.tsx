@@ -549,9 +549,6 @@ const handleDeleteAvailability = useCallback(
         },
         body: JSON.stringify({
           availability_id: slot.id,
-          user_id: session.user.id,
-          tz: timezone,
-          lang,
         }),
       })
       if (!response.ok) {

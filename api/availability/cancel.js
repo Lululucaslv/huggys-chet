@@ -27,33 +27,16 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const { availability_id, user_id, tz, lang } = body
 
-    if (!availability_id || !user_id) {
-      return res.status(400).json({ error: 'availability_id_and_user_id_required' })
+    if (!availability_id) {
+      return res.status(400).json({ error: 'availability_id_required' })
     }
 
     const supabase = getServiceSupabase()
-
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('therapist_code')
-      .eq('user_id', user_id)
-      .maybeSingle()
-
-    if (profileError) {
-      console.error('Failed to fetch therapist profile:', profileError)
-      return res.status(500).json({ error: 'profile_fetch_failed', details: profileError.message })
-    }
-
-    const therapistCode = profile?.therapist_code
-    if (!therapistCode) {
-      return res.status(404).json({ error: 'therapist_code_not_found' })
-    }
 
     const { data, error } = await supabase
       .from('therapist_availability')
       .delete()
       .eq('id', availability_id)
-      .eq('therapist_code', therapistCode)
       .select()
 
     if (error) {
@@ -62,7 +45,7 @@ export default async function handler(req, res) {
     }
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'slot_not_found_or_therapist_code_mismatch' })
+      return res.status(404).json({ error: 'slot_not_found' })
     }
 
     return res.status(200).json({ ok: true, data })
