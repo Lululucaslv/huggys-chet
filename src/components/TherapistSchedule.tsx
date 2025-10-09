@@ -541,10 +541,20 @@ const handleDeleteAvailability = useCallback(
     setAvailability((prev) => prev.filter((item) => item.id !== slot.id))
 
     try {
-      const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
+      let therapistCode = session.user.user_metadata?.therapist_code
       
       if (!therapistCode) {
-        throw new Error('Therapist code not found in slot or session')
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('therapist_code')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+        
+        therapistCode = profile?.therapist_code
+      }
+      
+      if (!therapistCode) {
+        throw new Error('Therapist code not found')
       }
       
       const response = await fetch('/api/availability/cancel', {
