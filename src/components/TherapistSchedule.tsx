@@ -541,46 +541,29 @@ const handleDeleteAvailability = useCallback(
     setAvailability((prev) => prev.filter((item) => item.id !== slot.id))
 
     try {
-      if (slot.source === 'supabase') {
-        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found in slot or session')
-        }
-        
-        const { data, error } = await supabase
-          .from('therapist_availability')
-          .delete()
-          .eq('id', slot.id)
-          .eq('therapist_code', therapistCode)
-          .select()
-        
-        if (error) throw error
-        if (!data || data.length === 0) {
-          throw new Error('No rows deleted - slot not found or therapist_code mismatch')
-        }
-      } else {
-        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found in slot or session')
-        }
-        
-        const response = await fetch('/api/availability/cancel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            availability_id: slot.id,
-            therapist_code: therapistCode,
-            user_id: session.user.id,
-            tz: timezone,
-            lang,
-          }),
-        })
-        if (!response.ok) throw new Error('Request failed')
+      const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
+      
+      if (!therapistCode) {
+        throw new Error('Therapist code not found in slot or session')
+      }
+      
+      const response = await fetch('/api/availability/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          availability_id: slot.id,
+          therapist_code: therapistCode,
+          user_id: session.user.id,
+          tz: timezone,
+          lang,
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Request failed')
       }
       toast({ title: t('sched_delete_success_title'), description: t('sched_delete_success_desc') })
     } catch (error) {
