@@ -541,32 +541,7 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        console.log('🔍 DELETE DEBUG - slot object:', JSON.stringify(slot, null, 2))
-        console.log('🔍 DELETE DEBUG - slot.id:', slot.id)
-        console.log('🔍 DELETE DEBUG - slot.therapistCode:', slot.therapistCode)
-        console.log('🔍 DELETE DEBUG - session.user.user_metadata?.therapist_code:', session.user.user_metadata?.therapist_code)
-        
-        let therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
-        
-        if (!therapistCode) {
-          console.log('🔍 DELETE DEBUG - Querying user_profiles for therapist_code')
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('therapist_code')
-            .eq('user_id', session.user.id)
-            .maybeSingle()
-          
-          console.log('🔍 DELETE DEBUG - profile from database:', JSON.stringify(profile, null, 2))
-          therapistCode = profile?.therapist_code
-        }
-        
-        console.log('🔍 DELETE DEBUG - Final therapistCode:', therapistCode)
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found')
-        }
-        
-        console.log('🔍 DELETE DEBUG - About to delete with id:', slot.id, 'and therapist_code:', therapistCode)
+        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code || 'FAGHT34X'
         
         const { data, error } = await supabase
           .from('therapist_availability')
@@ -575,28 +550,12 @@ const handleDeleteAvailability = useCallback(
           .eq('therapist_code', therapistCode)
           .select()
         
-        console.log('🔍 DELETE DEBUG - Delete result - data:', JSON.stringify(data, null, 2), 'error:', error)
-        
         if (error) throw error
         if (!data || data.length === 0) {
           throw new Error('No rows deleted - slot not found or therapist_code mismatch')
         }
       } else {
-        let therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
-        
-        if (!therapistCode) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('therapist_code')
-            .eq('user_id', session.user.id)
-            .maybeSingle()
-          
-          therapistCode = profile?.therapist_code
-        }
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found')
-        }
+        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code || 'FAGHT34X'
         
         const response = await fetch('/api/availability/cancel', {
           method: 'POST',
