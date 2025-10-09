@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       status: slot.booked ? 'booked' : 'open',
       repeat: null,
       weekdays: [],
-      source: 'api',
+      source: 'supabase',
     }))
 
     return res.status(200).json({ 

@@ -521,7 +521,12 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        const { error } = await supabase.from('availability').delete().eq('id', Number(slot.id))
+        const therapistCode = session.user.user_metadata?.therapist_code
+        const { error } = await supabase
+          .from('therapist_availability')
+          .delete()
+          .eq('id', Number(slot.id))
+          .eq('therapist_code', therapistCode)
         if (error) throw error
       } else {
         const response = await fetch('/api/availability/cancel', {

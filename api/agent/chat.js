@@ -864,20 +864,30 @@ Rules:
             }
           } else if (functionName === 'deleteAvailability') {
             try {
-              const therapistProfileId = await requireTherapistProfileId(serviceSupabase, userId)
-              const { availabilityId } = functionArgs || {}
-              if (!availabilityId) {
-                toolResult = { success: false, error: 'availabilityId required' }
+              const { data: profile } = await serviceSupabase
+                .from('user_profiles')
+                .select('therapist_code')
+                .eq('user_id', userId)
+                .maybeSingle()
+              
+              const therapistCode = profile?.therapist_code
+              if (!therapistCode) {
+                toolResult = { success: false, error: 'Therapist code not found' }
               } else {
-                const { data, error } = await serviceSupabase
-                  .from('availability')
-                  .delete()
-                  .eq('id', availabilityId)
-                  .eq('therapist_id', therapistProfileId)
-                  .select('id')
-                  .maybeSingle()
-                if (error) toolResult = { success: false, error: error.message }
-                else toolResult = { success: true, data }
+                const { availabilityId } = functionArgs || {}
+                if (!availabilityId) {
+                  toolResult = { success: false, error: 'availabilityId required' }
+                } else {
+                  const { data, error } = await serviceSupabase
+                    .from('therapist_availability')
+                    .delete()
+                    .eq('id', availabilityId)
+                    .eq('therapist_code', therapistCode)
+                    .select('id')
+                    .maybeSingle()
+                  if (error) toolResult = { success: false, error: error.message }
+                  else toolResult = { success: true, data }
+                }
               }
             } catch (e) {
               toolResult = { success: false, error: e.message || 'Unauthorized' }
