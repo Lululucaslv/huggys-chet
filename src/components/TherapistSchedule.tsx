@@ -979,9 +979,9 @@ return (
                                   {availabilityInCell.map(({ slot }) => (
                                     <div
                                       key={`${slot.id}-${cellKey}`}
-                                      className="flex items-center justify-between rounded-lg border border-primary/40 bg-white/70 px-2 py-1 text-xs text-primary shadow-sm"
+                                      className="flex flex-col items-start gap-1 rounded-lg border border-primary/40 bg-white/70 px-2 py-1.5 text-xs text-primary shadow-sm"
                                     >
-                                      <span>{t('sched_calendar_available')}</span>
+                                      <span className="font-medium">{t('sched_calendar_available')}</span>
                                       <Badge variant="outline" className="border-primary/40 text-[10px]">
                                         {DateTime.fromISO(slot.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}–
                                         {DateTime.fromISO(slot.endUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}
@@ -991,9 +991,9 @@ return (
                                   {bookingsInCell.map(({ booking }) => (
                                     <div
                                       key={`${booking.id}-${cellKey}`}
-                                      className="flex items-center justify-between rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-2 py-1 text-xs text-[#DC2626]"
+                                      className="flex flex-col items-start gap-1 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-2 py-1.5 text-xs text-[#DC2626]"
                                     >
-                                      <span>{t('sched_calendar_booked')}</span>
+                                      <span className="font-medium">{t('sched_calendar_booked')}</span>
                                       <Badge variant="outline" className="border-[#DC2626]/40 text-[10px] text-[#DC2626]">
                                         {DateTime.fromISO(booking.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}–
                                         {DateTime.fromISO(booking.endUTC || booking.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}
