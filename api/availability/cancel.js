@@ -25,19 +25,35 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ error: 'unauthorized' })
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const { availability_id, therapist_code, user_id, tz, lang } = body
+    const { availability_id, user_id, tz, lang } = body
 
-    if (!availability_id || !therapist_code) {
-      return res.status(400).json({ error: 'availability_id_and_therapist_code_required' })
+    if (!availability_id || !user_id) {
+      return res.status(400).json({ error: 'availability_id_and_user_id_required' })
     }
 
     const supabase = getServiceSupabase()
+
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('therapist_code')
+      .eq('user_id', user_id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('Failed to fetch therapist profile:', profileError)
+      return res.status(500).json({ error: 'profile_fetch_failed', details: profileError.message })
+    }
+
+    const therapistCode = profile?.therapist_code
+    if (!therapistCode) {
+      return res.status(404).json({ error: 'therapist_code_not_found' })
+    }
 
     const { data, error } = await supabase
       .from('therapist_availability')
       .delete()
       .eq('id', availability_id)
-      .eq('therapist_code', therapist_code)
+      .eq('therapist_code', therapistCode)
       .select()
 
     if (error) {
