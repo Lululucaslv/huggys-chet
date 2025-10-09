@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
     const { data: slots, error } = await supabase
       .from('therapist_availability')
-      .select('id, therapist_code, start_utc, end_utc, status, booked, tz, created_by')
+      .select('id, therapist_code, start_utc, end_utc, booked')
       .eq('therapist_code', therapist_code)
       .or('booked.is.null,booked.eq.false')
       .gte('start_utc', new Date().toISOString())
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error('Failed to fetch availability:', error)
-      return res.status(500).json({ error: 'fetch_failed' })
+      return res.status(500).json({ error: 'fetch_failed', details: error.message })
     }
 
     const data = (slots || []).map((slot) => ({
@@ -52,9 +52,9 @@ export default async function handler(req, res) {
       therapistCode: slot.therapist_code,
       startUTC: slot.start_utc,
       endUTC: slot.end_utc,
-      tz_used: slot.tz || tz || 'UTC',
-      timeZone: slot.tz || tz || 'UTC',
-      status: slot.status,
+      tz_used: tz || 'UTC',
+      timeZone: tz || 'UTC',
+      status: slot.booked ? 'booked' : 'open',
       repeat: null,
       weekdays: [],
       source: 'api',
