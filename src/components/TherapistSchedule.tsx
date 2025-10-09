@@ -541,7 +541,21 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        const therapistCode = slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X'
+        let therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
+        
+        if (!therapistCode) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('therapist_code')
+            .eq('user_id', session.user.id)
+            .maybeSingle()
+          
+          therapistCode = profile?.therapist_code
+        }
+        
+        if (!therapistCode) {
+          throw new Error('Therapist code not found')
+        }
         
         const { data, error } = await supabase
           .from('therapist_availability')
@@ -555,6 +569,22 @@ const handleDeleteAvailability = useCallback(
           throw new Error('No rows deleted - slot not found or therapist_code mismatch')
         }
       } else {
+        let therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
+        
+        if (!therapistCode) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('therapist_code')
+            .eq('user_id', session.user.id)
+            .maybeSingle()
+          
+          therapistCode = profile?.therapist_code
+        }
+        
+        if (!therapistCode) {
+          throw new Error('Therapist code not found')
+        }
+        
         const response = await fetch('/api/availability/cancel', {
           method: 'POST',
           headers: {
@@ -563,7 +593,7 @@ const handleDeleteAvailability = useCallback(
           },
           body: JSON.stringify({
             availability_id: slot.id,
-            therapist_code: slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
+            therapist_code: therapistCode,
             user_id: session.user.id,
             tz: timezone,
             lang,
