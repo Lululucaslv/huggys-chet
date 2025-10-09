@@ -1115,7 +1115,7 @@ return (
 
                   <div className="flex flex-col gap-3 md:flex-row">
                     <Button
-                      className="flex-1 rounded-xl bg-primary text-white shadow-md hover:bg-primary/90"
+                      className="flex-1 rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-700"
                       onClick={handleCreateAvailability}
                       disabled={savingAvailability}
                     >
