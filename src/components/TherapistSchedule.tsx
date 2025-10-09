@@ -1015,7 +1015,7 @@ return (
 
           <div className="flex flex-col gap-6 lg:col-span-4">
             <div className="sticky top-6 flex flex-col gap-6">
-              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-lg">
+              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/90 backdrop-blur-lg shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
                     {t('sched_add_availability_panel_title')}
@@ -1029,7 +1029,7 @@ return (
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {t('sched_presets')}
                     </Label>
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2">
                       {PRESETS.map((preset) => (
                         <Button
                           key={preset}
