@@ -58,6 +58,7 @@ interface AvailabilitySlot {
   endUTC: string
   timezone: string
   therapistCode?: string
+  booked?: boolean
   repeat?: 'weekly' | null
   weekdays?: number[]
   source?: 'api' | 'supabase' | 'local'
@@ -228,6 +229,8 @@ const fetchAvailability = useCallback(async () => {
       startUTC: item.startUTC || item.start_utc || item.start,
       endUTC: item.endUTC || item.end_utc || item.end,
       timezone: item.tz_used || timezone,
+      therapistCode: item.therapistCode || item.therapist_code,
+      booked: item.booked || item.status === 'booked',
       repeat: item.repeat === 'weekly' ? 'weekly' : null,
       weekdays: item.weekday_mask || item.weekdays || [],
       source: item.source || 'api',
@@ -1179,15 +1182,21 @@ return (
                                 </p>
                               )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-full text-[#0F172A]/70"
-                              onClick={() => handleDeleteAvailability(slot)}
-                              aria-label={t('sched_delete_slot') || 'Delete slot'}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {slot.booked ? (
+                              <div className="flex items-center gap-2 px-3 py-1">
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">已预约</span>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-[#0F172A]/70"
+                                onClick={() => handleDeleteAvailability(slot)}
+                                aria-label={t('sched_delete_slot') || 'Delete slot'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                       </div>

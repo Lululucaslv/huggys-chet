@@ -37,7 +37,6 @@ export default async function handler(req, res) {
       .from('therapist_availability')
       .select('id, therapist_code, start_utc, end_utc, booked')
       .eq('therapist_code', therapist_code)
-      .or('booked.is.null,booked.eq.false')
       .order('start_utc', { ascending: true })
 
     if (error) {
