@@ -134,8 +134,13 @@ const availabilitySort = (a: AvailabilitySlot, b: AvailabilitySlot) =>
   DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()
 
 const getTimezoneOptions = (): string[] => {
-  if (typeof Intl.supportedValuesOf === 'function') {
-    return Intl.supportedValuesOf('timeZone')
+  try {
+    const intlAny = Intl as any
+    if (typeof intlAny.supportedValuesOf === 'function') {
+      return intlAny.supportedValuesOf('timeZone')
+    }
+  } catch (error) {
+    console.warn('Intl.supportedValuesOf not available', error)
   }
   return [
     'UTC',
@@ -171,7 +176,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const summaryWeekHours = useMemo(() => {
     const filtered = availability.filter((slot) => {
       const interval = intervalFromSlot(slot)
-      if (!interval) return false
+      if (!interval || !interval.start || !interval.end) return false
       return interval.start >= weekStart.startOf('day') && interval.end <= weekEnd.endOf('day')
     })
     const totalMinutes = filtered.reduce((acc, slot) => {
@@ -1140,7 +1145,7 @@ return (
                           <ToggleGroup type="multiple" value={formDraft.weekdays.map(String)} onValueChange={handleWeekdaysChange} className="grid grid-cols-4 gap-2">
                             {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
                               <ToggleGroupItem key={weekday} value={String(weekday)} className="rounded-xl border-[#E5E7EB] bg-white text-xs">
-                                {DateTime.now().set({ weekday }).toFormat('ccc')}
+                                {DateTime.now().set({ weekday: weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7 }).toFormat('ccc')}
                               </ToggleGroupItem>
                             ))}
                           </ToggleGroup>
@@ -1205,7 +1210,7 @@ return (
                               {slot.repeat === 'weekly' && (
                                 <p className="text-xs text-primary">
                                   {t('sched_repeat_weekly_badge', {
-                                    days: (slot.weekdays ?? []).map((day) => DateTime.now().set({ weekday: day }).toFormat('ccc')).join(', '),
+                                    days: (slot.weekdays ?? []).map((day) => DateTime.now().set({ weekday: day as 1 | 2 | 3 | 4 | 5 | 6 | 7 }).toFormat('ccc')).join(', '),
                                   })}
                                 </p>
                               )}
