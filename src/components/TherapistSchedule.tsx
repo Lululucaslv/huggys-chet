@@ -541,12 +541,28 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        const { error } = await supabase
+        const therapistCode = slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X'
+        console.log('Deleting slot:', { 
+          slotId: slot.id, 
+          slotTherapistCode: slot.therapistCode,
+          sessionTherapistCode: session.user.user_metadata?.therapist_code,
+          usingTherapistCode: therapistCode,
+          source: slot.source
+        })
+        
+        const { data, error } = await supabase
           .from('therapist_availability')
           .delete()
           .eq('id', slot.id)
-          .eq('therapist_code', slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X')
+          .eq('therapist_code', therapistCode)
+          .select()
+        
+        console.log('Delete result:', { data, error, rowsDeleted: data?.length || 0 })
+        
         if (error) throw error
+        if (!data || data.length === 0) {
+          throw new Error('No rows deleted - slot not found or therapist_code mismatch')
+        }
       } else {
         const response = await fetch('/api/availability/cancel', {
           method: 'POST',
