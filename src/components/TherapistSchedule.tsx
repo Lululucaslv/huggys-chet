@@ -57,6 +57,7 @@ interface AvailabilitySlot {
   startUTC: string
   endUTC: string
   timezone: string
+  therapistCode?: string
   repeat?: 'weekly' | null
   weekdays?: number[]
   source?: 'api' | 'supabase' | 'local'
@@ -521,12 +522,11 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        const therapistCode = session.user.user_metadata?.therapist_code
         const { error } = await supabase
           .from('therapist_availability')
           .delete()
-          .eq('id', Number(slot.id))
-          .eq('therapist_code', therapistCode)
+          .eq('id', slot.id)
+          .eq('therapist_code', slot.therapistCode)
         if (error) throw error
       } else {
         const response = await fetch('/api/availability/cancel', {
@@ -537,7 +537,7 @@ const handleDeleteAvailability = useCallback(
           },
           body: JSON.stringify({
             availability_id: slot.id,
-            therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
+            therapist_code: slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
             user_id: session.user.id,
             tz: timezone,
             lang,
