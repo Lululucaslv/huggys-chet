@@ -542,13 +542,6 @@ const handleDeleteAvailability = useCallback(
     try {
       if (slot.source === 'supabase') {
         const therapistCode = slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X'
-        console.log('Deleting slot:', { 
-          slotId: slot.id, 
-          slotTherapistCode: slot.therapistCode,
-          sessionTherapistCode: session.user.user_metadata?.therapist_code,
-          usingTherapistCode: therapistCode,
-          source: slot.source
-        })
         
         const { data, error } = await supabase
           .from('therapist_availability')
@@ -556,8 +549,6 @@ const handleDeleteAvailability = useCallback(
           .eq('id', slot.id)
           .eq('therapist_code', therapistCode)
           .select()
-        
-        console.log('Delete result:', { data, error, rowsDeleted: data?.length || 0 })
         
         if (error) throw error
         if (!data || data.length === 0) {
