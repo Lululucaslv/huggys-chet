@@ -548,7 +548,7 @@ const handleDeleteAvailability = useCallback(
           const { data: profile } = await supabase
             .from('user_profiles')
             .select('therapist_code')
-            .eq('user_id', session.user.id)
+            .eq('id', session.user.id)
             .maybeSingle()
           
           therapistCode = profile?.therapist_code
@@ -576,7 +576,7 @@ const handleDeleteAvailability = useCallback(
           const { data: profile } = await supabase
             .from('user_profiles')
             .select('therapist_code')
-            .eq('user_id', session.user.id)
+            .eq('id', session.user.id)
             .maybeSingle()
           
           therapistCode = profile?.therapist_code
