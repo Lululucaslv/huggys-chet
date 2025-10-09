@@ -542,20 +542,10 @@ const handleDeleteAvailability = useCallback(
 
     try {
       if (slot.source === 'supabase') {
-        let therapistCode = session.user.user_metadata?.therapist_code
+        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
         
         if (!therapistCode) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('therapist_code')
-            .eq('id', session.user.id)
-            .maybeSingle()
-          
-          therapistCode = profile?.therapist_code
-        }
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found')
+          throw new Error('Therapist code not found in slot or session')
         }
         
         const { data, error } = await supabase
@@ -570,20 +560,10 @@ const handleDeleteAvailability = useCallback(
           throw new Error('No rows deleted - slot not found or therapist_code mismatch')
         }
       } else {
-        let therapistCode = session.user.user_metadata?.therapist_code
+        const therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
         
         if (!therapistCode) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('therapist_code')
-            .eq('id', session.user.id)
-            .maybeSingle()
-          
-          therapistCode = profile?.therapist_code
-        }
-        
-        if (!therapistCode) {
-          throw new Error('Therapist code not found')
+          throw new Error('Therapist code not found in slot or session')
         }
         
         const response = await fetch('/api/availability/cancel', {
