@@ -6,9 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
-import LanguageSwitcher from './LanguageSwitcher'
 import { Toaster } from './ui/toaster'
-import { Avatar, AvatarFallback } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -721,18 +719,6 @@ const handleMergeConfirm = useCallback(async () => {
 
 const handleMergeCancel = useCallback(() => setMergeDialog(null), [])
 
-const headerInitials = useMemo(() => {
-  if (session.user.user_metadata?.full_name) {
-    return session.user.user_metadata.full_name
-      .split(' ')
-      .map((part: string) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase()
-  }
-  return (session.user.email || 'TU').slice(0, 2).toUpperCase()
-}, [session])
-
 const calendarDays = useMemo(() => {
   if (calendarMode === 'day') return [weekStart]
   if (calendarMode === 'month') {
@@ -776,35 +762,8 @@ const calendarDays = useMemo(() => {
 return (
   <div className="min-h-screen bg-[#F7F7F9]">
     <Toaster />
-    <header className="sticky top-0 z-30 border-b border-[#E5E7EB] bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-6 px-4 py-4 md:px-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-semibold text-white">
-            🤗
-          </div>
-          <div>
-            <h1 className="text-[28px] font-semibold leading-[32px] text-[#0F172A]">{t('sched_header_title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('sched_header_subtitle')}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-[#0F172A] shadow-sm md:flex">
-            <Globe className="h-4 w-4" />
-            <span>{timezone}</span>
-          </div>
-          <LanguageSwitcher />
-          <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
-            {t('sign_out')}
-          </Button>
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-primary/10 text-primary">{headerInitials}</AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
-    </header>
-
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-16 pt-6 md:px-6">
-        <section className="rounded-2xl border border-[#E5E7EB] bg-white shadow-md">
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-16 pt-6 md:px-6">
+        <section className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
           <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-6">
               <div>
@@ -852,7 +811,7 @@ return (
 
         <section className="grid gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-6 lg:col-span-8">
-            <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+            <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-between">
                   <div>
@@ -901,7 +860,7 @@ return (
                       return (
                         <div
                           key={booking.id}
-                          className="flex items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm"
+                          className="flex items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm"
                         >
                           <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -927,7 +886,7 @@ return (
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+            <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
               <CardHeader className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -978,7 +937,7 @@ return (
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-[#E5E7EB]">
-                    <div className="grid" style={{ gridTemplateColumns: `80px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
                       <div className="bg-[#F7F7F9] p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {t('sched_calendar_time')}
                       </div>
@@ -989,7 +948,7 @@ return (
                         </div>
                       ))}
                     </div>
-                    <div className="grid" style={{ gridTemplateColumns: `80px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
                       {Array.from({ length: 12 }, (_, index) => 8 + index).map((hour) => (
                         <Fragment key={`row-${hour}`}>
                           <div className="border-t border-[#E5E7EB] bg-white p-3 text-xs font-medium text-muted-foreground">
@@ -1055,8 +1014,8 @@ return (
           </div>
 
           <div className="flex flex-col gap-6 lg:col-span-4">
-            <div className="sticky top-[92px] flex flex-col gap-6">
-              <Card className="rounded-2xl border border-[#E5E7EB] shadow-lg">
+            <div className="sticky top-6 flex flex-col gap-6">
+              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
                     {t('sched_add_availability_panel_title')}
@@ -1172,7 +1131,7 @@ return (
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
                     {t('sched_my_availability')}
@@ -1202,7 +1161,7 @@ return (
                     <ScrollArea className="max-h-[420px] pr-3">
                       <div className="space-y-3">
                         {availability.map((slot) => (
-                          <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+                          <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm">
                             <div>
                               <p className="text-sm font-semibold text-[#0F172A]">
                                 {toDisplayRange(slot.startUTC, slot.endUTC, timezone)}
