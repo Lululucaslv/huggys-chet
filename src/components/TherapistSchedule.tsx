@@ -536,26 +536,36 @@ const handleCreateAvailability = useCallback(async () => {
 
 const handleDeleteAvailability = useCallback(
   async (slot: AvailabilitySlot) => {
+    console.log('[DELETE] Starting delete for slot:', { id: slot.id, therapistCode: slot.therapistCode, source: slot.source })
     const previous = availability
     setAvailability((prev) => prev.filter((item) => item.id !== slot.id))
 
     try {
       if (slot.source === 'supabase') {
+        console.log('[DELETE] slot.therapistCode:', slot.therapistCode)
+        console.log('[DELETE] session.user.user_metadata?.therapist_code:', session.user.user_metadata?.therapist_code)
+        
         let therapistCode = slot.therapistCode || session.user.user_metadata?.therapist_code
+        console.log('[DELETE] therapistCode after initial check:', therapistCode)
         
         if (!therapistCode) {
+          console.log('[DELETE] therapistCode not found, querying database...')
           const { data: profile } = await supabase
             .from('user_profiles')
             .select('therapist_code')
             .eq('user_id', session.user.id)
             .maybeSingle()
           
+          console.log('[DELETE] profile from database:', profile)
           therapistCode = profile?.therapist_code
+          console.log('[DELETE] therapistCode after database query:', therapistCode)
         }
         
         if (!therapistCode) {
           throw new Error('Therapist code not found')
         }
+        
+        console.log('[DELETE] About to delete with:', { id: slot.id, therapist_code: therapistCode })
         
         const { data, error } = await supabase
           .from('therapist_availability')
@@ -563,6 +573,8 @@ const handleDeleteAvailability = useCallback(
           .eq('id', slot.id)
           .eq('therapist_code', therapistCode)
           .select()
+        
+        console.log('[DELETE] Delete result:', { data, error, rowCount: data?.length })
         
         if (error) throw error
         if (!data || data.length === 0) {
