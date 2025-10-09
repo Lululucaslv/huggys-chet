@@ -327,6 +327,22 @@ const upcomingBookings = useMemo(() => {
     .slice(0, 3)
 }, [bookings])
 
+const enrichedAvailability = useMemo(() => {
+  return availability.map((slot) => {
+    const slotStart = DateTime.fromISO(slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(slot.endUTC, { zone: 'utc' })
+    
+    const hasBooking = bookings.some((booking) => {
+      const bookingStart = DateTime.fromISO(booking.startUTC, { zone: 'utc' })
+      const bookingEnd = DateTime.fromISO(booking.endUTC || booking.startUTC, { zone: 'utc' })
+      
+      return bookingStart < slotEnd && bookingEnd > slotStart
+    })
+    
+    return { ...slot, booked: slot.booked || hasBooking }
+  })
+}, [availability, bookings])
+
 const createSlotsFromForm = useCallback(
   (draft: FormDraft): AvailabilitySlot[] => {
     const baseStart = DateTime.fromISO(draft.start, { zone: draft.timezone || timezone })
@@ -529,7 +545,7 @@ const handleDeleteAvailability = useCallback(
           .from('therapist_availability')
           .delete()
           .eq('id', slot.id)
-          .eq('therapist_code', slot.therapistCode)
+          .eq('therapist_code', slot.therapistCode ?? session.user.user_metadata?.therapist_code ?? 'FAGHT34X')
         if (error) throw error
       } else {
         const response = await fetch('/api/availability/cancel', {
@@ -1157,7 +1173,7 @@ return (
                     </div>
                   ) : availabilityError ? (
                     <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{availabilityError}</div>
-                  ) : availability.length === 0 ? (
+                  ) : enrichedAvailability.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
                       <Clock className="h-10 w-10 text-primary" />
                       <div>
@@ -1168,7 +1184,7 @@ return (
                   ) : (
                     <ScrollArea className="max-h-[420px] pr-3">
                       <div className="space-y-3">
-                        {availability.map((slot) => (
+                        {enrichedAvailability.map((slot) => (
                           <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm">
                             <div>
                               <p className="text-sm font-semibold text-[#0F172A]">
