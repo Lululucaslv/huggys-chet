@@ -205,6 +205,22 @@ const fetchAvailability = useCallback(async () => {
   setLoadingAvailability(true)
   setAvailabilityError(null)
   try {
+    let therapistCode = session.user.user_metadata?.therapist_code
+    
+    if (!therapistCode) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('therapist_code')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+      
+      therapistCode = profile?.therapist_code
+    }
+    
+    if (!therapistCode) {
+      throw new Error('Therapist code not found')
+    }
+    
     const response = await fetch('/api/availability/list', {
       method: 'POST',
       headers: {
@@ -212,7 +228,7 @@ const fetchAvailability = useCallback(async () => {
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
+        therapist_code: therapistCode,
         user_id: session.user.id,
         lang,
         tz: timezone,
@@ -275,6 +291,22 @@ const fetchBookings = useCallback(async () => {
   const rangeStart = weekStart.minus({ weeks: 2 })
   const rangeEnd = weekEnd.plus({ weeks: 8 })
   try {
+    let therapistCode = session.user.user_metadata?.therapist_code
+    
+    if (!therapistCode) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('therapist_code')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+      
+      therapistCode = profile?.therapist_code
+    }
+    
+    if (!therapistCode) {
+      throw new Error('Therapist code not found')
+    }
+    
     const response = await fetch('/api/bookings/list', {
       method: 'POST',
       headers: {
@@ -283,7 +315,7 @@ const fetchBookings = useCallback(async () => {
       },
       body: JSON.stringify({
         user_id: session.user.id,
-        therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
+        therapist_code: therapistCode,
         tz: timezone,
         lang,
         date_from: rangeStart.startOf('day').toFormat(API_LOCAL_FORMAT),
