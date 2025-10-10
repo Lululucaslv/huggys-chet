@@ -172,8 +172,8 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const [rescheduleDialog, setRescheduleDialog] = useState<{ booking: Booking; availableSlots: AvailabilitySlot[] } | null>(null)
   const [cancelDialog, setCancelDialog] = useState<Booking | null>(null)
   const [loadingReschedule, setLoadingReschedule] = useState(false)
-  const [editDialog, setEditDialog] = useState<AvailabilitySlot | null>(null)
-  const [deleteDialog, setDeleteDialog] = useState<AvailabilitySlot | null>(null)
+  const [editDialog, setEditDialog] = useState<{ slot: AvailabilitySlot; cellStart: DateTime; cellEnd: DateTime } | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ slot: AvailabilitySlot; cellStart: DateTime; cellEnd: DateTime } | null>(null)
 
   const lang = i18n.language === 'zh' ? 'zh-CN' : i18n.language
   const timezoneOptions = useMemo(() => getTimezoneOptions(), [])
@@ -813,25 +813,48 @@ const handleCancelConfirm = useCallback(async () => {
   }
 }, [cancelDialog, session, t, toast, refreshAll])
 
-const handleEditClick = useCallback((slot: AvailabilitySlot) => {
-  setEditDialog(slot)
+const handleEditClick = useCallback((slot: AvailabilitySlot, cellStart: DateTime, cellEnd: DateTime) => {
+  setEditDialog({ slot, cellStart, cellEnd })
 }, [])
 
 const handleEditConfirm = useCallback(async (updatedSlot: { startUTC: string; endUTC: string }) => {
   if (!editDialog) return
   
   try {
-    await handleDeleteAvailability(editDialog)
+    const slotStart = DateTime.fromISO(editDialog.slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(editDialog.slot.endUTC, { zone: 'utc' })
+    const { cellStart, cellEnd } = editDialog
     
-    await upsertAvailability([
-      {
-        id: `edited-${Date.now()}`,
-        startUTC: updatedSlot.startUTC,
-        endUTC: updatedSlot.endUTC,
+    await handleDeleteAvailability(editDialog.slot)
+    
+    const slotsToCreate: Array<{ id: string; startUTC: string; endUTC: string; timezone: string }> = []
+    
+    if (slotStart < cellStart) {
+      slotsToCreate.push({
+        id: `split-before-${Date.now()}`,
+        startUTC: slotStart.toUTC().toISO() || '',
+        endUTC: cellStart.toUTC().toISO() || '',
         timezone,
-      },
-    ], t('sched_edit_success'))
+      })
+    }
     
+    slotsToCreate.push({
+      id: `edited-${Date.now()}`,
+      startUTC: updatedSlot.startUTC,
+      endUTC: updatedSlot.endUTC,
+      timezone,
+    })
+    
+    if (cellEnd < slotEnd) {
+      slotsToCreate.push({
+        id: `split-after-${Date.now()}`,
+        startUTC: cellEnd.toUTC().toISO() || '',
+        endUTC: slotEnd.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    await upsertAvailability(slotsToCreate, t('sched_edit_success'))
     setEditDialog(null)
   } catch (error) {
     console.error('Failed to edit availability', error)
@@ -839,22 +862,52 @@ const handleEditConfirm = useCallback(async (updatedSlot: { startUTC: string; en
   }
 }, [editDialog, timezone, t, toast, handleDeleteAvailability, upsertAvailability])
 
-const handleDeleteClick = useCallback((slot: AvailabilitySlot) => {
-  setDeleteDialog(slot)
+const handleDeleteClick = useCallback((slot: AvailabilitySlot, cellStart: DateTime, cellEnd: DateTime) => {
+  setDeleteDialog({ slot, cellStart, cellEnd })
 }, [])
 
 const handleDeleteConfirm = useCallback(async () => {
   if (!deleteDialog) return
   
   try {
-    await handleDeleteAvailability(deleteDialog)
-    toast({ title: t('success'), description: t('sched_delete_success') })
+    const slotStart = DateTime.fromISO(deleteDialog.slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(deleteDialog.slot.endUTC, { zone: 'utc' })
+    const { cellStart, cellEnd } = deleteDialog
+    
+    await handleDeleteAvailability(deleteDialog.slot)
+    
+    const slotsToCreate: Array<{ id: string; startUTC: string; endUTC: string; timezone: string }> = []
+    
+    if (slotStart < cellStart) {
+      slotsToCreate.push({
+        id: `split-before-${Date.now()}`,
+        startUTC: slotStart.toUTC().toISO() || '',
+        endUTC: cellStart.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    if (cellEnd < slotEnd) {
+      slotsToCreate.push({
+        id: `split-after-${Date.now()}`,
+        startUTC: cellEnd.toUTC().toISO() || '',
+        endUTC: slotEnd.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    if (slotsToCreate.length > 0) {
+      await upsertAvailability(slotsToCreate, t('sched_delete_success'))
+    } else {
+      toast({ title: t('success'), description: t('sched_delete_success') })
+    }
+    
     setDeleteDialog(null)
   } catch (error) {
     console.error('Failed to delete availability', error)
     toast({ title: t('error'), description: t('sched_delete_failed') })
   }
-}, [deleteDialog, t, toast, handleDeleteAvailability])
+}, [deleteDialog, timezone, t, toast, handleDeleteAvailability, upsertAvailability])
 
 const handleMergeConfirm = useCallback(async () => {
   if (!mergeDialog) return
@@ -1211,7 +1264,7 @@ return (
                                               variant="ghost"
                                               size="icon"
                                               className="h-5 w-5 rounded-full hover:bg-primary/10"
-                                              onClick={() => handleEditClick(slot)}
+                                              onClick={() => handleEditClick(slot, cellStart, cellEnd)}
                                             >
                                               <Pencil className="h-3 w-3" />
                                             </Button>
@@ -1219,7 +1272,7 @@ return (
                                               variant="ghost"
                                               size="icon"
                                               className="h-5 w-5 rounded-full hover:bg-rose-100 hover:text-rose-600"
-                                              onClick={() => handleDeleteClick(slot)}
+                                              onClick={() => handleDeleteClick(slot, cellStart, cellEnd)}
                                             >
                                               <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -1530,18 +1583,15 @@ return (
           </AlertDialogHeader>
           {editDialog && (
             <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {t('sched_editing_hour')}: {editDialog.cellStart.setZone(timezone).toFormat('HH:mm')} – {editDialog.cellEnd.setZone(timezone).toFormat('HH:mm')}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-start">{t('sched_start_time_label')}</Label>
                 <Input
                   id="edit-start"
                   type="datetime-local"
-                  defaultValue={DateTime.fromISO(editDialog.startUTC, { zone: 'utc' }).setZone(timezone).toFormat(DATETIME_LOCAL_FORMAT)}
-                  onChange={(e) => {
-                    const newStart = DateTime.fromFormat(e.target.value, DATETIME_LOCAL_FORMAT, { zone: timezone }).toUTC().toISO()
-                    if (newStart) {
-                      editDialog.startUTC = newStart
-                    }
-                  }}
+                  defaultValue={editDialog.cellStart.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
                 />
               </div>
               <div className="space-y-2">
@@ -1549,20 +1599,25 @@ return (
                 <Input
                   id="edit-end"
                   type="datetime-local"
-                  defaultValue={DateTime.fromISO(editDialog.endUTC, { zone: 'utc' }).setZone(timezone).toFormat(DATETIME_LOCAL_FORMAT)}
-                  onChange={(e) => {
-                    const newEnd = DateTime.fromFormat(e.target.value, DATETIME_LOCAL_FORMAT, { zone: timezone }).toUTC().toISO()
-                    if (newEnd) {
-                      editDialog.endUTC = newEnd
-                    }
-                  }}
+                  defaultValue={editDialog.cellEnd.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
                 />
               </div>
             </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setEditDialog(null)}>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => editDialog && handleEditConfirm({ startUTC: editDialog.startUTC, endUTC: editDialog.endUTC })}>
+            <AlertDialogAction 
+              onClick={() => {
+                if (!editDialog) return
+                const startInput = document.getElementById('edit-start') as HTMLInputElement
+                const endInput = document.getElementById('edit-end') as HTMLInputElement
+                if (startInput && endInput) {
+                  const startUTC = DateTime.fromISO(startInput.value, { zone: timezone }).toUTC().toISO() || ''
+                  const endUTC = DateTime.fromISO(endInput.value, { zone: timezone }).toUTC().toISO() || ''
+                  handleEditConfirm({ startUTC, endUTC })
+                }
+              }}
+            >
               {t('sched_save_changes')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1575,7 +1630,7 @@ return (
             <AlertDialogTitle>{t('sched_delete_availability_title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteDialog && t('sched_delete_availability_desc', {
-                range: toDisplayRange(deleteDialog.startUTC, deleteDialog.endUTC, timezone),
+                range: `${deleteDialog.cellStart.setZone(timezone).toFormat('MM/dd HH:mm')} – ${deleteDialog.cellEnd.setZone(timezone).toFormat('HH:mm')}`
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>

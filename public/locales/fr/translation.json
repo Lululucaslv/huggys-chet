@@ -97,6 +97,7 @@
   "sched_delete_success": "Créneau supprimé avec succès",
   "sched_delete_failed": "Échec de la suppression",
   "sched_save_changes": "Enregistrer les modifications",
+  "sched_editing_hour": "Modification de l'heure",
   "sched_no_availability_slots": "Aucun créneau disponible pour le moment",
   "sched_add_first_slot_hint": "Ajoutez votre premier créneau disponible",
   "sched_start_time_label": "Heure de début",

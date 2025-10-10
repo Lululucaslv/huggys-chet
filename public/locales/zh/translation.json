@@ -126,6 +126,7 @@
     "sched_delete_success": "时段删除成功",
     "sched_delete_failed": "删除时段失败",
     "sched_save_changes": "保存更改",
+    "sched_editing_hour": "正在编辑时段",
     "sched_no_availability_title": "\u6682\u65e0\u53ef\u9884\u7ea6\u65f6\u6bb5",
     "sched_no_availability_desc": "\u6dfb\u52a0\u53ef\u7ea6\u65f6\u6bb5\u540e\uff0c\u6765\u8bbf\u8005\u5c31\u80fd\u9884\u7ea6\u4f60\u7684\u65f6\u95f4",
     "sched_delete_slot": "\u5220\u9664\u53ef\u9884\u7ea6\u65f6\u6bb5",

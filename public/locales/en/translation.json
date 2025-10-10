@@ -126,6 +126,7 @@
     "sched_delete_success": "Availability deleted successfully",
     "sched_delete_failed": "Failed to delete availability",
     "sched_save_changes": "Save changes",
+    "sched_editing_hour": "Editing hour",
     "sched_no_availability_title": "No availability slots yet",
     "sched_no_availability_desc": "Create slots so clients can schedule with you",
     "sched_delete_slot": "Delete availability slot",
