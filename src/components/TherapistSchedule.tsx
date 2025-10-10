@@ -25,6 +25,7 @@ import {
   Clock,
   Globe,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -171,6 +172,8 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const [rescheduleDialog, setRescheduleDialog] = useState<{ booking: Booking; availableSlots: AvailabilitySlot[] } | null>(null)
   const [cancelDialog, setCancelDialog] = useState<Booking | null>(null)
   const [loadingReschedule, setLoadingReschedule] = useState(false)
+  const [editDialog, setEditDialog] = useState<AvailabilitySlot | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<AvailabilitySlot | null>(null)
 
   const lang = i18n.language === 'zh' ? 'zh-CN' : i18n.language
   const timezoneOptions = useMemo(() => getTimezoneOptions(), [])
@@ -810,6 +813,49 @@ const handleCancelConfirm = useCallback(async () => {
   }
 }, [cancelDialog, session, t, toast, refreshAll])
 
+const handleEditClick = useCallback((slot: AvailabilitySlot) => {
+  setEditDialog(slot)
+}, [])
+
+const handleEditConfirm = useCallback(async (updatedSlot: { startUTC: string; endUTC: string }) => {
+  if (!editDialog) return
+  
+  try {
+    await handleDeleteAvailability(editDialog)
+    
+    await upsertAvailability([
+      {
+        id: `edited-${Date.now()}`,
+        startUTC: updatedSlot.startUTC,
+        endUTC: updatedSlot.endUTC,
+        timezone,
+      },
+    ], t('sched_edit_success'))
+    
+    setEditDialog(null)
+  } catch (error) {
+    console.error('Failed to edit availability', error)
+    toast({ title: t('error'), description: t('sched_edit_failed') })
+  }
+}, [editDialog, timezone, t, toast, handleDeleteAvailability, upsertAvailability])
+
+const handleDeleteClick = useCallback((slot: AvailabilitySlot) => {
+  setDeleteDialog(slot)
+}, [])
+
+const handleDeleteConfirm = useCallback(async () => {
+  if (!deleteDialog) return
+  
+  try {
+    await handleDeleteAvailability(deleteDialog)
+    toast({ title: t('success'), description: t('sched_delete_success') })
+    setDeleteDialog(null)
+  } catch (error) {
+    console.error('Failed to delete availability', error)
+    toast({ title: t('error'), description: t('sched_delete_failed') })
+  }
+}, [deleteDialog, t, toast, handleDeleteAvailability])
+
 const handleMergeConfirm = useCallback(async () => {
   if (!mergeDialog) return
   const mergedStart = [...mergeDialog.conflicts, mergeDialog.candidate]
@@ -1155,9 +1201,31 @@ return (
                                   {availabilityInCell.map(({ slot }) => (
                                     <div
                                       key={`${slot.id}-${cellKey}`}
-                                      className="flex flex-col items-start gap-1 rounded-lg border border-primary/40 bg-white/70 px-2 py-1.5 text-xs text-primary shadow-sm"
+                                      className="group relative flex flex-col items-start gap-1 rounded-lg border border-primary/40 bg-white/70 px-2 py-1.5 text-xs text-primary shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                      <span className="font-medium">{t('sched_calendar_available')}</span>
+                                      <div className="flex w-full items-center justify-between gap-1">
+                                        <span className="font-medium">{t('sched_calendar_available')}</span>
+                                        {!slot.booked && (
+                                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 rounded-full hover:bg-primary/10"
+                                              onClick={() => handleEditClick(slot)}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 rounded-full hover:bg-rose-100 hover:text-rose-600"
+                                              onClick={() => handleDeleteClick(slot)}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
                                       <Badge variant="outline" className="border-primary/40 text-[10px]">
                                         {DateTime.fromISO(slot.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}–
                                         {DateTime.fromISO(slot.endUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}
@@ -1447,6 +1515,74 @@ return (
             <AlertDialogCancel onClick={() => setCancelDialog(null)}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleCancelConfirm} className="bg-rose-600 hover:bg-rose-700">
               {t('sched_cancel_booking')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!editDialog} onOpenChange={(open) => (!open ? setEditDialog(null) : null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_edit_availability_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_edit_availability_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {editDialog && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start">{t('sched_start_time_label')}</Label>
+                <Input
+                  id="edit-start"
+                  type="datetime-local"
+                  defaultValue={DateTime.fromISO(editDialog.startUTC, { zone: 'utc' }).setZone(timezone).toFormat(DATETIME_LOCAL_FORMAT)}
+                  onChange={(e) => {
+                    const newStart = DateTime.fromFormat(e.target.value, DATETIME_LOCAL_FORMAT, { zone: timezone }).toUTC().toISO()
+                    if (newStart) {
+                      editDialog.startUTC = newStart
+                    }
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-end">{t('sched_end_time_label')}</Label>
+                <Input
+                  id="edit-end"
+                  type="datetime-local"
+                  defaultValue={DateTime.fromISO(editDialog.endUTC, { zone: 'utc' }).setZone(timezone).toFormat(DATETIME_LOCAL_FORMAT)}
+                  onChange={(e) => {
+                    const newEnd = DateTime.fromFormat(e.target.value, DATETIME_LOCAL_FORMAT, { zone: timezone }).toUTC().toISO()
+                    if (newEnd) {
+                      editDialog.endUTC = newEnd
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEditDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => editDialog && handleEditConfirm({ startUTC: editDialog.startUTC, endUTC: editDialog.endUTC })}>
+              {t('sched_save_changes')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteDialog} onOpenChange={(open) => (!open ? setDeleteDialog(null) : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_delete_availability_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog && t('sched_delete_availability_desc', {
+                range: toDisplayRange(deleteDialog.startUTC, deleteDialog.endUTC, timezone),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-rose-600 hover:bg-rose-700">
+              {t('sched_delete_slot')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
