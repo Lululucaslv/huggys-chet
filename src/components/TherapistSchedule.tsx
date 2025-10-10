@@ -951,8 +951,8 @@ return (
                     ))}
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-2xl border border-[#E5E7EB]">
-                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                  <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(120px, 1fr))` }}>
                       <div className="bg-[#F7F7F9] p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {t('sched_calendar_time')}
                       </div>
@@ -963,7 +963,7 @@ return (
                         </div>
                       ))}
                     </div>
-                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(120px, 1fr))` }}>
                       {Array.from({ length: 12 }, (_, index) => 8 + index).map((hour) => (
                         <Fragment key={`row-${hour}`}>
                           <div className="border-t border-[#E5E7EB] bg-white p-3 text-xs font-medium text-muted-foreground">
