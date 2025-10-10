@@ -166,7 +166,7 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
               {isTherapist && (
                 <Link
                   to="/settings"
-                  className="text-gray-600 hover:text-gray-900 p-2 rounded-md"
+                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-2 rounded-md transition-colors"
                   aria-label={t('nav_settings') || 'Settings'}
                 >
                   <Settings className="h-5 w-5" />
@@ -190,7 +190,7 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
             <button
               aria-label="Open AI assistant"
               onClick={() => setChatOpen(true)}
-              className="fixed bottom-6 right-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="fixed bottom-6 right-6 bg-gradient-to-br from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-400"
             >
               <MessageCircle className="h-6 w-6" />
             </button>

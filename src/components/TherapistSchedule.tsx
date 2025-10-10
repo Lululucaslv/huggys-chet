@@ -784,7 +784,7 @@ return (
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('sched_summary_timezone')}</p>
                 <div className="flex items-center gap-2 text-sm font-medium text-[#0F172A]">
-                  <Globe className="h-4 w-4" />
+                  <Globe className="h-4 w-4 text-cyan-600 transition-colors hover:text-cyan-700" />
                   <Select value={timezone} onValueChange={handleTimezoneChange}>
                     <SelectTrigger className="w-[220px] rounded-full border-[#E5E7EB]">
                       <SelectValue placeholder={t('sched_timezone_placeholder')} />
@@ -818,7 +818,7 @@ return (
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={refreshAll} disabled={isRefreshing}>
-              {isRefreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isRefreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-600" />}
               {t('sched_refresh')}
             </Button>
           </div>
@@ -859,7 +859,7 @@ return (
                   <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{bookingsError}</div>
                 ) : upcomingBookings.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
-                    <CalendarIcon className="h-10 w-10 text-primary" />
+                    <CalendarIcon className="h-10 w-10 text-cyan-500" />
                     <div>
                       <p className="text-sm font-semibold text-[#0F172A]">{t('sched_no_upcoming_title')}</p>
                       <p className="text-sm text-muted-foreground">{t('sched_no_upcoming_desc')}</p>
@@ -1135,11 +1135,11 @@ return (
                       disabled={savingAvailability}
                     >
                       {savingAvailability && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      <Plus className="mr-2 h-4 w-4" />
+                      <Plus className="mr-2 h-4 w-4 text-white" />
                       {t('sched_add_time_slot')}
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-xl border-[#E5E7EB]" disabled>
-                      <RefreshCw className="mr-2 h-4 w-4" />
+                      <RefreshCw className="mr-2 h-4 w-4 text-emerald-600" />
                       {t('sched_bulk_add')}
                     </Button>
                   </div>
@@ -1166,7 +1166,7 @@ return (
                     <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{availabilityError}</div>
                   ) : enrichedAvailability.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
-                      <Clock className="h-10 w-10 text-primary" />
+                      <Clock className="h-10 w-10 text-cyan-500" />
                       <div>
                         <p className="text-sm font-semibold text-[#0F172A]">{t('sched_no_availability_title')}</p>
                         <p className="text-sm text-muted-foreground">{t('sched_no_availability_desc')}</p>
@@ -1197,7 +1197,7 @@ return (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 rounded-full text-[#0F172A]/70"
+                                className="h-8 w-8 rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                                 onClick={() => handleDeleteAvailability(slot)}
                                 aria-label={t('sched_delete_slot') || 'Delete slot'}
                               >

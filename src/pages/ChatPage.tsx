@@ -621,7 +621,7 @@ export default function ChatPage({ session }: ChatPageProps) {
           {/* Input Area */}
           <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-sm p-6">
             <div className="flex gap-4 items-end">
-              <button className="p-3 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 rounded-full transition-colors">
+              <button className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 backdrop-blur-sm border border-amber-400/30 rounded-full transition-all duration-300 hover:scale-110">
                 <Camera className="w-5 h-5 text-white" />
               </button>
               <div className="flex-1">
@@ -646,7 +646,7 @@ export default function ChatPage({ session }: ChatPageProps) {
               <button 
                 onClick={sendMessage} 
                 disabled={isTyping || !inputMessage.trim()}
-                className="p-3 bg-cyan-600/80 hover:bg-cyan-700 disabled:bg-slate-600 disabled:opacity-50 backdrop-blur-sm border border-cyan-400/30 rounded-full transition-colors"
+                className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:bg-slate-600 disabled:opacity-50 backdrop-blur-sm border border-cyan-400/30 rounded-full transition-all duration-300 hover:scale-110"
               >
                 <Send className="h-5 w-5 text-white" />
               </button>
