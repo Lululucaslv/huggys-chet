@@ -719,7 +719,7 @@ const handleRescheduleClick = useCallback(async (booking: Booking) => {
       },
       body: JSON.stringify({
         therapist_code: booking.therapistCode || session.user.user_metadata?.therapist_code,
-        timezone: timezone,
+        tz: timezone,
         lang: lang,
       }),
     })
@@ -727,11 +727,11 @@ const handleRescheduleClick = useCallback(async (booking: Booking) => {
     if (!response.ok) throw new Error('Failed to fetch availability')
     
     const data = await response.json()
-    const slots = (data.slots || []).map((s: any) => ({
+    const slots = (data.data || []).map((s: any) => ({
       id: s.id,
-      startUTC: s.start_utc,
-      endUTC: s.end_utc,
-      timezone: s.timezone,
+      startUTC: s.startUTC,
+      endUTC: s.endUTC,
+      timezone: s.tz_used,
       therapistCode: s.therapist_code,
     }))
     
