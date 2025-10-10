@@ -279,34 +279,37 @@ const fetchBookings = useCallback(async () => {
   const rangeStart = weekStart.minus({ weeks: 2 })
   const rangeEnd = weekEnd.plus({ weeks: 8 })
   try {
-    const response = await fetch('/api/bookings/list', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        user_id: session.user.id,
-        therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
-        tz: timezone,
-        lang,
-        date_from: rangeStart.startOf('day').toFormat(API_LOCAL_FORMAT),
-        date_to: rangeEnd.endOf('day').toFormat(API_LOCAL_FORMAT),
-      }),
-    })
+    const therapistCode = session.user.user_metadata?.therapist_code ?? 'FAGHT34X'
+    
+    const { data, error: supabaseError } = await supabase
+      .from('bookings')
+      .select('id,therapist_code,start_utc,end_utc,duration_mins,status,user_id')
+      .eq('therapist_code', therapistCode)
+      .gte('start_utc', rangeStart.toISO())
+      .lte('start_utc', rangeEnd.toISO())
+      .order('start_utc', { ascending: true })
 
-    if (!response.ok) {
-      throw new Error('Request failed')
+    if (supabaseError) {
+      throw supabaseError
     }
 
-    const json = await response.json()
-    const list: Booking[] = (json?.data ?? []).map((item: any) => ({
-      id: item.bookingId || item.id || crypto.randomUUID(),
-      startUTC: item.startUTC || item.start_utc || item.start,
-      endUTC: item.endUTC || item.end_utc || item.end,
+    const userIds = [...new Set((data ?? []).map(b => b.user_id))].filter(Boolean)
+    let clientNames: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('user_profiles')
+        .select('user_id,name')
+        .in('user_id', userIds)
+      clientNames = Object.fromEntries((profiles || []).map(p => [p.user_id, p.name]))
+    }
+
+    const list: Booking[] = (data ?? []).map((item: any) => ({
+      id: String(item.id),
+      startUTC: item.start_utc,
+      endUTC: item.end_utc,
       status: (item.status || 'confirmed') as BookingStatus,
-      clientName: item.client_name || item.client?.name,
-      durationMinutes: item.duration_minutes || item.duration,
+      clientName: clientNames[item.user_id] || 'Client',
+      durationMinutes: item.duration_mins,
       therapistCode: item.therapist_code,
     }))
 
