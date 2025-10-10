@@ -74,7 +74,7 @@
   "tool_availability_count": "{{name}} a {{count}} créneaux disponibles. {{extra}}",
   "tool_booking_created": "Réservation créée : {{name}} - {{dateTime}}",
   "tool_error": "Erreur d’outil : {{error}}",
-  "auth_app_title": "Plateforme MoreThanHugs",
+  "auth_app_title": "Huggys.ai",
   "sched_my_availability": "Mes disponibilités",
   "sched_my_availability_desc": "Gérez vos créneaux disponibles ; les créneaux réservés n’apparaîtront pas ici",
   "sched_no_availability_slots": "Aucun créneau disponible pour le moment",

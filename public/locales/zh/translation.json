@@ -145,7 +145,7 @@
     "tool_availability_count": "{{name}} \u53ef\u9884\u7ea6\u65f6\u6bb5\u5171 {{count}} \u4e2a\u3002{{extra}}",
     "tool_booking_created": "\u9884\u7ea6\u5df2\u521b\u5efa\uff1a{{name}} - {{dateTime}}",
     "tool_error": "\u5de5\u5177\u8fd4\u56de\u9519\u8bef\uff1a{{error}}",
-    "auth_app_title": "MoreThanHugs \u7597\u6108\u5e73\u53f0",
+    "auth_app_title": "Huggys.ai",
     "chat_confirm_booking": "\u6211\u786e\u8ba4\u9884\u7ea6 {{therapistName}} \u5728 {{whenLocal}}\uff08ISO: {{iso}}\uff09\u7684\u65f6\u95f4\u3002",
     "chat_modal_desc": "\u4e0eAI\u52a9\u7406\u804a\u5929",
     "cancel": "\u53d6\u6d88"

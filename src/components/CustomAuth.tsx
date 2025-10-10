@@ -159,7 +159,7 @@ export default function CustomAuth({ onAuthSuccess }: CustomAuthProps) {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
-          MoreThanHugs 疗愈平台
+          Huggys.ai
         </h1>
         
         <Card>

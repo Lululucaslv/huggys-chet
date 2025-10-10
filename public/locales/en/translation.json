@@ -145,7 +145,7 @@
     "tool_availability_count": "{{name}} has {{count}} available time slots. {{extra}}",
     "tool_booking_created": "Booking created: {{name}} - {{dateTime}}",
     "tool_error": "Tool error: {{error}}",
-    "auth_app_title": "MoreThanHugs Platform",
+    "auth_app_title": "Huggys.ai",
     "chat_confirm_booking": "I confirm booking {{therapistName}} at {{whenLocal}} (ISO: {{iso}}).",
     "chat_modal_desc": "Chat with your AI assistant",
     "cancel": "Cancel"
