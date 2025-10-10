@@ -50,6 +50,7 @@ interface Booking {
   status: BookingStatus
   clientName?: string
   durationMinutes?: number
+  therapistCode?: string
 }
 
 interface AvailabilitySlot {
@@ -167,6 +168,9 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
   const [bookingsError, setBookingsError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [rescheduleDialog, setRescheduleDialog] = useState<{ booking: Booking; availableSlots: AvailabilitySlot[] } | null>(null)
+  const [cancelDialog, setCancelDialog] = useState<Booking | null>(null)
+  const [loadingReschedule, setLoadingReschedule] = useState(false)
 
   const lang = i18n.language === 'zh' ? 'zh-CN' : i18n.language
   const timezoneOptions = useMemo(() => getTimezoneOptions(), [])
@@ -303,6 +307,7 @@ const fetchBookings = useCallback(async () => {
       status: (item.status || 'confirmed') as BookingStatus,
       clientName: item.client_name || item.client?.name,
       durationMinutes: item.duration_minutes || item.duration,
+      therapistCode: item.therapist_code,
     }))
 
     setBookings(list.sort((a, b) => DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()))
@@ -342,6 +347,39 @@ const enrichedAvailability = useMemo(() => {
     return { ...slot, booked: slot.booked || hasBooking }
   })
 }, [availability, bookings])
+
+const allTimeCommitments = useMemo(() => {
+  const commitments = [...enrichedAvailability]
+  
+  bookings.forEach((booking) => {
+    const bookingStart = DateTime.fromISO(booking.startUTC, { zone: 'utc' })
+    const bookingEnd = booking.endUTC 
+      ? DateTime.fromISO(booking.endUTC, { zone: 'utc' })
+      : bookingStart.plus({ minutes: booking.durationMinutes || 60 })
+    
+    const hasAvailability = availability.some((slot) => {
+      const slotStart = DateTime.fromISO(slot.startUTC, { zone: 'utc' })
+      const slotEnd = DateTime.fromISO(slot.endUTC, { zone: 'utc' })
+      return bookingStart < slotEnd && bookingEnd > slotStart
+    })
+    
+    if (!hasAvailability) {
+      commitments.push({
+        id: `booking-${booking.id}`,
+        startUTC: booking.startUTC,
+        endUTC: booking.endUTC || bookingStart.plus({ minutes: booking.durationMinutes || 60 }).toUTC().toISO() || '',
+        timezone: timezone,
+        booked: true,
+        isStandaloneBooking: true,
+        bookingId: booking.id,
+      } as any)
+    }
+  })
+  
+  return commitments.sort((a, b) => 
+    DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()
+  )
+}, [enrichedAvailability, bookings, availability, timezone])
 
 const createSlotsFromForm = useCallback(
   (draft: FormDraft): AvailabilitySlot[] => {
@@ -671,6 +709,104 @@ const refreshAll = useCallback(async () => {
   setIsRefreshing(false)
 }, [fetchAvailability, fetchBookings])
 
+const handleRescheduleClick = useCallback(async (booking: Booking) => {
+  try {
+    const response = await fetch('/api/availability/list', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        therapist_code: booking.therapistCode || session.user.user_metadata?.therapist_code,
+        timezone: timezone,
+        lang: lang,
+      }),
+    })
+    
+    if (!response.ok) throw new Error('Failed to fetch availability')
+    
+    const data = await response.json()
+    const slots = (data.slots || []).map((s: any) => ({
+      id: s.id,
+      startUTC: s.start_utc,
+      endUTC: s.end_utc,
+      timezone: s.timezone,
+      therapistCode: s.therapist_code,
+    }))
+    
+    setRescheduleDialog({ booking, availableSlots: slots })
+  } catch (error) {
+    console.error('Failed to fetch slots for reschedule', error)
+    toast({ title: t('error'), description: t('sched_error_fetch_availability') })
+  }
+}, [session, timezone, lang, t, toast])
+
+const handleRescheduleConfirm = useCallback(async (newSlotId: string) => {
+  if (!rescheduleDialog) return
+  
+  setLoadingReschedule(true)
+  try {
+    const response = await fetch('/api/bookings/reschedule', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        booking_id: rescheduleDialog.booking.id,
+        new_availability_id: newSlotId,
+        user_tz: timezone,
+      }),
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || 'Reschedule failed')
+    }
+    
+    toast({ title: t('success'), description: t('sched_reschedule_success') })
+    await refreshAll()
+    setRescheduleDialog(null)
+  } catch (error) {
+    console.error('Failed to reschedule booking', error)
+    toast({ title: t('error'), description: t('sched_reschedule_failed') })
+  } finally {
+    setLoadingReschedule(false)
+  }
+}, [rescheduleDialog, session, timezone, t, toast, refreshAll])
+
+const handleCancelClick = useCallback((booking: Booking) => {
+  setCancelDialog(booking)
+}, [])
+
+const handleCancelConfirm = useCallback(async () => {
+  if (!cancelDialog) return
+  
+  try {
+    const response = await fetch('/api/bookings/cancel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        booking_id: cancelDialog.id,
+        reason: 'therapist_cancelled',
+      }),
+    })
+    
+    if (!response.ok) throw new Error('Cancel failed')
+    
+    toast({ title: t('success'), description: t('sched_cancel_success') })
+    await refreshAll()
+    setCancelDialog(null)
+  } catch (error) {
+    console.error('Failed to cancel booking', error)
+    toast({ title: t('error'), description: t('sched_cancel_failed') })
+  }
+}, [cancelDialog, session, t, toast, refreshAll])
+
 const handleMergeConfirm = useCallback(async () => {
   if (!mergeDialog) return
   const mergedStart = [...mergeDialog.conflicts, mergeDialog.candidate]
@@ -890,9 +1026,31 @@ return (
                               </p>
                             </div>
                           </div>
-                          <Badge variant="secondary" className="rounded-full bg-blue-50 text-xs uppercase tracking-wide text-primary">
-                            {t(`status_${booking.status}`)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="rounded-full bg-blue-50 text-xs uppercase tracking-wide text-primary">
+                              {t(`status_${booking.status}`)}
+                            </Badge>
+                            {booking.status === 'confirmed' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-full"
+                                  onClick={() => handleRescheduleClick(booking)}
+                                >
+                                  {t('sched_reschedule_booking')}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-full text-rose-600 hover:text-rose-700"
+                                  onClick={() => handleCancelClick(booking)}
+                                >
+                                  {t('sched_cancel_booking')}
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -1164,7 +1322,7 @@ return (
                     </div>
                   ) : availabilityError ? (
                     <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{availabilityError}</div>
-                  ) : enrichedAvailability.length === 0 ? (
+                  ) : allTimeCommitments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
                       <Clock className="h-10 w-10 text-cyan-500" />
                       <div>
@@ -1175,7 +1333,7 @@ return (
                   ) : (
                     <ScrollArea className="max-h-[420px] pr-3">
                       <div className="space-y-3">
-                        {enrichedAvailability.map((slot) => (
+                        {allTimeCommitments.map((slot) => (
                           <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm">
                             <div>
                               <p className="text-sm font-semibold text-[#0F172A]">
@@ -1191,7 +1349,9 @@ return (
                             </div>
                             {slot.booked ? (
                               <div className="flex items-center gap-2 px-3 py-1">
-                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">已预约</span>
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                  {(slot as any).isStandaloneBooking ? t('sched_booking_without_availability') : '已预约'}
+                                </span>
                               </div>
                             ) : (
                               <Button
@@ -1233,6 +1393,58 @@ return (
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleMergeCancel}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleMergeConfirm}>{t('sched_merge_confirm')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!rescheduleDialog} onOpenChange={(open) => (!open ? setRescheduleDialog(null) : null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_reschedule_dialog_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_reschedule_dialog_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {rescheduleDialog && (
+            <ScrollArea className="max-h-96">
+              <div className="space-y-2">
+                {rescheduleDialog.availableSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t('sched_no_availability_slots')}</p>
+                ) : (
+                  rescheduleDialog.availableSlots.map((slot) => (
+                    <Button
+                      key={slot.id}
+                      variant="outline"
+                      className="w-full justify-start text-left"
+                      onClick={() => handleRescheduleConfirm(slot.id)}
+                      disabled={loadingReschedule}
+                    >
+                      {toDisplayRange(slot.startUTC, slot.endUTC, timezone)}
+                    </Button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRescheduleDialog(null)}>{t('cancel')}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!cancelDialog} onOpenChange={(open) => (!open ? setCancelDialog(null) : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_cancel_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_cancel_confirm_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCancelDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm} className="bg-rose-600 hover:bg-rose-700">
+              {t('sched_cancel_booking')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
