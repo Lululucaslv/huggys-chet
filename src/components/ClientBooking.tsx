@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { Button } from './ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Calendar, Clock, User, CheckCircle, Globe } from 'lucide-react'
 import { US_CANADA_TIMEZONES, formatDisplayDateTime, TimezoneOption } from '../lib/timezone'
@@ -239,94 +238,114 @@ export default function ClientBooking({ session }: ClientBookingProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            {t('booking_available_times')}
-          </CardTitle>
-          <CardDescription>
-            {t('booking_instructions')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
-              <Globe className="inline h-4 w-4 mr-1" />
-              {t('booking_timezone_label')}
-            </label>
-            <Select value={selectedTimezone} onValueChange={updateTimezone}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t('booking_select_timezone')} />
-              </SelectTrigger>
-              <SelectContent>
-                {US_CANADA_TIMEZONES.map((tz: TimezoneOption) => (
-                  <SelectItem key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className="relative min-h-screen bg-slate-950">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-cyan-500/40 blur-3xl" />
+        <div className="absolute top-1/4 -right-20 h-96 w-96 rounded-full bg-purple-500/30 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-500/20 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 space-y-6 p-6">
+        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="p-6 border-b border-slate-700/50">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-semibold text-cyan-200">
+                {t('booking_available_times')}
+              </h2>
+            </div>
+            <p className="text-slate-300 text-sm">
+              {t('booking_instructions')}
+            </p>
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
           
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              {success}
+          <div className="p-6">
+            <div className="mb-6">
+              <label htmlFor="timezone" className="flex items-center gap-2 text-sm font-medium text-cyan-200 mb-2">
+                <Globe className="h-4 w-4" />
+                {t('booking_timezone_label')}
+              </label>
+              <Select value={selectedTimezone} onValueChange={updateTimezone}>
+                <SelectTrigger className="w-full bg-slate-700/60 border-slate-600/50 text-slate-100 backdrop-blur-sm">
+                  <SelectValue placeholder={t('booking_select_timezone')} />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {US_CANADA_TIMEZONES.map((tz: TimezoneOption) => (
+                    <SelectItem key={tz.value} value={tz.value} className="text-slate-100">
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">{t('booking_loading_slots')}</p>
-            </div>
-          ) : availableSlots.length === 0 ? (
-            <div className="text-center py-8">
-              <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">{t('booking_no_slots')}</p>
-              <p className="text-sm text-gray-400 mt-1">{t('booking_try_later_or_contact')}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {availableSlots.map((slot) => (
-                <div
-                  key={slot.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {slot.therapist_name || t('therapist_fallback')}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {t('booking_duration_minutes', { minutes: getDuration(slot.start_time, slot.end_time) })}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => bookSlot(slot.id)}
-                    disabled={bookingLoading === slot.id}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {bookingLoading === slot.id ? t('booking_in_progress') : t('book')}
-                  </Button>
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="bg-green-500/20 border border-green-500/50 text-green-200 px-4 py-3 rounded-lg mb-4 flex items-center gap-2 backdrop-blur-sm">
+                <CheckCircle className="h-4 w-4" />
+                {success}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full animate-pulse">
+                  <Clock className="h-8 w-8 text-white" />
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <p className="text-slate-300">{t('booking_loading_slots')}</p>
+              </div>
+            ) : availableSlots.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-slate-700 to-slate-600 rounded-full">
+                  <Clock className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-slate-300 mb-2">{t('booking_no_slots')}</p>
+                <p className="text-sm text-slate-400">{t('booking_try_later_or_contact')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="group relative flex items-center justify-between p-4 bg-slate-700/40 backdrop-blur-sm border border-slate-600/50 rounded-xl hover:bg-slate-700/60 hover:border-cyan-500/50 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-100 mb-1">
+                          {slot.therapist_name || t('therapist_fallback')}
+                        </p>
+                        <p className="text-sm text-cyan-300">
+                          {formatDateTime(slot.start_time)} - {formatDateTime(slot.end_time)}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {t('booking_duration_minutes', { minutes: getDuration(slot.start_time, slot.end_time) })}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => bookSlot(slot.id)}
+                      disabled={bookingLoading === slot.id}
+                      className="bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-600 text-white border border-cyan-400/30 transition-all duration-300 hover:scale-105"
+                    >
+                      {bookingLoading === slot.id ? t('booking_in_progress') : t('book')}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
