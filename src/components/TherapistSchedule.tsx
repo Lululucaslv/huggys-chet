@@ -718,7 +718,7 @@ const handleRescheduleClick = useCallback(async (booking: Booking) => {
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        therapist_code: booking.therapistCode || session.user.user_metadata?.therapist_code,
+        therapist_code: booking.therapistCode || session.user.user_metadata?.therapist_code || 'FAGHT34X',
         tz: timezone,
         lang: lang,
       }),
