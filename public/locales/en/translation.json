@@ -105,7 +105,7 @@
     "sched_add_time_slot": "Add time slot",
     "sched_bulk_add": "Bulk add",
     "sched_my_availability": "My availability",
-    "sched_my_availability_desc": "Manage active time slots; booked slots are hidden",
+    "sched_my_availability_desc": "Manage active time slots; booked slots are shown but cannot be deleted",
     "sched_no_availability_title": "No availability slots yet",
     "sched_no_availability_desc": "Create slots so clients can schedule with you",
     "sched_delete_slot": "Delete availability slot",

@@ -72,7 +72,7 @@
   "tool_error": "Error de herramienta: {{error}}",
   "auth_app_title": "Huggys.ai",
   "sched_my_availability": "Mi disponibilidad",
-  "sched_my_availability_desc": "Administra tus horarios disponibles; los horarios reservados no aparecerán aquí",
+  "sched_my_availability_desc": "Gestiona franjas horarias activas; las franjas reservadas se muestran pero no se pueden eliminar",
   "sched_no_availability_slots": "Aún no hay horarios disponibles",
   "sched_add_first_slot_hint": "Añade tu primer horario disponible",
   "sched_start_time_label": "Hora de inicio",
