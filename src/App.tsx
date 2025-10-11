@@ -13,6 +13,8 @@ import AIChat from './components/AIChat'
 import SettingsPage from './pages/SettingsPage'
 import { Dialog, DialogContent } from './components/ui/dialog'
 import { MessageCircle, Settings } from 'lucide-react'
+import { AuthGateProvider } from './contexts/AuthGateContext'
+import { RegisterDrawer } from './components/auth/RegisterDrawer'
 
 function App() {
   const { t } = useTranslation()
@@ -72,58 +74,61 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={
-            session ? <Navigate to="/" replace /> : <CustomAuth onAuthSuccess={() => {}} />
-          } 
-        />
-        <Route 
-          path="/chat" 
-          element={
-            <ProtectedRoute 
-              session={session} 
-              userRole={userRole} 
-              requiredRole="client"
-              roleLoading={roleLoading}
-            >
-              <ChatPage session={session!} />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/settings"
-          element={
-            <ProtectedRoute 
-              session={session} 
-              userRole={userRole} 
-              requiredRole="therapist"
-              roleLoading={roleLoading}
-            >
-              <SettingsPage session={session!} />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/" 
-          element={
-            session ? (
-              roleLoading ? (
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-gray-500">{t('loading_user')}</p>
+      <AuthGateProvider isAuthenticated={!!session}>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={
+              session ? <Navigate to="/" replace /> : <CustomAuth onAuthSuccess={() => {}} />
+            } 
+          />
+          <Route 
+            path="/chat" 
+            element={
+              <ProtectedRoute 
+                session={session} 
+                userRole={userRole} 
+                requiredRole="client"
+                roleLoading={roleLoading}
+              >
+                <ChatPage session={session!} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings"
+            element={
+              <ProtectedRoute 
+                session={session} 
+                userRole={userRole} 
+                requiredRole="therapist"
+                roleLoading={roleLoading}
+              >
+                <SettingsPage session={session!} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/" 
+            element={
+              session ? (
+                roleLoading ? (
+                  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-gray-500">{t('loading_user')}</p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <MainDashboard session={session} userRole={userRole} />
+                )
               ) : (
-                <MainDashboard session={session} userRole={userRole} />
+                <Navigate to="/login" replace />
               )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } 
-        />
-      </Routes>
+            } 
+          />
+        </Routes>
+        <RegisterDrawer />
+      </AuthGateProvider>
     </Router>
   )
 }
