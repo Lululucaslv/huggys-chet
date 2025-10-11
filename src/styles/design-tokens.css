@@ -1,0 +1,66 @@
+/* Design Tokens - Tech Minimal Style */
+:root {
+  /* Brand Colors */
+  --brand-700: #1D4ED8;
+  --brand-600: #2563EB;
+  --brand-500: #3B82F6;
+  --brand-400: #60A5FA;
+  
+  /* Accent Colors */
+  --accent-500: #7C3AED;
+  --accent-400: #A78BFA;
+  
+  /* Semantic Colors */
+  --success-600: #16A34A;
+  --success-bg: #DCFCE7;
+  --warn-600: #D97706;
+  --warn-bg: #FEF3C7;
+  --danger-600: #DC2626;
+  --danger-bg: #FEE2E2;
+  --info-600: #0891B2;
+  --info-bg: #CFFAFE;
+  
+  /* Light Mode Base */
+  --bg: #F7F8FB;
+  --card: #FFFFFF;
+  --line: #E5E7EB;
+  --text: #0F172A;
+  --muted: #475569;
+  --disabled: #94A3B8;
+  
+  /* Spacing & Layout */
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-tag: 8px;
+  --gap: 24px;
+  --gap-card: 16px;
+  
+  /* Animation */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-mid: 220ms;
+  --dur-slow: 300ms;
+}
+
+.dark {
+  --bg: #0B1020;
+  --card: #111827;
+  --line: #1F2937;
+  --text: #E5E7EB;
+  --muted: #94A3B8;
+  --disabled: #64748B;
+}
+
+/* Global styles */
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Accessible focus rings */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--brand-400);
+  border-radius: 8px;
+}
