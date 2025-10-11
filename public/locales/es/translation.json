@@ -101,5 +101,41 @@
   "sched_adding": "Añadiendo...",
   "sched_add_time_slot": "Añadir horario",
   "chat_confirm_booking": "Confirmo la reserva con {{therapistName}} a las {{whenLocal}} (ISO: {{iso}}).",
-  "chat_modal_desc": "Chatea con tu asistente de IA"
+  "chat_modal_desc": "Chatea con tu asistente de IA",
+  "hero": {
+    "title": "[ES] Terapia a tu ritmo y horario",
+    "subtitle": "[ES] Reserva sesiones, completa evaluaciones y conversa con IA en un solo lugar.",
+    "ctaStart": "[ES] Empezar gratis",
+    "ctaDemo": "[ES] Ver demo"
+  },
+  "features": {
+    "booking": {
+      "title": "[ES] Reserva fácil",
+      "desc": "[ES] Elige terapeuta y horario."
+    },
+    "assessments": {
+      "title": "[ES] Evaluaciones rápidas",
+      "desc": "[ES] PHQ-9, GAD-7 y más."
+    },
+    "chat": {
+      "title": "[ES] Asistente IA",
+      "desc": "[ES] Conversaciones privadas y estructuradas."
+    }
+  },
+  "demo": {
+    "banner": "[ES] Estás viendo datos de demostración. Regístrate para guardar tu progreso.",
+    "actionBlocked": "[ES] Regístrate para continuar."
+  },
+  "landing": {
+    "tryBooking": "[ES] Probar reserva",
+    "tryAssessment": "[ES] Probar evaluación",
+    "tryChat": "[ES] Probar chat",
+    "demoTitle": "[ES] Probar la demostración",
+    "demoSubtitle": "[ES] Explorar funciones sin registro"
+  },
+  "cancel": "[ES] Cancelar",
+  "today": "[ES] Hoy",
+  "crisis_notice": "[ES] Esta plataforma no proporciona servicios médicos de emergencia",
+  "crisis_help": "[ES] Si tiene una emergencia, llame al número de emergencia local o visite la sala de emergencias más cercana",
+  "try_features": "[ES] Pruebe nuestras funciones"
 }

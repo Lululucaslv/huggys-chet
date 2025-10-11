@@ -105,5 +105,41 @@
   "sched_adding": "Ajout...",
   "sched_add_time_slot": "Ajouter un créneau",
   "chat_confirm_booking": "Je confirme la réservation avec {{therapistName}} à {{whenLocal}} (ISO : {{iso}}).",
-  "chat_modal_desc": "Discutez avec votre assistant IA"
+  "chat_modal_desc": "Discutez avec votre assistant IA",
+  "cancel": "Annuler",
+  "hero": {
+    "title": "[FR] Une thérapie à votre rythme",
+    "subtitle": "[FR] Réservez, passez des évaluations et discutez avec l'IA au même endroit.",
+    "ctaStart": "[FR] Commencer gratuitement",
+    "ctaDemo": "[FR] Voir la démo"
+  },
+  "features": {
+    "booking": {
+      "title": "[FR] Réservation simple",
+      "desc": "[FR] Choisissez le thérapeute et l'horaire."
+    },
+    "assessments": {
+      "title": "[FR] Évaluations rapides",
+      "desc": "[FR] PHQ-9, GAD-7 et plus."
+    },
+    "chat": {
+      "title": "[FR] Assistant IA",
+      "desc": "[FR] Conversation privée et structurée."
+    }
+  },
+  "demo": {
+    "banner": "[FR] Vous consultez des données de démonstration. Inscrivez-vous pour les sauvegarder.",
+    "actionBlocked": "[FR] Inscrivez-vous pour continuer."
+  },
+  "landing": {
+    "tryBooking": "[FR] Essayer la réservation",
+    "tryAssessment": "[FR] Essayer une évaluation",
+    "tryChat": "[FR] Essayer le chat",
+    "demoTitle": "[FR] Essayer la démo",
+    "demoSubtitle": "[FR] Explorez les fonctionnalités sans inscription"
+  },
+  "today": "[FR] Aujourd'hui",
+  "crisis_notice": "[FR] Cette plateforme ne fournit pas de services médicaux d'urgence",
+  "crisis_help": "[FR] Si vous avez une urgence, appelez le numéro d'urgence local ou rendez-vous aux urgences les plus proches",
+  "try_features": "[FR] Essayez nos fonctionnalités"
 }

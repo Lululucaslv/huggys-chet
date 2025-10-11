@@ -15,6 +15,7 @@ import { Dialog, DialogContent } from './components/ui/dialog'
 import { MessageCircle, Settings } from 'lucide-react'
 import { AuthGateProvider } from './contexts/AuthGateContext'
 import { RegisterDrawer } from './components/auth/RegisterDrawer'
+import { LandingPage } from './pages/LandingPage'
 
 function App() {
   const { t } = useTranslation()
@@ -122,7 +123,7 @@ function App() {
                   <MainDashboard session={session} userRole={userRole} />
                 )
               ) : (
-                <Navigate to="/login" replace />
+                <LandingPage />
               )
             } 
           />

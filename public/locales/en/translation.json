@@ -169,5 +169,40 @@
     "auth_app_title": "Huggys.ai",
     "chat_confirm_booking": "I confirm booking {{therapistName}} at {{whenLocal}} (ISO: {{iso}}).",
     "chat_modal_desc": "Chat with your AI assistant",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "hero": {
+        "title": "Therapy that fits your time and pace",
+        "subtitle": "Book sessions, complete evidence-based assessments, and keep talking with AI—all in one place.",
+        "ctaStart": "Start free",
+        "ctaDemo": "See demo"
+    },
+    "features": {
+        "booking": {
+            "title": "Easy booking",
+            "desc": "Pick a therapist and time that works for you."
+        },
+        "assessments": {
+            "title": "Quick assessments",
+            "desc": "PHQ-9, GAD-7, sleep and more with clear insights."
+        },
+        "chat": {
+            "title": "AI companion",
+            "desc": "Keep a private, structured conversation anytime."
+        }
+    },
+    "demo": {
+        "banner": "You are viewing demo data. Sign up to save your bookings and assessments.",
+        "actionBlocked": "Sign up to continue and save your progress."
+    },
+    "landing": {
+        "tryBooking": "Try booking",
+        "tryAssessment": "Try an assessment",
+        "tryChat": "Try chat",
+        "demoTitle": "Try the Demo",
+        "demoSubtitle": "Explore platform features without registration"
+    },
+    "today": "Today",
+    "crisis_notice": "This platform does not provide emergency medical services",
+    "crisis_help": "If you are experiencing an emergency, please call your local emergency number or visit the nearest emergency room",
+    "try_features": "Try our features"
 }
