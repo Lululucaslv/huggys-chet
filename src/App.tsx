@@ -16,6 +16,7 @@ import { MessageCircle, Settings } from 'lucide-react'
 import { AuthGateProvider } from './contexts/AuthGateContext'
 import { RegisterDrawer } from './components/auth/RegisterDrawer'
 import { LandingPage } from './pages/LandingPage'
+import { AuthProvider } from './lib/auth/AuthProvider'
 
 function App() {
   const { t } = useTranslation()
@@ -74,9 +75,10 @@ function App() {
   }
 
   return (
-    <Router>
-      <AuthGateProvider isAuthenticated={!!session}>
-        <Routes>
+    <AuthProvider>
+      <Router>
+        <AuthGateProvider isAuthenticated={!!session}>
+          <Routes>
           <Route 
             path="/login" 
             element={
@@ -127,10 +129,11 @@ function App() {
               )
             } 
           />
-        </Routes>
-        <RegisterDrawer />
-      </AuthGateProvider>
-    </Router>
+          </Routes>
+          <RegisterDrawer />
+        </AuthGateProvider>
+      </Router>
+    </AuthProvider>
   )
 }
 

@@ -141,5 +141,20 @@
   "today": "[FR] Aujourd'hui",
   "crisis_notice": "[FR] Cette plateforme ne fournit pas de services médicaux d'urgence",
   "crisis_help": "[FR] Si vous avez une urgence, appelez le numéro d'urgence local ou rendez-vous aux urgences les plus proches",
-  "try_features": "[FR] Essayez nos fonctionnalités"
+  "try_features": "[FR] Essayez nos fonctionnalités",
+  "auth": {
+    "title": "[FR] Créez votre compte",
+    "subtitle": "[FR] Inscrivez-vous pour sauvegarder vos réservations",
+    "email": "[FR] Email",
+    "password": "[FR] Mot de passe",
+    "agree": "[FR] J'accepte les conditions et la confidentialité",
+    "signin": "[FR] Se connecter",
+    "signup": "[FR] S'inscrire",
+    "or": "[FR] ou continuer avec",
+    "success": "[FR] Bon retour !",
+    "error": "[FR] Échec de l'authentification"
+  },
+  "gate": {
+    "blocked": "[FR] Inscrivez-vous pour continuer"
+  }
 }

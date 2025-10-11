@@ -204,5 +204,20 @@
     "today": "Today",
     "crisis_notice": "This platform does not provide emergency medical services",
     "crisis_help": "If you are experiencing an emergency, please call your local emergency number or visit the nearest emergency room",
-    "try_features": "Try our features"
+    "try_features": "Try our features",
+    "auth": {
+        "title": "Create your account",
+        "subtitle": "Sign up to save bookings and assessments.",
+        "email": "Email",
+        "password": "Password",
+        "agree": "I agree to the Terms and Privacy",
+        "signin": "Sign in",
+        "signup": "Sign up",
+        "or": "or continue with",
+        "success": "Welcome back!",
+        "error": "Authentication failed. Please try again."
+    },
+    "gate": {
+        "blocked": "Sign up to continue and save your progress."
+    }
 }

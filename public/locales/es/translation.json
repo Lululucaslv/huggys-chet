@@ -137,5 +137,20 @@
   "today": "[ES] Hoy",
   "crisis_notice": "[ES] Esta plataforma no proporciona servicios médicos de emergencia",
   "crisis_help": "[ES] Si tiene una emergencia, llame al número de emergencia local o visite la sala de emergencias más cercana",
-  "try_features": "[ES] Pruebe nuestras funciones"
+  "try_features": "[ES] Pruebe nuestras funciones",
+  "auth": {
+    "title": "[ES] Crea tu cuenta",
+    "subtitle": "[ES] Regístrate para guardar reservas y evaluaciones",
+    "email": "[ES] Correo electrónico",
+    "password": "[ES] Contraseña",
+    "agree": "[ES] Acepto los términos y la privacidad",
+    "signin": "[ES] Iniciar sesión",
+    "signup": "[ES] Registrarse",
+    "or": "[ES] o continuar con",
+    "success": "[ES] ¡Bienvenido de nuevo!",
+    "error": "[ES] Error de autenticación. Inténtalo de nuevo"
+  },
+  "gate": {
+    "blocked": "[ES] Regístrate para continuar"
+  }
 }

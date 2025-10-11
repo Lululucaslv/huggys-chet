@@ -4,19 +4,26 @@ import { Card } from '../shared/Card'
 import { Banner } from '../shared/Banner'
 import { PrimaryButton } from '../shared/PrimaryButton'
 import { SecondaryButton } from '../shared/SecondaryButton'
-import { useAuthGate } from '../../contexts/AuthGateContext'
+import { useAuthGate } from '../../lib/useAuthGate'
 import { useBookings, useAssessments, useChatPreview } from '../../hooks/useDataSource'
 import { DateTime } from 'luxon'
 
 export function DemoDashboard() {
   const { t } = useTranslation()
-  const { openRegisterDrawer } = useAuthGate()
+  const { requireAuth } = useAuthGate()
   const { bookings } = useBookings()
   const { assessments } = useAssessments()
   const { chatPreview } = useChatPreview()
 
-  const handleDemoAction = (source: string) => {
-    openRegisterDrawer(source)
+  const handleDemoAction = (actionType: string) => {
+    const doAction = () => {
+      console.log(`[Demo Action Resumed] ${actionType}`)
+    }
+    const result = requireAuth({ 
+      type: 'BOOK_CREATE', 
+      payload: { onAllow: doAction, source: `demo.${actionType}` }
+    })
+    if (result.allowed) doAction()
   }
 
   const getTrendIcon = (trend: string) => {
