@@ -6,9 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
-import LanguageSwitcher from './LanguageSwitcher'
 import { Toaster } from './ui/toaster'
-import { Avatar, AvatarFallback } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -27,6 +25,7 @@ import {
   Clock,
   Globe,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -52,6 +51,7 @@ interface Booking {
   status: BookingStatus
   clientName?: string
   durationMinutes?: number
+  therapistCode?: string
 }
 
 interface AvailabilitySlot {
@@ -59,6 +59,8 @@ interface AvailabilitySlot {
   startUTC: string
   endUTC: string
   timezone: string
+  therapistCode?: string
+  booked?: boolean
   repeat?: 'weekly' | null
   weekdays?: number[]
   source?: 'api' | 'supabase' | 'local'
@@ -134,8 +136,13 @@ const availabilitySort = (a: AvailabilitySlot, b: AvailabilitySlot) =>
   DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()
 
 const getTimezoneOptions = (): string[] => {
-  if (typeof Intl.supportedValuesOf === 'function') {
-    return Intl.supportedValuesOf('timeZone')
+  try {
+    const intlAny = Intl as any
+    if (typeof intlAny.supportedValuesOf === 'function') {
+      return intlAny.supportedValuesOf('timeZone')
+    }
+  } catch (error) {
+    console.warn('Intl.supportedValuesOf not available', error)
   }
   return [
     'UTC',
@@ -162,6 +169,11 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
   const [bookingsError, setBookingsError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [rescheduleDialog, setRescheduleDialog] = useState<{ booking: Booking; availableSlots: AvailabilitySlot[] } | null>(null)
+  const [cancelDialog, setCancelDialog] = useState<Booking | null>(null)
+  const [loadingReschedule, setLoadingReschedule] = useState(false)
+  const [editDialog, setEditDialog] = useState<{ slot: AvailabilitySlot; cellStart: DateTime; cellEnd: DateTime } | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ slot: AvailabilitySlot; cellStart: DateTime; cellEnd: DateTime } | null>(null)
 
   const lang = i18n.language === 'zh' ? 'zh-CN' : i18n.language
   const timezoneOptions = useMemo(() => getTimezoneOptions(), [])
@@ -171,7 +183,7 @@ export default function TherapistSchedule({ session, refreshKey }: TherapistSche
   const summaryWeekHours = useMemo(() => {
     const filtered = availability.filter((slot) => {
       const interval = intervalFromSlot(slot)
-      if (!interval) return false
+      if (!interval || !interval.start || !interval.end) return false
       return interval.start >= weekStart.startOf('day') && interval.end <= weekEnd.endOf('day')
     })
     const totalMinutes = filtered.reduce((acc, slot) => {
@@ -224,9 +236,11 @@ const fetchAvailability = useCallback(async () => {
       startUTC: item.startUTC || item.start_utc || item.start,
       endUTC: item.endUTC || item.end_utc || item.end,
       timezone: item.tz_used || timezone,
+      therapistCode: item.therapistCode || item.therapist_code,
+      booked: item.booked || item.status === 'booked',
       repeat: item.repeat === 'weekly' ? 'weekly' : null,
       weekdays: item.weekday_mask || item.weekdays || [],
-      source: 'api',
+      source: item.source || 'api',
     }))
     setAvailability(slots.sort(availabilitySort))
   } catch (error) {
@@ -268,34 +282,38 @@ const fetchBookings = useCallback(async () => {
   const rangeStart = weekStart.minus({ weeks: 2 })
   const rangeEnd = weekEnd.plus({ weeks: 8 })
   try {
-    const response = await fetch('/api/bookings/list', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        user_id: session.user.id,
-        therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
-        tz: timezone,
-        lang,
-        date_from: rangeStart.startOf('day').toFormat(API_LOCAL_FORMAT),
-        date_to: rangeEnd.endOf('day').toFormat(API_LOCAL_FORMAT),
-      }),
-    })
+    const therapistCode = session.user.user_metadata?.therapist_code ?? 'FAGHT34X'
+    
+    const { data, error: supabaseError } = await supabase
+      .from('bookings')
+      .select('id,therapist_code,start_utc,end_utc,duration_mins,status,user_id')
+      .eq('therapist_code', therapistCode)
+      .gte('start_utc', rangeStart.toISO())
+      .lte('start_utc', rangeEnd.toISO())
+      .order('start_utc', { ascending: true })
 
-    if (!response.ok) {
-      throw new Error('Request failed')
+    if (supabaseError) {
+      throw supabaseError
     }
 
-    const json = await response.json()
-    const list: Booking[] = (json?.data ?? []).map((item: any) => ({
-      id: item.bookingId || item.id || crypto.randomUUID(),
-      startUTC: item.startUTC || item.start_utc || item.start,
-      endUTC: item.endUTC || item.end_utc || item.end,
+    const userIds = [...new Set((data ?? []).map(b => b.user_id))].filter(Boolean)
+    let clientNames: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('user_profiles')
+        .select('user_id,name')
+        .in('user_id', userIds)
+      clientNames = Object.fromEntries((profiles || []).map(p => [p.user_id, p.name]))
+    }
+
+    const list: Booking[] = (data ?? []).map((item: any) => ({
+      id: String(item.id),
+      startUTC: item.start_utc,
+      endUTC: item.end_utc,
       status: (item.status || 'confirmed') as BookingStatus,
-      clientName: item.client_name || item.client?.name,
-      durationMinutes: item.duration_minutes || item.duration,
+      clientName: clientNames[item.user_id] || 'Client',
+      durationMinutes: item.duration_mins,
+      therapistCode: item.therapist_code,
     }))
 
     setBookings(list.sort((a, b) => DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()))
@@ -319,6 +337,55 @@ const upcomingBookings = useMemo(() => {
     .filter((booking) => DateTime.fromISO(booking.startUTC, { zone: 'utc' }) > now)
     .slice(0, 3)
 }, [bookings])
+
+const enrichedAvailability = useMemo(() => {
+  return availability.map((slot) => {
+    const slotStart = DateTime.fromISO(slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(slot.endUTC, { zone: 'utc' })
+    
+    const hasBooking = bookings.some((booking) => {
+      const bookingStart = DateTime.fromISO(booking.startUTC, { zone: 'utc' })
+      const bookingEnd = DateTime.fromISO(booking.endUTC || booking.startUTC, { zone: 'utc' })
+      
+      return bookingStart < slotEnd && bookingEnd > slotStart
+    })
+    
+    return { ...slot, booked: slot.booked || hasBooking }
+  })
+}, [availability, bookings])
+
+const allTimeCommitments = useMemo(() => {
+  const commitments = [...enrichedAvailability]
+  
+  bookings.forEach((booking) => {
+    const bookingStart = DateTime.fromISO(booking.startUTC, { zone: 'utc' })
+    const bookingEnd = booking.endUTC 
+      ? DateTime.fromISO(booking.endUTC, { zone: 'utc' })
+      : bookingStart.plus({ minutes: booking.durationMinutes || 60 })
+    
+    const hasAvailability = availability.some((slot) => {
+      const slotStart = DateTime.fromISO(slot.startUTC, { zone: 'utc' })
+      const slotEnd = DateTime.fromISO(slot.endUTC, { zone: 'utc' })
+      return bookingStart < slotEnd && bookingEnd > slotStart
+    })
+    
+    if (!hasAvailability) {
+      commitments.push({
+        id: `booking-${booking.id}`,
+        startUTC: booking.startUTC,
+        endUTC: booking.endUTC || bookingStart.plus({ minutes: booking.durationMinutes || 60 }).toUTC().toISO() || '',
+        timezone: timezone,
+        booked: true,
+        isStandaloneBooking: true,
+        bookingId: booking.id,
+      } as any)
+    }
+  })
+  
+  return commitments.sort((a, b) => 
+    DateTime.fromISO(a.startUTC).toMillis() - DateTime.fromISO(b.startUTC).toMillis()
+  )
+}, [enrichedAvailability, bookings, availability, timezone])
 
 const createSlotsFromForm = useCallback(
   (draft: FormDraft): AvailabilitySlot[] => {
@@ -513,29 +580,24 @@ const handleCreateAvailability = useCallback(async () => {
 
 const handleDeleteAvailability = useCallback(
   async (slot: AvailabilitySlot) => {
+    console.log('[DELETE] Starting delete for slot:', { id: slot.id, therapistCode: slot.therapistCode, source: slot.source })
     const previous = availability
     setAvailability((prev) => prev.filter((item) => item.id !== slot.id))
 
     try {
-      if (slot.source === 'supabase') {
-        const { error } = await supabase.from('availability').delete().eq('id', Number(slot.id))
-        if (error) throw error
-      } else {
-        const response = await fetch('/api/availability/cancel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            availability_id: slot.id,
-            therapist_code: session.user.user_metadata?.therapist_code ?? 'FAGHT34X',
-            user_id: session.user.id,
-            tz: timezone,
-            lang,
-          }),
-        })
-        if (!response.ok) throw new Error('Request failed')
+      const response = await fetch('/api/availability/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          availability_id: slot.id,
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Request failed')
       }
       toast({ title: t('sched_delete_success_title'), description: t('sched_delete_success_desc') })
     } catch (error) {
@@ -653,6 +715,200 @@ const refreshAll = useCallback(async () => {
   setIsRefreshing(false)
 }, [fetchAvailability, fetchBookings])
 
+const handleRescheduleClick = useCallback(async (booking: Booking) => {
+  try {
+    const response = await fetch('/api/availability/list', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        therapist_code: booking.therapistCode || session.user.user_metadata?.therapist_code || 'FAGHT34X',
+        tz: timezone,
+        lang: lang,
+      }),
+    })
+    
+    if (!response.ok) throw new Error('Failed to fetch availability')
+    
+    const data = await response.json()
+    const slots = (data.data || []).map((s: any) => ({
+      id: s.id,
+      startUTC: s.startUTC,
+      endUTC: s.endUTC,
+      timezone: s.tz_used,
+      therapistCode: s.therapist_code,
+    }))
+    
+    setRescheduleDialog({ booking, availableSlots: slots })
+  } catch (error) {
+    console.error('Failed to fetch slots for reschedule', error)
+    toast({ title: t('error'), description: t('sched_error_fetch_availability') })
+  }
+}, [session, timezone, lang, t, toast])
+
+const handleRescheduleConfirm = useCallback(async (newSlotId: string) => {
+  if (!rescheduleDialog) return
+  
+  setLoadingReschedule(true)
+  try {
+    const response = await fetch('/api/bookings/reschedule', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        booking_id: rescheduleDialog.booking.id,
+        new_availability_id: newSlotId,
+        user_tz: timezone,
+      }),
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || 'Reschedule failed')
+    }
+    
+    toast({ title: t('success'), description: t('sched_reschedule_success') })
+    await refreshAll()
+    setRescheduleDialog(null)
+  } catch (error) {
+    console.error('Failed to reschedule booking', error)
+    toast({ title: t('error'), description: t('sched_reschedule_failed') })
+  } finally {
+    setLoadingReschedule(false)
+  }
+}, [rescheduleDialog, session, timezone, t, toast, refreshAll])
+
+const handleCancelClick = useCallback((booking: Booking) => {
+  setCancelDialog(booking)
+}, [])
+
+const handleCancelConfirm = useCallback(async () => {
+  if (!cancelDialog) return
+  
+  try {
+    const response = await fetch('/api/bookings/cancel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        booking_id: cancelDialog.id,
+        reason: 'therapist_cancelled',
+      }),
+    })
+    
+    if (!response.ok) throw new Error('Cancel failed')
+    
+    toast({ title: t('success'), description: t('sched_cancel_success') })
+    await refreshAll()
+    setCancelDialog(null)
+  } catch (error) {
+    console.error('Failed to cancel booking', error)
+    toast({ title: t('error'), description: t('sched_cancel_failed') })
+  }
+}, [cancelDialog, session, t, toast, refreshAll])
+
+const handleEditClick = useCallback((slot: AvailabilitySlot, cellStart: DateTime, cellEnd: DateTime) => {
+  setEditDialog({ slot, cellStart, cellEnd })
+}, [])
+
+const handleEditConfirm = useCallback(async (updatedSlot: { startUTC: string; endUTC: string }) => {
+  if (!editDialog) return
+  
+  try {
+    const slotStart = DateTime.fromISO(editDialog.slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(editDialog.slot.endUTC, { zone: 'utc' })
+    const { cellStart, cellEnd } = editDialog
+    
+    await handleDeleteAvailability(editDialog.slot)
+    
+    const slotsToCreate: Array<{ id: string; startUTC: string; endUTC: string; timezone: string }> = []
+    
+    if (slotStart < cellStart) {
+      slotsToCreate.push({
+        id: `split-before-${Date.now()}`,
+        startUTC: slotStart.toUTC().toISO() || '',
+        endUTC: cellStart.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    slotsToCreate.push({
+      id: `edited-${Date.now()}`,
+      startUTC: updatedSlot.startUTC,
+      endUTC: updatedSlot.endUTC,
+      timezone,
+    })
+    
+    if (cellEnd < slotEnd) {
+      slotsToCreate.push({
+        id: `split-after-${Date.now()}`,
+        startUTC: cellEnd.toUTC().toISO() || '',
+        endUTC: slotEnd.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    await upsertAvailability(slotsToCreate, t('sched_edit_success'))
+    setEditDialog(null)
+  } catch (error) {
+    console.error('Failed to edit availability', error)
+    toast({ title: t('error'), description: t('sched_edit_failed') })
+  }
+}, [editDialog, timezone, t, toast, handleDeleteAvailability, upsertAvailability])
+
+const handleDeleteClick = useCallback((slot: AvailabilitySlot, cellStart: DateTime, cellEnd: DateTime) => {
+  setDeleteDialog({ slot, cellStart, cellEnd })
+}, [])
+
+const handleDeleteConfirm = useCallback(async () => {
+  if (!deleteDialog) return
+  
+  try {
+    const slotStart = DateTime.fromISO(deleteDialog.slot.startUTC, { zone: 'utc' })
+    const slotEnd = DateTime.fromISO(deleteDialog.slot.endUTC, { zone: 'utc' })
+    const { cellStart, cellEnd } = deleteDialog
+    
+    await handleDeleteAvailability(deleteDialog.slot)
+    
+    const slotsToCreate: Array<{ id: string; startUTC: string; endUTC: string; timezone: string }> = []
+    
+    if (slotStart < cellStart) {
+      slotsToCreate.push({
+        id: `split-before-${Date.now()}`,
+        startUTC: slotStart.toUTC().toISO() || '',
+        endUTC: cellStart.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    if (cellEnd < slotEnd) {
+      slotsToCreate.push({
+        id: `split-after-${Date.now()}`,
+        startUTC: cellEnd.toUTC().toISO() || '',
+        endUTC: slotEnd.toUTC().toISO() || '',
+        timezone,
+      })
+    }
+    
+    if (slotsToCreate.length > 0) {
+      await upsertAvailability(slotsToCreate, t('sched_delete_success'))
+    } else {
+      toast({ title: t('success'), description: t('sched_delete_success') })
+    }
+    
+    setDeleteDialog(null)
+  } catch (error) {
+    console.error('Failed to delete availability', error)
+    toast({ title: t('error'), description: t('sched_delete_failed') })
+  }
+}, [deleteDialog, timezone, t, toast, handleDeleteAvailability, upsertAvailability])
+
 const handleMergeConfirm = useCallback(async () => {
   if (!mergeDialog) return
   const mergedStart = [...mergeDialog.conflicts, mergeDialog.candidate]
@@ -716,18 +972,6 @@ const handleMergeConfirm = useCallback(async () => {
 
 const handleMergeCancel = useCallback(() => setMergeDialog(null), [])
 
-const headerInitials = useMemo(() => {
-  if (session.user.user_metadata?.full_name) {
-    return session.user.user_metadata.full_name
-      .split(' ')
-      .map((part: string) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase()
-  }
-  return (session.user.email || 'TU').slice(0, 2).toUpperCase()
-}, [session])
-
 const calendarDays = useMemo(() => {
   if (calendarMode === 'day') return [weekStart]
   if (calendarMode === 'month') {
@@ -771,41 +1015,14 @@ const calendarDays = useMemo(() => {
 return (
   <div className="min-h-screen bg-[#F7F7F9]">
     <Toaster />
-    <header className="sticky top-0 z-30 border-b border-[#E5E7EB] bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-6 px-4 py-4 md:px-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-semibold text-white">
-            🤗
-          </div>
-          <div>
-            <h1 className="text-[28px] font-semibold leading-[32px] text-[#0F172A]">{t('sched_header_title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('sched_header_subtitle')}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-[#0F172A] shadow-sm md:flex">
-            <Globe className="h-4 w-4" />
-            <span>{timezone}</span>
-          </div>
-          <LanguageSwitcher />
-          <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
-            {t('sign_out')}
-          </Button>
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-primary/10 text-primary">{headerInitials}</AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
-    </header>
-
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-16 pt-6 md:px-6">
-        <section className="rounded-2xl border border-[#E5E7EB] bg-white shadow-md">
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-16 pt-6 md:px-6">
+        <section className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
           <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-6">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('sched_summary_timezone')}</p>
                 <div className="flex items-center gap-2 text-sm font-medium text-[#0F172A]">
-                  <Globe className="h-4 w-4" />
+                  <Globe className="h-4 w-4 text-cyan-600 transition-colors hover:text-cyan-700" />
                   <Select value={timezone} onValueChange={handleTimezoneChange}>
                     <SelectTrigger className="w-[220px] rounded-full border-[#E5E7EB]">
                       <SelectValue placeholder={t('sched_timezone_placeholder')} />
@@ -839,7 +1056,7 @@ return (
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={refreshAll} disabled={isRefreshing}>
-              {isRefreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isRefreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-600" />}
               {t('sched_refresh')}
             </Button>
           </div>
@@ -847,7 +1064,7 @@ return (
 
         <section className="grid gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-6 lg:col-span-8">
-            <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+            <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-between">
                   <div>
@@ -880,7 +1097,7 @@ return (
                   <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{bookingsError}</div>
                 ) : upcomingBookings.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
-                    <CalendarIcon className="h-10 w-10 text-primary" />
+                    <CalendarIcon className="h-10 w-10 text-cyan-500" />
                     <div>
                       <p className="text-sm font-semibold text-[#0F172A]">{t('sched_no_upcoming_title')}</p>
                       <p className="text-sm text-muted-foreground">{t('sched_no_upcoming_desc')}</p>
@@ -896,7 +1113,7 @@ return (
                       return (
                         <div
                           key={booking.id}
-                          className="flex items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm"
+                          className="flex items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm"
                         >
                           <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -911,9 +1128,31 @@ return (
                               </p>
                             </div>
                           </div>
-                          <Badge variant="secondary" className="rounded-full bg-blue-50 text-xs uppercase tracking-wide text-primary">
-                            {t(`status_${booking.status}`)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="rounded-full bg-blue-50 text-xs uppercase tracking-wide text-primary">
+                              {t(`status_${booking.status}`)}
+                            </Badge>
+                            {booking.status === 'confirmed' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-full"
+                                  onClick={() => handleRescheduleClick(booking)}
+                                >
+                                  {t('sched_reschedule_booking')}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-full text-rose-600 hover:text-rose-700"
+                                  onClick={() => handleCancelClick(booking)}
+                                >
+                                  {t('sched_cancel_booking')}
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -922,7 +1161,7 @@ return (
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+            <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
               <CardHeader className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -972,8 +1211,8 @@ return (
                     ))}
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-2xl border border-[#E5E7EB]">
-                    <div className="grid" style={{ gridTemplateColumns: `80px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                  <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(120px, 1fr))` }}>
                       <div className="bg-[#F7F7F9] p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {t('sched_calendar_time')}
                       </div>
@@ -984,7 +1223,7 @@ return (
                         </div>
                       ))}
                     </div>
-                    <div className="grid" style={{ gridTemplateColumns: `80px repeat(${calendarDays.length}, minmax(0, 1fr))` }}>
+                    <div className="grid" style={{ gridTemplateColumns: `100px repeat(${calendarDays.length}, minmax(120px, 1fr))` }}>
                       {Array.from({ length: 12 }, (_, index) => 8 + index).map((hour) => (
                         <Fragment key={`row-${hour}`}>
                           <div className="border-t border-[#E5E7EB] bg-white p-3 text-xs font-medium text-muted-foreground">
@@ -1015,9 +1254,31 @@ return (
                                   {availabilityInCell.map(({ slot }) => (
                                     <div
                                       key={`${slot.id}-${cellKey}`}
-                                      className="flex items-center justify-between rounded-lg border border-primary/40 bg-white/70 px-2 py-1 text-xs text-primary shadow-sm"
+                                      className="group relative flex flex-col items-start gap-1 rounded-lg border border-primary/40 bg-white/70 px-2 py-1.5 text-xs text-primary shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                      <span>{t('sched_calendar_available')}</span>
+                                      <div className="flex w-full items-center justify-between gap-1">
+                                        <span className="font-medium">{t('sched_calendar_available')}</span>
+                                        {!slot.booked && (
+                                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 rounded-full hover:bg-primary/10"
+                                              onClick={() => handleEditClick(slot, cellStart, cellEnd)}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 rounded-full hover:bg-rose-100 hover:text-rose-600"
+                                              onClick={() => handleDeleteClick(slot, cellStart, cellEnd)}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
                                       <Badge variant="outline" className="border-primary/40 text-[10px]">
                                         {DateTime.fromISO(slot.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}–
                                         {DateTime.fromISO(slot.endUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}
@@ -1027,9 +1288,9 @@ return (
                                   {bookingsInCell.map(({ booking }) => (
                                     <div
                                       key={`${booking.id}-${cellKey}`}
-                                      className="flex items-center justify-between rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-2 py-1 text-xs text-[#DC2626]"
+                                      className="flex flex-col items-start gap-1 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-2 py-1.5 text-xs text-[#DC2626]"
                                     >
-                                      <span>{t('sched_calendar_booked')}</span>
+                                      <span className="font-medium">{t('sched_calendar_booked')}</span>
                                       <Badge variant="outline" className="border-[#DC2626]/40 text-[10px] text-[#DC2626]">
                                         {DateTime.fromISO(booking.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}–
                                         {DateTime.fromISO(booking.endUTC || booking.startUTC, { zone: 'utc' }).setZone(timezone).toFormat('HH:mm')}
@@ -1050,8 +1311,8 @@ return (
           </div>
 
           <div className="flex flex-col gap-6 lg:col-span-4">
-            <div className="sticky top-[92px] flex flex-col gap-6">
-              <Card className="rounded-2xl border border-[#E5E7EB] shadow-lg">
+            <div className="sticky top-6 flex flex-col gap-6">
+              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/90 backdrop-blur-lg shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
                     {t('sched_add_availability_panel_title')}
@@ -1065,7 +1326,7 @@ return (
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {t('sched_presets')}
                     </Label>
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2">
                       {PRESETS.map((preset) => (
                         <Button
                           key={preset}
@@ -1140,7 +1401,7 @@ return (
                           <ToggleGroup type="multiple" value={formDraft.weekdays.map(String)} onValueChange={handleWeekdaysChange} className="grid grid-cols-4 gap-2">
                             {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
                               <ToggleGroupItem key={weekday} value={String(weekday)} className="rounded-xl border-[#E5E7EB] bg-white text-xs">
-                                {DateTime.now().set({ weekday }).toFormat('ccc')}
+                                {DateTime.now().set({ weekday: weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7 }).toFormat('ccc')}
                               </ToggleGroupItem>
                             ))}
                           </ToggleGroup>
@@ -1151,23 +1412,23 @@ return (
 
                   <div className="flex flex-col gap-3 md:flex-row">
                     <Button
-                      className="flex-1 rounded-xl bg-primary text-white shadow-md hover:bg-primary/90"
+                      className="flex-1 rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-700"
                       onClick={handleCreateAvailability}
                       disabled={savingAvailability}
                     >
                       {savingAvailability && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      <Plus className="mr-2 h-4 w-4" />
+                      <Plus className="mr-2 h-4 w-4 text-white" />
                       {t('sched_add_time_slot')}
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-xl border-[#E5E7EB]" disabled>
-                      <RefreshCw className="mr-2 h-4 w-4" />
+                      <RefreshCw className="mr-2 h-4 w-4 text-emerald-600" />
                       {t('sched_bulk_add')}
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border border-[#E5E7EB] shadow-md">
+              <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
                     {t('sched_my_availability')}
@@ -1185,9 +1446,9 @@ return (
                     </div>
                   ) : availabilityError ? (
                     <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{availabilityError}</div>
-                  ) : availability.length === 0 ? (
+                  ) : allTimeCommitments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F7F7F9] py-12 text-center">
-                      <Clock className="h-10 w-10 text-primary" />
+                      <Clock className="h-10 w-10 text-cyan-500" />
                       <div>
                         <p className="text-sm font-semibold text-[#0F172A]">{t('sched_no_availability_title')}</p>
                         <p className="text-sm text-muted-foreground">{t('sched_no_availability_desc')}</p>
@@ -1196,8 +1457,8 @@ return (
                   ) : (
                     <ScrollArea className="max-h-[420px] pr-3">
                       <div className="space-y-3">
-                        {availability.map((slot) => (
-                          <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+                        {allTimeCommitments.map((slot) => (
+                          <div key={slot.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#E5E7EB] bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm">
                             <div>
                               <p className="text-sm font-semibold text-[#0F172A]">
                                 {toDisplayRange(slot.startUTC, slot.endUTC, timezone)}
@@ -1205,20 +1466,28 @@ return (
                               {slot.repeat === 'weekly' && (
                                 <p className="text-xs text-primary">
                                   {t('sched_repeat_weekly_badge', {
-                                    days: (slot.weekdays ?? []).map((day) => DateTime.now().set({ weekday: day }).toFormat('ccc')).join(', '),
+                                    days: (slot.weekdays ?? []).map((day) => DateTime.now().set({ weekday: day as 1 | 2 | 3 | 4 | 5 | 6 | 7 }).toFormat('ccc')).join(', '),
                                   })}
                                 </p>
                               )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-full text-[#0F172A]/70"
-                              onClick={() => handleDeleteAvailability(slot)}
-                              aria-label={t('sched_delete_slot') || 'Delete slot'}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {slot.booked ? (
+                              <div className="flex items-center gap-2 px-3 py-1">
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                  {(slot as any).isStandaloneBooking ? t('sched_booking_without_availability') : '已预约'}
+                                </span>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                onClick={() => handleDeleteAvailability(slot)}
+                                aria-label={t('sched_delete_slot') || 'Delete slot'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1248,6 +1517,128 @@ return (
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleMergeCancel}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleMergeConfirm}>{t('sched_merge_confirm')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!rescheduleDialog} onOpenChange={(open) => (!open ? setRescheduleDialog(null) : null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_reschedule_dialog_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_reschedule_dialog_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {rescheduleDialog && (
+            <ScrollArea className="max-h-96">
+              <div className="space-y-2">
+                {rescheduleDialog.availableSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t('sched_no_availability_slots')}</p>
+                ) : (
+                  rescheduleDialog.availableSlots.map((slot) => (
+                    <Button
+                      key={slot.id}
+                      variant="outline"
+                      className="w-full justify-start text-left"
+                      onClick={() => handleRescheduleConfirm(slot.id)}
+                      disabled={loadingReschedule}
+                    >
+                      {toDisplayRange(slot.startUTC, slot.endUTC, timezone)}
+                    </Button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRescheduleDialog(null)}>{t('cancel')}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!cancelDialog} onOpenChange={(open) => (!open ? setCancelDialog(null) : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_cancel_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_cancel_confirm_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCancelDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm} className="bg-rose-600 hover:bg-rose-700">
+              {t('sched_cancel_booking')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!editDialog} onOpenChange={(open) => (!open ? setEditDialog(null) : null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_edit_availability_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sched_edit_availability_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {editDialog && (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {t('sched_editing_hour')}: {editDialog.cellStart.setZone(timezone).toFormat('HH:mm')} – {editDialog.cellEnd.setZone(timezone).toFormat('HH:mm')}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-start">{t('sched_start_time_label')}</Label>
+                <Input
+                  id="edit-start"
+                  type="datetime-local"
+                  defaultValue={editDialog.cellStart.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-end">{t('sched_end_time_label')}</Label>
+                <Input
+                  id="edit-end"
+                  type="datetime-local"
+                  defaultValue={editDialog.cellEnd.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
+                />
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEditDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (!editDialog) return
+                const startInput = document.getElementById('edit-start') as HTMLInputElement
+                const endInput = document.getElementById('edit-end') as HTMLInputElement
+                if (startInput && endInput) {
+                  const startUTC = DateTime.fromISO(startInput.value, { zone: timezone }).toUTC().toISO() || ''
+                  const endUTC = DateTime.fromISO(endInput.value, { zone: timezone }).toUTC().toISO() || ''
+                  handleEditConfirm({ startUTC, endUTC })
+                }
+              }}
+            >
+              {t('sched_save_changes')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteDialog} onOpenChange={(open) => (!open ? setDeleteDialog(null) : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('sched_delete_availability_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog && t('sched_delete_availability_desc', {
+                range: `${deleteDialog.cellStart.setZone(timezone).toFormat('MM/dd HH:mm')} – ${deleteDialog.cellEnd.setZone(timezone).toFormat('HH:mm')}`
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialog(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-rose-600 hover:bg-rose-700">
+              {t('sched_delete_slot')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
