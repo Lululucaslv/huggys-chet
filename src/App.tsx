@@ -98,10 +98,10 @@ function App() {
             <ProtectedRoute 
               session={session} 
               userRole={userRole} 
-              requiredRole="therapist"
+              requiredRole={undefined}
               roleLoading={roleLoading}
             >
-              <SettingsPage session={session!} />
+              <SettingsPage session={session!} userRole={userRole} />
             </ProtectedRoute>
           } 
         />
@@ -163,15 +163,13 @@ function MainDashboard({ session, userRole }: { session: Session, userRole: stri
                 {pageTitle}: {session.user.email}
               </span>
               <LanguageSwitcher />
-              {isTherapist && (
-                <Link
-                  to="/settings"
-                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-2 rounded-md transition-colors"
-                  aria-label={t('nav_settings') || 'Settings'}
-                >
-                  <Settings className="h-5 w-5" />
-                </Link>
-              )}
+              <Link
+                to="/settings"
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-2 rounded-md transition-colors"
+                aria-label={t('nav_settings') || 'Settings'}
+              >
+                <Settings className="h-5 w-5" />
+              </Link>
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"

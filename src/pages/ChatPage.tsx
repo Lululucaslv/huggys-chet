@@ -5,6 +5,7 @@ import { ChatAPI } from '../lib/chatApi'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
 import { Send, Loader2, Camera } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { TimeConfirmCard } from '../components/chat/TimeConfirmCard'
 
@@ -442,6 +443,12 @@ export default function ChatPage({ session }: ChatPageProps) {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <Link 
+                to="/" 
+                className="text-slate-300 hover:text-cyan-200 text-sm transition-colors"
+              >
+                {t('nav_dashboard')}
+              </Link>
               <LanguageSwitcher />
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>

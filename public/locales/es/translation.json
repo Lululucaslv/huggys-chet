@@ -1,4 +1,6 @@
 {
+  "nav_dashboard": "Panel",
+
   "app_title_client": "Reserva",
   "app_title_therapist": "Agenda del terapeuta",
   "nav_chat": "🤗 Asesoramiento con IA",

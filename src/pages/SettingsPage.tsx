@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button'
 import TherapistCodeDisplay from '../components/fragments/TherapistCodeDisplay'
 import { useTranslation } from 'react-i18next'
 
-export default function SettingsPage({ session }: { session: Session }) {
+export default function SettingsPage({ session, userRole }: { session: Session, userRole: string | null }) {
   const { t } = useTranslation()
   const [displayName, setDisplayName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -72,10 +72,12 @@ export default function SettingsPage({ session }: { session: Session }) {
             <label className="block text-sm text-gray-700 mb-1">{t('nickname') || 'Nickname'}</label>
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t('therapist_code') || 'Therapist code'}</label>
-            <div className="text-gray-900"><TherapistCodeDisplay userId={session.user.id} /></div>
-          </div>
+          {userRole === 'therapist' && (
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">{t('therapist_code') || 'Therapist code'}</label>
+              <div className="text-gray-900"><TherapistCodeDisplay userId={session.user.id} /></div>
+            </div>
+          )}
           <Button onClick={saveProfile} disabled={saving}>{saving ? (t('saving') || 'Saving...') : (t('save') || 'Save')}</Button>
         </CardContent>
       </Card>
