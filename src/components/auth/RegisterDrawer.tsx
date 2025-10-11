@@ -1,4 +1,3 @@
-import React from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet'
 import { useAuthGate } from '../../contexts/AuthGateContext'
 
