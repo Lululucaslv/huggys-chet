@@ -17,6 +17,7 @@ import { AuthGateProvider } from './contexts/AuthGateContext'
 import { RegisterDrawer } from './components/auth/RegisterDrawer'
 import { LandingPage } from './pages/LandingPage'
 import { AuthProvider } from './lib/auth/AuthProvider'
+import Dashboard from './pages/Dashboard'
 
 function App() {
   const { t } = useTranslation()
@@ -108,6 +109,19 @@ function App() {
                 roleLoading={roleLoading}
               >
                 <SettingsPage session={session!} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/app" 
+            element={
+              <ProtectedRoute 
+                session={session} 
+                userRole={userRole} 
+                requiredRole="client"
+                roleLoading={roleLoading}
+              >
+                <Dashboard />
               </ProtectedRoute>
             } 
           />

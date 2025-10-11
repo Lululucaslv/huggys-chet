@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { useAuth } from "./auth/AuthProvider";
 
 export type Intent =
-  | { type: "BOOK_CREATE"; payload?: any }
-  | { type: "BOOK_RESCHEDULE"; payload?: any }
-  | { type: "BOOK_CANCEL"; payload?: any }
-  | { type: "ASSESSMENT_START"; payload?: { kind: "phq9" | "gad7" } }
-  | { type: "CHAT_CONTINUE"; payload?: any };
+  | { type: "BOOK_CREATE"; payload?: { onAllow?: () => void; [key: string]: any } }
+  | { type: "BOOK_RESCHEDULE"; payload?: { onAllow?: () => void; [key: string]: any } }
+  | { type: "BOOK_CANCEL"; payload?: { onAllow?: () => void; [key: string]: any } }
+  | { type: "ASSESSMENT_START"; payload?: { kind?: "phq9" | "gad7"; onAllow?: () => void; [key: string]: any } }
+  | { type: "CHAT_CONTINUE"; payload?: { onAllow?: () => void; [key: string]: any } };
 
 type GateState = {
   drawerOpen: boolean;

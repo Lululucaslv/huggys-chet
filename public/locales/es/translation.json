@@ -152,5 +152,23 @@
   },
   "gate": {
     "blocked": "[ES] Regístrate para continuar"
+  },
+  "dashboard": {
+    "greeting": "[ES] Hola, {name}",
+    "tzHint": "[ES] Horarios mostrados en tu zona horaria: {tz}",
+    "upcoming": "[ES] Próximas citas",
+    "emptyBookings": "[ES] No hay citas próximas. Añade un horario que te funcione.",
+    "assessments": "[ES] Evaluaciones rápidas",
+    "continueChat": "[ES] Continuar chat",
+    "today": "[ES] Hoy",
+    "help": "[ES] Ayuda y Privacidad",
+    "crisis": "[ES] Esta plataforma no proporciona servicios médicos de emergencia. Si tienes una emergencia, llama a tu número de emergencia local."
+  },
+  "actions": {
+    "book": "[ES] Reservar",
+    "reschedule": "[ES] Reprogramar",
+    "cancel": "[ES] Cancelar",
+    "viewAll": "[ES] Ver todo",
+    "start": "[ES] Comenzar"
   }
 }

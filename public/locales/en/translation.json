@@ -219,5 +219,23 @@
     },
     "gate": {
         "blocked": "Sign up to continue and save your progress."
+    },
+    "dashboard": {
+        "greeting": "Hi, {name}",
+        "tzHint": "Times shown in your timezone: {tz}",
+        "upcoming": "Upcoming bookings",
+        "emptyBookings": "No upcoming bookings. Add a time that works for you.",
+        "assessments": "Quick assessments",
+        "continueChat": "Continue chat",
+        "today": "Today",
+        "help": "Help & Privacy",
+        "crisis": "This platform is not for emergencies. If you're in crisis, call your local hotline."
+    },
+    "actions": {
+        "book": "Book",
+        "reschedule": "Reschedule",
+        "cancel": "Cancel",
+        "viewAll": "View all",
+        "start": "Start"
     }
 }

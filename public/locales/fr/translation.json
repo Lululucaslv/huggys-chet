@@ -156,5 +156,23 @@
   },
   "gate": {
     "blocked": "[FR] Inscrivez-vous pour continuer"
+  },
+  "dashboard": {
+    "greeting": "[FR] Bonjour, {name}",
+    "tzHint": "[FR] Horaires affichés dans votre fuseau horaire: {tz}",
+    "upcoming": "[FR] Rendez-vous à venir",
+    "emptyBookings": "[FR] Aucun rendez-vous à venir. Ajoutez un horaire qui vous convient.",
+    "assessments": "[FR] Évaluations rapides",
+    "continueChat": "[FR] Continuer le chat",
+    "today": "[FR] Aujourd'hui",
+    "help": "[FR] Aide et Confidentialité",
+    "crisis": "[FR] Cette plateforme ne fournit pas de services médicaux d'urgence. Si vous avez une urgence, appelez votre numéro d'urgence local."
+  },
+  "actions": {
+    "book": "[FR] Réserver",
+    "reschedule": "[FR] Reprogrammer",
+    "cancel": "[FR] Annuler",
+    "viewAll": "[FR] Voir tout",
+    "start": "[FR] Commencer"
   }
 }
