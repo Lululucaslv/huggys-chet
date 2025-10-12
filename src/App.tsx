@@ -16,6 +16,7 @@ import { MessageCircle, Settings } from 'lucide-react'
 import { RegisterDrawer } from './components/auth/RegisterDrawer'
 import { LandingPage } from './pages/LandingPage'
 import { AuthProvider } from './lib/auth/AuthProvider'
+import { AuthGateProvider } from './contexts/AuthGateContext'
 import Dashboard from './pages/Dashboard'
 import Tests from './pages/Tests'
 import Bookings from './pages/Bookings'
@@ -79,100 +80,102 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          <Route 
-            path="/login" 
-            element={
-              session ? <Navigate to="/" replace /> : <CustomAuth onAuthSuccess={() => {}} />
-            } 
-          />
-          <Route 
-            path="/chat" 
-            element={
-              <ProtectedRoute 
-                session={session} 
-                userRole={userRole} 
-                requiredRole="client"
-                roleLoading={roleLoading}
-              >
-                <ChatPage session={session!} />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings"
-            element={
-              <ProtectedRoute 
-                session={session} 
-                userRole={userRole} 
-                requiredRole="therapist"
-                roleLoading={roleLoading}
-              >
-                <SettingsPage session={session!} />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/app" 
-            element={
-              <ProtectedRoute 
-                session={session} 
-                userRole={userRole} 
-                requiredRole="client"
-                roleLoading={roleLoading}
-              >
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/app/tests/*" 
-            element={
-              <ProtectedRoute 
-                session={session} 
-                userRole={userRole} 
-                requiredRole="client"
-                roleLoading={roleLoading}
-              >
-                <Tests />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/app/bookings" 
-            element={
-              <ProtectedRoute 
-                session={session} 
-                userRole={userRole} 
-                requiredRole="client"
-                roleLoading={roleLoading}
-              >
-                <Bookings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/" 
-            element={
-              session ? (
-                roleLoading ? (
-                  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-gray-500">{t('loading_user')}</p>
+        <AuthGateProvider isAuthenticated={!!session}>
+          <Routes>
+            <Route 
+              path="/login" 
+              element={
+                session ? <Navigate to="/" replace /> : <CustomAuth onAuthSuccess={() => {}} />
+              } 
+            />
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute 
+                  session={session} 
+                  userRole={userRole} 
+                  requiredRole="client"
+                  roleLoading={roleLoading}
+                >
+                  <ChatPage session={session!} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings"
+              element={
+                <ProtectedRoute 
+                  session={session} 
+                  userRole={userRole} 
+                  requiredRole="therapist"
+                  roleLoading={roleLoading}
+                >
+                  <SettingsPage session={session!} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app" 
+              element={
+                <ProtectedRoute 
+                  session={session} 
+                  userRole={userRole} 
+                  requiredRole="client"
+                  roleLoading={roleLoading}
+                >
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/tests/*" 
+              element={
+                <ProtectedRoute 
+                  session={session} 
+                  userRole={userRole} 
+                  requiredRole="client"
+                  roleLoading={roleLoading}
+                >
+                  <Tests />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/bookings" 
+              element={
+                <ProtectedRoute 
+                  session={session} 
+                  userRole={userRole} 
+                  requiredRole="client"
+                  roleLoading={roleLoading}
+                >
+                  <Bookings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/" 
+              element={
+                session ? (
+                  roleLoading ? (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-gray-500">{t('loading_user')}</p>
+                      </div>
                     </div>
-                  </div>
-                ) : userRole === 'client' ? (
-                  <Navigate to="/app" replace />
+                  ) : userRole === 'client' ? (
+                    <Navigate to="/app" replace />
+                  ) : (
+                    <MainDashboard session={session} userRole={userRole} />
+                  )
                 ) : (
-                  <MainDashboard session={session} userRole={userRole} />
+                  <LandingPage />
                 )
-              ) : (
-                <LandingPage />
-              )
-            } 
-          />
-        </Routes>
-        <RegisterDrawer />
+              } 
+            />
+          </Routes>
+          <RegisterDrawer />
+        </AuthGateProvider>
       </Router>
     </AuthProvider>
   )
