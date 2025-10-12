@@ -10,6 +10,7 @@
     { "src": "^/api/agent/chat$", "dest": "/api/agent/chat.js" },
     { "src": "^/api/bookings/cancel$", "dest": "/api/bookings/cancel.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
