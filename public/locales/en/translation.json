@@ -237,5 +237,33 @@
         "cancel": "Cancel",
         "viewAll": "View all",
         "start": "Start"
+    },
+    "tests": {
+        "title": "Mental Health Assessments",
+        "subtitle": "Take a standardized assessment to track your mental health over time.",
+        "phq9": {
+            "title": "PHQ-9 Depression",
+            "description": "Patient Health Questionnaire for depression screening",
+            "duration": "~2 minutes"
+        },
+        "gad7": {
+            "title": "GAD-7 Anxiety",
+            "description": "Generalized Anxiety Disorder scale",
+            "duration": "~2 minutes"
+        },
+        "startAssessment": "Start Assessment",
+        "submitAssessment": "Submit Assessment",
+        "submitting": "Submitting...",
+        "cancel": "Cancel",
+        "backToAssessments": "Back to Assessments",
+        "goToDashboard": "Go to Dashboard",
+        "results": "Results",
+        "completedOn": "Completed {date}",
+        "outOf": "out of {max}",
+        "recommendations": "Recommendations",
+        "yourTrend": "Your Trend",
+        "noPreviousAssessments": "No previous assessments found. Complete more assessments to see your trend.",
+        "disclaimer": "This is a screening tool, not a diagnosis. Please consult with a mental health professional to discuss your results and treatment options.",
+        "note": "These assessments are screening tools, not diagnostic instruments. Results should be discussed with a qualified mental health professional."
     }
 }

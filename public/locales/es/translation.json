@@ -170,5 +170,33 @@
     "cancel": "[ES] Cancelar",
     "viewAll": "[ES] Ver todo",
     "start": "[ES] Comenzar"
+  },
+  "tests": {
+    "title": "[ES] Evaluaciones de Salud Mental",
+    "subtitle": "[ES] Realice una evaluación estandarizada para rastrear su salud mental",
+    "phq9": {
+      "title": "[ES] PHQ-9 Depresión",
+      "description": "[ES] Cuestionario de salud del paciente para la detección de depresión",
+      "duration": "[ES] ~2 minutos"
+    },
+    "gad7": {
+      "title": "[ES] GAD-7 Ansiedad",
+      "description": "[ES] Escala de trastorno de ansiedad generalizada",
+      "duration": "[ES] ~2 minutos"
+    },
+    "startAssessment": "[ES] Comenzar Evaluación",
+    "submitAssessment": "[ES] Enviar Evaluación",
+    "submitting": "[ES] Enviando...",
+    "cancel": "[ES] Cancelar",
+    "backToAssessments": "[ES] Volver a Evaluaciones",
+    "goToDashboard": "[ES] Ir al Panel",
+    "results": "[ES] Resultados",
+    "completedOn": "[ES] Completado {date}",
+    "outOf": "[ES] de {max}",
+    "recommendations": "[ES] Recomendaciones",
+    "yourTrend": "[ES] Su Tendencia",
+    "noPreviousAssessments": "[ES] No se encontraron evaluaciones previas",
+    "disclaimer": "[ES] Esta es una herramienta de detección, no un diagnóstico",
+    "note": "[ES] Estas evaluaciones son herramientas de detección, no instrumentos diagnósticos"
   }
 }

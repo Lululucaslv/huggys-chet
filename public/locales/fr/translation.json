@@ -174,5 +174,33 @@
     "cancel": "[FR] Annuler",
     "viewAll": "[FR] Voir tout",
     "start": "[FR] Commencer"
+  },
+  "tests": {
+    "title": "[FR] Évaluations de Santé Mentale",
+    "subtitle": "[FR] Passez une évaluation standardisée pour suivre votre santé mentale",
+    "phq9": {
+      "title": "[FR] PHQ-9 Dépression",
+      "description": "[FR] Questionnaire de santé du patient pour le dépistage de la dépression",
+      "duration": "[FR] ~2 minutes"
+    },
+    "gad7": {
+      "title": "[FR] GAD-7 Anxiété",
+      "description": "[FR] Échelle de trouble d'anxiété généralisée",
+      "duration": "[FR] ~2 minutes"
+    },
+    "startAssessment": "[FR] Commencer l'évaluation",
+    "submitAssessment": "[FR] Soumettre l'évaluation",
+    "submitting": "[FR] Envoi...",
+    "cancel": "[FR] Annuler",
+    "backToAssessments": "[FR] Retour aux évaluations",
+    "goToDashboard": "[FR] Aller au tableau de bord",
+    "results": "[FR] Résultats",
+    "completedOn": "[FR] Terminé {date}",
+    "outOf": "[FR] sur {max}",
+    "recommendations": "[FR] Recommandations",
+    "yourTrend": "[FR] Votre Tendance",
+    "noPreviousAssessments": "[FR] Aucune évaluation précédente trouvée",
+    "disclaimer": "[FR] Ceci est un outil de dépistage, pas un diagnostic",
+    "note": "[FR] Ces évaluations sont des outils de dépistage, pas des instruments diagnostiques"
   }
 }

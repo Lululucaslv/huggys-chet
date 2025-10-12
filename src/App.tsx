@@ -18,6 +18,7 @@ import { RegisterDrawer } from './components/auth/RegisterDrawer'
 import { LandingPage } from './pages/LandingPage'
 import { AuthProvider } from './lib/auth/AuthProvider'
 import Dashboard from './pages/Dashboard'
+import Tests from './pages/Tests'
 
 function App() {
   const { t } = useTranslation()
@@ -122,6 +123,19 @@ function App() {
                 roleLoading={roleLoading}
               >
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/app/tests/*" 
+            element={
+              <ProtectedRoute 
+                session={session} 
+                userRole={userRole} 
+                requiredRole="client"
+                roleLoading={roleLoading}
+              >
+                <Tests />
               </ProtectedRoute>
             } 
           />
