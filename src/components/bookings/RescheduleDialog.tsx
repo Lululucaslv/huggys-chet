@@ -10,6 +10,7 @@ import { track } from "../../lib/analytics";
 import { useTranslation } from "react-i18next";
 import { addDays, format } from "date-fns";
 import { LineSkeleton } from "../shared/Skeletons";
+import { getTzPref } from "../../lib/tzPref";
 
 type Props = {
   open: boolean;
@@ -20,7 +21,7 @@ type Props = {
 
 export function RescheduleDialog({ open, onOpenChange, booking, onSuccess }: Props) {
   const { t } = useTranslation();
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
+  const tz = useMemo(() => getTzPref(), []);
   const { user } = useAuth();
   const { requireAuth } = useAuthGate();
   const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
@@ -53,7 +54,13 @@ export function RescheduleDialog({ open, onOpenChange, booking, onSuccess }: Pro
       if (res?.ok === false && res?.status === 409) {
         errorToast(t("bookings.conflict"));
         track("booking_reschedule_fail", { status: 409, booking_id: booking.id, new_availability_id: selectedSlotId });
-        setSelectedSlotId(null);
+        
+        const currentIndex = slots.findIndex(s => s.availabilityId === selectedSlotId);
+        if (currentIndex >= 0 && currentIndex + 1 < slots.length) {
+          setSelectedSlotId(slots[currentIndex + 1].availabilityId);
+        } else {
+          setSelectedSlotId(null);
+        }
         return;
       }
       
@@ -83,7 +90,7 @@ export function RescheduleDialog({ open, onOpenChange, booking, onSuccess }: Pro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{t("bookings.reschedule")}</DialogTitle>
+          <DialogTitle tabIndex={-1}>{t("bookings.reschedule")}</DialogTitle>
           <DialogDescription>
             {t("bookings.currentBooking", { defaultValue: "Current booking" })}: {curLabel} ({tz})
           </DialogDescription>
@@ -132,6 +139,7 @@ export function RescheduleDialog({ open, onOpenChange, booking, onSuccess }: Pro
               return (
                 <button
                   key={s.availabilityId}
+                  aria-label={`${t("bookings.selectSlot", { defaultValue: "Select slot" })} ${label}`}
                   className={`h-10 rounded-[var(--radius-input)] border px-3 text-sm text-left
                     ${active ? "bg-[var(--brand-600)] text-white border-transparent"
                             : "border-[var(--line)] hover:bg-gray-50"}`}

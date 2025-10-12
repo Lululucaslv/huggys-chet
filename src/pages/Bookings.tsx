@@ -10,13 +10,14 @@ import { type UserBooking } from "../lib/api/bookings.user";
 import { toLocal, fmt } from "../lib/tz";
 import { useTranslation } from "react-i18next";
 import { Calendar } from "lucide-react";
+import { getTzPref } from "../lib/tzPref";
 
 const DEFAULT_THERAPIST_CODE = "FAGHT34X";
 
 export default function Bookings() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const tz = getTzPref();
 
   const { loading, error, items, refresh, optimisticRemove } = useBookings({
     user_id: user?.id || "",
@@ -123,6 +124,7 @@ export default function Bookings() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setRescheduleBooking(booking)}
+                        aria-label={`${t("bookings.reschedule")} ${t("bookings.booking", { defaultValue: "booking" })} ${when}`}
                         className="h-9 px-3 text-sm rounded-[var(--radius-input)] border border-[var(--line)]
                                    hover:bg-gray-50 transition-colors"
                       >
@@ -130,6 +132,7 @@ export default function Bookings() {
                       </button>
                       <button
                         onClick={() => setCancelBooking(booking)}
+                        aria-label={`${t("bookings.cancel")} ${t("bookings.booking", { defaultValue: "booking" })} ${when}`}
                         className="h-9 px-3 text-sm rounded-[var(--radius-input)] border border-red-200 text-red-600
                                    hover:bg-red-50 transition-colors"
                       >

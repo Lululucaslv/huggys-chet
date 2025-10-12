@@ -1,4 +1,5 @@
 import { track } from "../analytics";
+import { AppConfig } from "../config";
 
 export type AvailabilitySlot = {
   availabilityId: string;
@@ -19,7 +20,11 @@ export type UserBooking = {
   createdAt: string;
 };
 
-const MOCK = true;
+const MOCK = AppConfig.MOCK;
+function idempotencyKey() {
+  return "idem_" + Math.random().toString(36).slice(2) + Date.now();
+}
+
 
 export async function listAvailability(params: {
   therapist_code: string;
@@ -60,7 +65,13 @@ export async function listAvailability(params: {
       }
       
       const elapsed = Date.now() - startTime;
-      track("slot_list_fetch", { date: params.date_from, count: mockSlots.length, ms: elapsed });
+      track("slot_list_fetch", { 
+        date: params.date_from, 
+        count: mockSlots.length, 
+        ms: elapsed,
+        tz: params.tz,
+        therapist_code: params.therapist_code
+      });
       
       return { ok: true, data: mockSlots };
     }
@@ -77,7 +88,13 @@ export async function listAvailability(params: {
     
     const result = await response.json();
     const elapsed = Date.now() - startTime;
-    track("slot_list_fetch", { date: params.date_from, count: result.data?.length || 0, ms: elapsed });
+    track("slot_list_fetch", { 
+      date: params.date_from, 
+      count: result.data?.length || 0, 
+      ms: elapsed,
+      tz: params.tz,
+      therapist_code: params.therapist_code
+    });
     
     return result;
   } catch (error) {
@@ -92,15 +109,26 @@ export async function createBooking(params: {
   availability_id: string;
   tz: string;
   lang?: string;
+  source?: string;
 }): Promise<{ ok: boolean; data?: UserBooking; error?: string; status?: number }> {
-  track("booking_create_attempt", { availability_id: params.availability_id, tz: params.tz });
+  track("booking_create_attempt", { 
+    availability_id: params.availability_id, 
+    tz: params.tz,
+    therapist_code: params.therapist_code,
+    source: params.source || "unknown"
+  });
   
   try {
     if (MOCK) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       if (Math.random() < 0.1) {
-        track("booking_create_fail", { status: 409, err: "conflict" });
+        track("booking_create_fail", { 
+          status: 409, 
+          err: "conflict",
+          availability_id: params.availability_id,
+          therapist_code: params.therapist_code
+        });
         return { ok: false, error: "Slot was just taken", status: 409 };
       }
       
@@ -118,24 +146,39 @@ export async function createBooking(params: {
       stored.push(mockBooking);
       localStorage.setItem("huggys_bookings", JSON.stringify(stored));
       
-      track("booking_create_success", { booking_id: mockBooking.id });
+      track("booking_create_success", { 
+        booking_id: mockBooking.id,
+        therapist_code: params.therapist_code,
+        tz: params.tz
+      });
       return { ok: true, data: mockBooking };
     }
     
     const response = await fetch("/api/bookings/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey()
+      },
       body: JSON.stringify(params)
     });
     
     const result = await response.json();
     
     if (!response.ok) {
-      track("booking_create_fail", { status: response.status, err: result.error });
+      track("booking_create_fail", { 
+        status: response.status, 
+        err: result.error,
+        therapist_code: params.therapist_code
+      });
       return { ok: false, error: result.error, status: response.status };
     }
     
-    track("booking_create_success", { booking_id: result.data?.id });
+    track("booking_create_success", { 
+      booking_id: result.data?.id,
+      therapist_code: params.therapist_code,
+      tz: params.tz
+    });
     return result;
   } catch (error) {
     track("api_error_bookings_create", { status: error instanceof Error ? error.message : "unknown" });
@@ -151,14 +194,25 @@ export async function rescheduleBooking(params: {
   tz: string;
   lang?: string;
 }): Promise<{ ok: boolean; data?: UserBooking; error?: string; status?: number }> {
-  track("booking_reschedule_attempt", { booking_id: params.booking_id });
+  track("booking_reschedule_attempt", { 
+    booking_id: params.booking_id,
+    new_availability_id: params.new_availability_id,
+    tz: params.tz,
+    therapist_code: params.therapist_code
+  });
   
   try {
     if (MOCK) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       if (Math.random() < 0.1) {
-        track("booking_reschedule_fail", { status: 409, err: "conflict" });
+        track("booking_reschedule_fail", { 
+          status: 409, 
+          err: "conflict",
+          booking_id: params.booking_id,
+          new_availability_id: params.new_availability_id,
+          therapist_code: params.therapist_code
+        });
         return { ok: false, error: "New slot was just taken", status: 409 };
       }
       
@@ -171,28 +225,48 @@ export async function rescheduleBooking(params: {
         stored[bookingIndex].status = "rescheduled";
         localStorage.setItem("huggys_bookings", JSON.stringify(stored));
         
-        track("booking_reschedule_success", { booking_id: params.booking_id });
+        track("booking_reschedule_success", { 
+          booking_id: params.booking_id,
+          new_availability_id: params.new_availability_id,
+          tz: params.tz
+        });
         return { ok: true, data: stored[bookingIndex] };
       }
       
-      track("booking_reschedule_fail", { status: 404, err: "not found" });
+      track("booking_reschedule_fail", { 
+        status: 404, 
+        err: "not found",
+        booking_id: params.booking_id
+      });
       return { ok: false, error: "Booking not found", status: 404 };
     }
     
     const response = await fetch("/api/bookings/reschedule", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey()
+      },
       body: JSON.stringify(params)
     });
     
     const result = await response.json();
     
     if (!response.ok) {
-      track("booking_reschedule_fail", { status: response.status, err: result.error });
+      track("booking_reschedule_fail", { 
+        status: response.status, 
+        err: result.error,
+        booking_id: params.booking_id,
+        therapist_code: params.therapist_code
+      });
       return { ok: false, error: result.error, status: response.status };
     }
     
-    track("booking_reschedule_success", { booking_id: params.booking_id });
+    track("booking_reschedule_success", { 
+      booking_id: params.booking_id,
+      new_availability_id: params.new_availability_id,
+      tz: params.tz
+    });
     return result;
   } catch (error) {
     track("api_error_bookings_reschedule", { status: error instanceof Error ? error.message : "unknown" });
@@ -207,7 +281,11 @@ export async function cancelBooking(params: {
   tz: string;
   lang?: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  track("booking_cancel_attempt", { booking_id: params.booking_id });
+  track("booking_cancel_attempt", { 
+    booking_id: params.booking_id,
+    therapist_code: params.therapist_code,
+    tz: params.tz
+  });
   
   try {
     if (MOCK) {
@@ -217,24 +295,38 @@ export async function cancelBooking(params: {
       const filtered = stored.filter((b: UserBooking) => b.id !== params.booking_id);
       localStorage.setItem("huggys_bookings", JSON.stringify(filtered));
       
-      track("booking_cancel_success", { booking_id: params.booking_id });
+      track("booking_cancel_success", { 
+        booking_id: params.booking_id,
+        therapist_code: params.therapist_code
+      });
       return { ok: true };
     }
     
     const response = await fetch("/api/bookings/cancel", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey()
+      },
       body: JSON.stringify(params)
     });
     
     const result = await response.json();
     
     if (!response.ok) {
-      track("booking_cancel_fail", { status: response.status, err: result.error });
+      track("booking_cancel_fail", { 
+        status: response.status, 
+        err: result.error,
+        booking_id: params.booking_id,
+        therapist_code: params.therapist_code
+      });
       return { ok: false, error: result.error };
     }
     
-    track("booking_cancel_success", { booking_id: params.booking_id });
+    track("booking_cancel_success", { 
+      booking_id: params.booking_id,
+      therapist_code: params.therapist_code
+    });
     return result;
   } catch (error) {
     track("api_error_bookings_cancel", { status: error instanceof Error ? error.message : "unknown" });

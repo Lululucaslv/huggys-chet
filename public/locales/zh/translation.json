@@ -297,7 +297,9 @@
         "reload": "重新加载",
         "createFailed": "创建预约失败",
         "rescheduleFailed": "改约失败",
-        "cancelFailed": "取消预约失败"
-    }
+        "cancelFailed": "取消预约失败",
+        "selectSlot": "选择时段",
+        "booking": "预约",
+        "confirmCancel": "确认取消"
     }
 }

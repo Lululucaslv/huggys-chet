@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { getTzPref, setTzPref } from "../../lib/tzPref";
+import { track } from "../../lib/analytics";
 
 const COMMON = [
   "UTC",
@@ -19,10 +21,12 @@ export function TimezonePicker({
   onChange?: (tz: string) => void;
 }) {
   const [tz, setTz] = useState(
-    value || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+    value || getTzPref()
   );
 
   useEffect(() => {
+    setTzPref(tz);
+    track("dashboard_tz_change", { tz });
     onChange?.(tz);
   }, [tz, onChange]);
 

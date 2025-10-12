@@ -230,6 +230,9 @@
     "reload": "[ES] Reload",
     "createFailed": "[ES] Failed to create booking",
     "rescheduleFailed": "[ES] Failed to reschedule",
-    "cancelFailed": "[ES] Failed to cancel booking"
+    "cancelFailed": "[ES] Failed to cancel booking",
+    "selectSlot": "[ES] Select slot",
+    "booking": "[ES] booking",
+    "confirmCancel": "[ES] Confirm cancellation"
   }
 }

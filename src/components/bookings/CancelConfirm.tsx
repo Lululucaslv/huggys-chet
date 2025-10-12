@@ -7,6 +7,7 @@ import { successToast, errorToast } from "../../lib/toasts";
 import { toLocal, fmt } from "../../lib/tz";
 import { track } from "../../lib/analytics";
 import { useTranslation } from "react-i18next";
+import { getTzPref } from "../../lib/tzPref";
 
 type Props = {
   open: boolean;
@@ -17,7 +18,7 @@ type Props = {
 
 export function CancelConfirm({ open, onOpenChange, booking, onSuccess }: Props) {
   const { t } = useTranslation();
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
+  const tz = useMemo(() => getTzPref(), []);
   const { user } = useAuth();
   const { requireAuth } = useAuthGate();
   const [submitting, setSubmitting] = useState(false);
@@ -64,8 +65,8 @@ export function CancelConfirm({ open, onOpenChange, booking, onSuccess }: Props)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle>{t("bookings.confirmCancelTitle")}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle tabIndex={-1}>{t("bookings.confirmCancelTitle")}</DialogTitle>
+          <DialogDescription id="cancel-description">
             {label} ({tz})
             <br />
             {t("bookings.confirmCancelDesc")}
@@ -84,6 +85,8 @@ export function CancelConfirm({ open, onOpenChange, booking, onSuccess }: Props)
             className="h-10 px-4 rounded-[var(--radius-input)] text-white bg-red-600 hover:bg-red-700 disabled:opacity-60"
             onClick={onConfirm}
             disabled={submitting}
+            aria-describedby="cancel-description"
+            aria-label={t("bookings.confirmCancel", { defaultValue: "Confirm cancellation" })}
           >
             {submitting ? t("bookings.canceling", { defaultValue: "Canceling..." }) : t("bookings.cancel")}
           </button>

@@ -10,6 +10,7 @@ import { track } from "../../lib/analytics";
 import { useTranslation } from "react-i18next";
 import { addDays, format } from "date-fns";
 import { LineSkeleton } from "../shared/Skeletons";
+import { getTzPref } from "../../lib/tzPref";
 
 type Props = {
   open: boolean;
@@ -21,7 +22,7 @@ type Props = {
 
 export function BookingDrawer({ open, onOpenChange, therapistCode, source = "bookings.page", onSuccess }: Props) {
   const { t } = useTranslation();
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
+  const tz = useMemo(() => getTzPref(), []);
   const { user } = useAuth();
   const { requireAuth } = useAuthGate();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -67,13 +68,20 @@ export function BookingDrawer({ open, onOpenChange, therapistCode, source = "boo
         therapist_code: therapistCode,
         availability_id: selectedSlotId,
         tz,
-        lang: "en"
+        lang: "en",
+        source
       });
 
       if (res?.ok === false && res?.status === 409) {
         errorToast(t("bookings.conflict"));
         track("booking_create_fail", { status: 409, availability_id: selectedSlotId });
-        setSelectedSlotId(null);
+        
+        const currentIndex = slots.findIndex(s => s.availabilityId === selectedSlotId);
+        if (currentIndex >= 0 && currentIndex + 1 < slots.length) {
+          setSelectedSlotId(slots[currentIndex + 1].availabilityId);
+        } else {
+          setSelectedSlotId(null);
+        }
         return;
       }
 
@@ -100,7 +108,7 @@ export function BookingDrawer({ open, onOpenChange, therapistCode, source = "boo
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>{t("bookings.new")}</SheetTitle>
+          <SheetTitle tabIndex={-1}>{t("bookings.new")}</SheetTitle>
           <SheetDescription>
             {t("bookings.selectDateAndSlot", { defaultValue: "Select a date and available time slot" })}
           </SheetDescription>
@@ -153,6 +161,7 @@ export function BookingDrawer({ open, onOpenChange, therapistCode, source = "boo
                   <button
                     key={slot.availabilityId}
                     onClick={() => setSelectedSlotId(slot.availabilityId)}
+                    aria-label={`${t("bookings.selectSlot", { defaultValue: "Select slot" })} ${label}`}
                     className={`w-full p-4 rounded-[var(--radius-input)] border text-left transition-colors
                                ${active
                                  ? "bg-[var(--brand-50)] border-[var(--brand-600)]"

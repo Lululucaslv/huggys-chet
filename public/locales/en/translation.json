@@ -297,6 +297,9 @@
         "reload": "Reload",
         "createFailed": "Failed to create booking",
         "rescheduleFailed": "Failed to reschedule",
-        "cancelFailed": "Failed to cancel booking"
+        "cancelFailed": "Failed to cancel booking",
+        "selectSlot": "Select slot",
+        "booking": "booking",
+        "confirmCancel": "Confirm cancellation"
     }
 }

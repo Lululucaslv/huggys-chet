@@ -234,6 +234,9 @@
     "reload": "[FR] Reload",
     "createFailed": "[FR] Failed to create booking",
     "rescheduleFailed": "[FR] Failed to reschedule",
-    "cancelFailed": "[FR] Failed to cancel booking"
+    "cancelFailed": "[FR] Failed to cancel booking",
+    "selectSlot": "[FR] Select slot",
+    "booking": "[FR] booking",
+    "confirmCancel": "[FR] Confirm cancellation"
   }
 }
