@@ -163,6 +163,8 @@ function App() {
                       <p className="text-gray-500">{t('loading_user')}</p>
                     </div>
                   </div>
+                ) : userRole === 'client' ? (
+                  <Navigate to="/app" replace />
                 ) : (
                   <MainDashboard session={session} userRole={userRole} />
                 )
