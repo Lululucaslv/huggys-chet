@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getAssessmentHistory } from "../../lib/api/assessments";
 import { LineSkeleton } from "../shared/Skeletons";
 import { useAuthGate } from "../../lib/useAuthGate";
@@ -31,6 +32,7 @@ function AssessmentCard({
   type: "phq9" | "gad7";
 }) {
   const { requireAuth } = useAuthGate();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [points, setPoints] = useState<number[]>([]);
 
@@ -64,10 +66,16 @@ function AssessmentCard({
             type: "ASSESSMENT_START",
             payload: {
               kind: type,
-              onAllow: () => track("assessment_start", { type })
+              onAllow: () => {
+                track("assessment_start", { type });
+                navigate(`/app/tests/${type}`);
+              }
             }
           });
-          if (allowed.allowed) track("assessment_start", { type });
+          if (allowed.allowed) {
+            track("assessment_start", { type });
+            navigate(`/app/tests/${type}`);
+          }
         }}
       >
         Start

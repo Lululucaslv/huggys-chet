@@ -1,49 +1,49 @@
 import { useEffect, useState } from "react";
-import { listBookings, type Booking } from "../../lib/api/bookings";
+import { useNavigate } from "react-router-dom";
+import { listUserBookings, type UserBooking } from "../../lib/api/bookings.user";
 import { toLocal, fmt } from "../../lib/tz";
 import { LineSkeleton } from "../shared/Skeletons";
 import { EmptyState } from "../shared/EmptyState";
 import { useAuth } from "../../lib/auth/AuthProvider";
-import { useAuthGate } from "../../lib/useAuthGate";
 import { track } from "../../lib/analytics";
 import { Calendar, AlertCircle } from "lucide-react";
+import { BookingDrawer } from "./BookingDrawer";
+import { RescheduleDialog } from "./RescheduleDialog";
+import { CancelConfirm } from "./CancelConfirm";
 
 export function UpcomingList() {
   const { user } = useAuth();
-  const { requireAuth } = useAuthGate();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<Booking[]>([]);
+  const [items, setItems] = useState<UserBooking[]>([]);
+  const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<UserBooking | null>(null);
   const tz =
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const payload = await listUserBookings({
+        user_id: user?.id || "u_demo",
+        therapist_code: "FAGHT34X",
+        tz
+      });
+      if (!payload.ok) throw new Error("not ok");
+      setItems(payload.data);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || "Load failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const today = new Date();
-        const from = new Date(today);
-        from.setHours(0, 0, 0, 0);
-        const to = new Date(today);
-        to.setDate(to.getDate() + 30);
-        to.setHours(23, 59, 59, 999);
-        const payload = await listBookings({
-          user_id: user?.id || "u_demo",
-          therapist_code: "FAGHT34X",
-          tz,
-          date_from: `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")} 00:00`,
-          date_to: `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, "0")}-${String(to.getDate()).padStart(2, "0")} 23:59`,
-          lang: "en-US"
-        });
-        if (!payload.ok) throw new Error("not ok");
-        setItems(payload.data);
-        setError(null);
-      } catch (e: any) {
-        setError(e?.message || "Load failed");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchBookings();
   }, [user, tz]);
 
   if (loading)
@@ -79,11 +79,8 @@ export function UpcomingList() {
           <button
             className="h-10 px-4 rounded-[var(--radius-input)] border border-[var(--line)]"
             onClick={() => {
-              const allowed = requireAuth({
-                type: "BOOK_CREATE",
-                payload: { onAllow: () => track("booking_create_start", {}) }
-              });
-              if (allowed.allowed) track("booking_create_start", {});
+              setBookingDrawerOpen(true);
+              track("booking_create_start", {});
             }}
           >
             Book now
@@ -96,7 +93,10 @@ export function UpcomingList() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Upcoming bookings</h3>
-        <button className="text-sm text-[var(--muted)] hover:text-[var(--text)]">
+        <button 
+          className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
+          onClick={() => navigate('/app/bookings')}
+        >
           View all
         </button>
       </div>
@@ -120,15 +120,9 @@ export function UpcomingList() {
                 <button
                   className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
                   onClick={() => {
-                    const allowed = requireAuth({
-                      type: "BOOK_RESCHEDULE",
-                      payload: {
-                        onAllow: () =>
-                          track("booking_reschedule_start", { id: b.id })
-                      }
-                    });
-                    if (allowed.allowed)
-                      track("booking_reschedule_start", { id: b.id });
+                    setSelectedBooking(b);
+                    setRescheduleDialogOpen(true);
+                    track("booking_reschedule_start", { id: b.id });
                   }}
                 >
                   Reschedule
@@ -136,15 +130,9 @@ export function UpcomingList() {
                 <button
                   className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
                   onClick={() => {
-                    const allowed = requireAuth({
-                      type: "BOOK_CANCEL",
-                      payload: {
-                        onAllow: () =>
-                          track("booking_cancel_start", { id: b.id })
-                      }
-                    });
-                    if (allowed.allowed)
-                      track("booking_cancel_start", { id: b.id });
+                    setSelectedBooking(b);
+                    setCancelConfirmOpen(true);
+                    track("booking_cancel_start", { id: b.id });
                   }}
                 >
                   Cancel
@@ -154,6 +142,36 @@ export function UpcomingList() {
           );
         })}
       </ul>
+      
+      <BookingDrawer
+        open={bookingDrawerOpen}
+        onOpenChange={setBookingDrawerOpen}
+        therapistCode="FAGHT34X"
+        source="dashboard"
+        onSuccess={() => {
+          fetchBookings();
+        }}
+      />
+      
+      <RescheduleDialog
+        open={rescheduleDialogOpen}
+        onOpenChange={setRescheduleDialogOpen}
+        booking={selectedBooking}
+        onSuccess={() => {
+          setSelectedBooking(null);
+          fetchBookings();
+        }}
+      />
+      
+      <CancelConfirm
+        open={cancelConfirmOpen}
+        onOpenChange={setCancelConfirmOpen}
+        booking={selectedBooking}
+        onSuccess={() => {
+          setSelectedBooking(null);
+          fetchBookings();
+        }}
+      />
     </div>
   );
 }

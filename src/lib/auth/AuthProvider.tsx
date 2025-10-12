@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authClient, type User } from "./authClient";
+import { supabase } from "../supabase";
 
 type Ctx = {
   user: User;
@@ -17,7 +18,14 @@ export function AuthProvider({ children }:{ children: React.ReactNode }) {
 
   useEffect(() => { (async () => {
     setLoading(true);
-    const u = await authClient.getSession();
+    let u = await authClient.getSession();
+    if (!u) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        u = { id: session.user.id, email: session.user.email || '' };
+        localStorage.setItem('demo_user', JSON.stringify(u));
+      }
+    }
     setUser(u);
     setLoading(false);
   })(); }, []);
