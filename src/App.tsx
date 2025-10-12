@@ -19,6 +19,7 @@ import { LandingPage } from './pages/LandingPage'
 import { AuthProvider } from './lib/auth/AuthProvider'
 import Dashboard from './pages/Dashboard'
 import Tests from './pages/Tests'
+import Bookings from './pages/Bookings'
 
 function App() {
   const { t } = useTranslation()
@@ -136,6 +137,19 @@ function App() {
                 roleLoading={roleLoading}
               >
                 <Tests />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/app/bookings" 
+            element={
+              <ProtectedRoute 
+                session={session} 
+                userRole={userRole} 
+                requiredRole="client"
+                roleLoading={roleLoading}
+              >
+                <Bookings />
               </ProtectedRoute>
             } 
           />
