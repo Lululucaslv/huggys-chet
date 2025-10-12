@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
-import { AssessmentStart } from "@/components/assessments/AssessmentStart";
-import { AssessmentForm } from "@/components/assessments/AssessmentForm";
-import { AssessmentResult } from "@/components/assessments/AssessmentResult";
+import { AssessmentStart } from "../components/assessments/AssessmentStart";
+import { AssessmentForm } from "../components/assessments/AssessmentForm";
+import { AssessmentResult } from "../components/assessments/AssessmentResult";
 
 export default function Tests() {
   return (

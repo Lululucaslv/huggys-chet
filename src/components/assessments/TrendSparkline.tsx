@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { getAssessmentHistory, type AssessmentPoint } from "@/lib/api/assessments";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { LineSkeleton } from "@/components/shared/Skeletons";
+import { getAssessmentHistory, type AssessmentPoint } from "../../lib/api/assessments";
+import { useAuth } from "../../lib/auth/AuthProvider";
+import { LineSkeleton } from "../shared/Skeletons";
 
 type Props = {
   type: "phq9" | "gad7";

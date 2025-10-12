@@ -1,5 +1,5 @@
-import { useAuthGate } from "@/lib/useAuthGate";
-import { track } from "@/lib/analytics";
+import { useAuthGate } from "../../lib/useAuthGate";
+import { track } from "../../lib/analytics";
 import { useNavigate } from "react-router-dom";
 
 type AssessmentCardProps = {

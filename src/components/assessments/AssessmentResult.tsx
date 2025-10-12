@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { PHQ9_METADATA } from "@/lib/assessments/phq9";
-import { GAD7_METADATA } from "@/lib/assessments/gad7";
-import { getInterpretation, getRecommendations } from "@/lib/assessments/scoring";
-import { track } from "@/lib/analytics";
+import { PHQ9_METADATA } from "../../lib/assessments/phq9";
+import { GAD7_METADATA } from "../../lib/assessments/gad7";
+import { getInterpretation, getRecommendations } from "../../lib/assessments/scoring";
+import { track } from "../../lib/analytics";
 import { TrendSparkline } from "./TrendSparkline";
 
 export function AssessmentResult() {

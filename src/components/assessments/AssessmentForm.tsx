@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { PHQ9_QUESTIONS, PHQ9_OPTIONS, PHQ9_METADATA } from "@/lib/assessments/phq9";
-import { GAD7_QUESTIONS, GAD7_OPTIONS, GAD7_METADATA } from "@/lib/assessments/gad7";
-import { calculateScore } from "@/lib/assessments/scoring";
-import { saveAssessmentResult } from "@/lib/api/assessments";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { track } from "@/lib/analytics";
+import { PHQ9_QUESTIONS, PHQ9_OPTIONS, PHQ9_METADATA } from "../../lib/assessments/phq9";
+import { GAD7_QUESTIONS, GAD7_OPTIONS, GAD7_METADATA } from "../../lib/assessments/gad7";
+import { calculateScore } from "../../lib/assessments/scoring";
+import { saveAssessmentResult } from "../../lib/api/assessments";
+import { useAuth } from "../../lib/auth/AuthProvider";
+import { track } from "../../lib/analytics";
 
 export function AssessmentForm() {
   const { type } = useParams<{ type: "phq9" | "gad7" }>();
