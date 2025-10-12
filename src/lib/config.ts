@@ -1,3 +1,7 @@
+const VITE_MOCK = import.meta.env.VITE_MOCK as string | undefined;
+const MODE = import.meta.env.MODE;
+const isPreview = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+
 export const AppConfig = {
-  MOCK: (import.meta.env.VITE_MOCK as string | undefined) === "1" || import.meta.env.MODE !== "production",
+  MOCK: VITE_MOCK === "1" || MODE === "development" || isPreview,
 };
