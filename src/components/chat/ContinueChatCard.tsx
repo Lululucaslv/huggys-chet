@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getLatestThreadSummary } from "../../lib/api/chat";
 import { LineSkeleton } from "../shared/Skeletons";
 import { useAuthGate } from "../../lib/useAuthGate";
+import { track } from "../../lib/analytics";
 
 export function ContinueChatCard() {
   const { requireAuth } = useAuthGate();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
     title: string;
@@ -36,9 +39,17 @@ export function ContinueChatCard() {
         onClick={() => {
           const allowed = requireAuth({
             type: "CHAT_CONTINUE",
-            payload: { onAllow: () => location.assign("/chat") }
+            payload: {
+              onAllow: () => {
+                track("chat_continue", {});
+                navigate("/chat");
+              }
+            }
           });
-          if (allowed.allowed) location.assign("/chat");
+          if (allowed.allowed) {
+            track("chat_continue", {});
+            navigate("/chat");
+          }
         }}
       >
         Open chat
