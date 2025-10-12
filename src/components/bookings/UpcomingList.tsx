@@ -46,102 +46,103 @@ export function UpcomingList() {
     fetchBookings();
   }, [user, tz]);
 
-  if (loading)
-    return (
-      <div className="space-y-3">
-        <LineSkeleton h={22} w="40%" />
-        <LineSkeleton h={64} />
-        <LineSkeleton h={64} />
-      </div>
-    );
-
-  if (error)
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Failed to load bookings"
-        description={error}
-        action={
-          <button className="underline" onClick={() => location.reload()}>
-            Reload
-          </button>
-        }
-      />
-    );
-
-  if (!items.length)
-    return (
-      <EmptyState
-        icon={Calendar}
-        title="No upcoming bookings"
-        description="Add a time that works for you."
-        action={
-          <button
-            className="h-10 px-4 rounded-[var(--radius-input)] border border-[var(--line)]"
-            onClick={() => {
-              setBookingDrawerOpen(true);
-              track("booking_create_start", {});
-            }}
-          >
-            Book now
-          </button>
-        }
-      />
-    );
-
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Upcoming bookings</h3>
-        <button 
-          className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
-          onClick={() => navigate('/app/bookings')}
-        >
-          View all
-        </button>
-      </div>
-      <ul className="divide-y divide-[var(--line)] rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--card)]">
-        {items.map((b) => {
-          const local = toLocal(b.startUTC, tz);
-          const end = toLocal(b.endUTC, tz);
-          const when = local ? fmt(local, "LLL dd (ccc) HH:mm") : "—";
-          const whenTo = end ? fmt(end, "HH:mm") : "—";
-          return (
-            <li key={b.id} className="p-4 flex items-center justify-between">
-              <div>
-                <div className="font-medium">
-                  {when}–{whenTo}
-                </div>
-                <div className="text-sm text-[var(--muted)]">
-                  {b.therapist} · {b.status}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
-                  onClick={() => {
-                    setSelectedBooking(b);
-                    setRescheduleDialogOpen(true);
-                    track("booking_reschedule_start", { id: b.id });
-                  }}
-                >
-                  Reschedule
-                </button>
-                <button
-                  className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
-                  onClick={() => {
-                    setSelectedBooking(b);
-                    setCancelConfirmOpen(true);
-                    track("booking_cancel_start", { id: b.id });
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+    <>
+      {loading && (
+        <div className="space-y-3">
+          <LineSkeleton h={22} w="40%" />
+          <LineSkeleton h={64} />
+          <LineSkeleton h={64} />
+        </div>
+      )}
+
+      {!loading && error && (
+        <EmptyState
+          icon={AlertCircle}
+          title="Failed to load bookings"
+          description={error}
+          action={
+            <button className="underline" onClick={() => location.reload()}>
+              Reload
+            </button>
+          }
+        />
+      )}
+
+      {!loading && !error && !items.length && (
+        <EmptyState
+          icon={Calendar}
+          title="No upcoming bookings"
+          description="Add a time that works for you."
+          action={
+            <button
+              className="h-10 px-4 rounded-[var(--radius-input)] border border-[var(--line)]"
+              onClick={() => {
+                setBookingDrawerOpen(true);
+                track("booking_create_start", {});
+              }}
+            >
+              Book now
+            </button>
+          }
+        />
+      )}
+
+      {!loading && !error && items.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Upcoming bookings</h3>
+            <button 
+              className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
+              onClick={() => navigate('/app/bookings')}
+            >
+              View all
+            </button>
+          </div>
+          <ul className="divide-y divide-[var(--line)] rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--card)]">
+            {items.map((b) => {
+              const local = toLocal(b.startUTC, tz);
+              const end = toLocal(b.endUTC, tz);
+              const when = local ? fmt(local, "LLL dd (ccc) HH:mm") : "—";
+              const whenTo = end ? fmt(end, "HH:mm") : "—";
+              return (
+                <li key={b.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">
+                      {when}–{whenTo}
+                    </div>
+                    <div className="text-sm text-[var(--muted)]">
+                      {b.therapist} · {b.status}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
+                      onClick={() => {
+                        setSelectedBooking(b);
+                        setRescheduleDialogOpen(true);
+                        track("booking_reschedule_start", { id: b.id });
+                      }}
+                    >
+                      Reschedule
+                    </button>
+                    <button
+                      className="h-9 px-3 rounded-[var(--radius-input)] border border-[var(--line)]"
+                      onClick={() => {
+                        setSelectedBooking(b);
+                        setCancelConfirmOpen(true);
+                        track("booking_cancel_start", { id: b.id });
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       
       <BookingDrawer
         open={bookingDrawerOpen}
@@ -172,6 +173,6 @@ export function UpcomingList() {
           fetchBookings();
         }}
       />
-    </div>
+    </>
   );
 }
