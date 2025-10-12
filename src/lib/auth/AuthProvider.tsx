@@ -16,19 +16,34 @@ export function AuthProvider({ children }:{ children: React.ReactNode }) {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { (async () => {
-    setLoading(true);
-    let u = await authClient.getSession();
-    if (!u) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        u = { id: session.user.id, email: session.user.email || '' };
-        localStorage.setItem('demo_user', JSON.stringify(u));
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      let u = await authClient.getSession();
+      if (!u) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          u = { id: session.user.id, email: session.user.email || '' };
+          localStorage.setItem('demo_user', JSON.stringify(u));
+        }
       }
-    }
-    setUser(u);
-    setLoading(false);
-  })(); }, []);
+      setUser(u);
+      setLoading(false);
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const u = { id: session.user.id, email: session.user.email || '' };
+        localStorage.setItem('demo_user', JSON.stringify(u));
+        setUser(u);
+      } else {
+        localStorage.removeItem('demo_user');
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = async (p:{email:string; password?:string})=>{
     const u = await authClient.signInEmail(p);

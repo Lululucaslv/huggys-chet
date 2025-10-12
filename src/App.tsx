@@ -13,7 +13,6 @@ import AIChat from './components/AIChat'
 import SettingsPage from './pages/SettingsPage'
 import { Dialog, DialogContent } from './components/ui/dialog'
 import { MessageCircle, Settings } from 'lucide-react'
-import { AuthGateProvider } from './contexts/AuthGateContext'
 import { RegisterDrawer } from './components/auth/RegisterDrawer'
 import { LandingPage } from './pages/LandingPage'
 import { AuthProvider } from './lib/auth/AuthProvider'
@@ -80,8 +79,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <AuthGateProvider isAuthenticated={!!session}>
-          <Routes>
+        <Routes>
           <Route 
             path="/login" 
             element={
@@ -173,9 +171,8 @@ function App() {
               )
             } 
           />
-          </Routes>
-          <RegisterDrawer />
-        </AuthGateProvider>
+        </Routes>
+        <RegisterDrawer />
       </Router>
     </AuthProvider>
   )
