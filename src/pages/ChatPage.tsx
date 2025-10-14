@@ -3,8 +3,9 @@ import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { ChatAPI } from '../lib/chatApi'
 import { UserProfileUpdater } from '../lib/userProfileUpdater'
-import { Send, Loader2, Camera } from 'lucide-react'
+import { Send, Loader2, Camera, ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { TimeConfirmCard } from '../components/chat/TimeConfirmCard'
 
@@ -24,6 +25,7 @@ interface ChatPageProps {
 
 export default function ChatPage({ session }: ChatPageProps) {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -434,6 +436,13 @@ export default function ChatPage({ session }: ChatPageProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/app')}
+                className="text-cyan-200 hover:text-cyan-100 transition-colors p-2 hover:bg-cyan-500/10 rounded-md"
+                aria-label="Back to dashboard"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-lg">🤗</span>
               </div>

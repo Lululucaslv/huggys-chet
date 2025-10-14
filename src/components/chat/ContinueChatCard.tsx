@@ -52,7 +52,7 @@ export function ContinueChatCard() {
           }
         }}
       >
-        Open chat
+        AI Chat
       </button>
     </div>
   );
