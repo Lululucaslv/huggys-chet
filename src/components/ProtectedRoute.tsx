@@ -18,7 +18,7 @@ export default function ProtectedRoute({
   roleLoading 
 }: ProtectedRouteProps) {
   if (!session) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   if (roleLoading) {
