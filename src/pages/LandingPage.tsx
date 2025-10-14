@@ -1,20 +1,24 @@
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Calendar, ClipboardList, MessageCircle, ArrowRight } from 'lucide-react'
 import { PrimaryButton } from '../components/shared/PrimaryButton'
 import { SecondaryButton } from '../components/shared/SecondaryButton'
 import { Card } from '../components/shared/Card'
 import { DemoDashboard } from '../components/demo/DemoDashboard'
+import { useGateStore } from '../lib/useAuthGate'
 
 export function LandingPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const { setOpen } = useGateStore()
 
   const scrollToDemoSection = () => {
     const demoSection = document.getElementById('demo-section')
     if (demoSection) {
       demoSection.scrollIntoView({ behavior: 'smooth' })
     }
+  }
+
+  const handleAuthClick = () => {
+    setOpen(true)
   }
 
   return (
@@ -27,10 +31,10 @@ export function LandingPage() {
               <h1 className="text-xl font-semibold text-[var(--text)]">Huggys.ai</h1>
             </div>
             <div className="flex items-center gap-4">
-              <SecondaryButton onClick={() => navigate('/login')} size="sm">
+              <SecondaryButton onClick={handleAuthClick} size="sm">
                 {t('auth_login')}
               </SecondaryButton>
-              <PrimaryButton onClick={() => navigate('/login')} size="sm">
+              <PrimaryButton onClick={handleAuthClick} size="sm">
                 {t('hero.ctaStart')}
               </PrimaryButton>
             </div>
@@ -48,7 +52,7 @@ export function LandingPage() {
               {t('hero.subtitle')}
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <PrimaryButton onClick={() => navigate('/login')} className="text-lg px-8 py-3">
+              <PrimaryButton onClick={handleAuthClick} className="text-lg px-8 py-3">
                 {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
               </PrimaryButton>
               <SecondaryButton onClick={scrollToDemoSection} className="text-lg px-8 py-3">
