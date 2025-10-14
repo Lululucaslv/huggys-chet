@@ -11,15 +11,19 @@ export type Intent =
 type GateState = {
   drawerOpen: boolean;
   intent: Intent | null;
+  authMode: "signin" | "signup";
   setOpen: (v:boolean)=>void;
   setIntent: (i:Intent|null)=>void;
+  setAuthMode: (mode: "signin" | "signup")=>void;
 };
 
 export const useGateStore = create<GateState>((set)=>({
   drawerOpen: false,
   intent: null,
+  authMode: "signup",
   setOpen: (v)=> set({ drawerOpen: v }),
   setIntent: (i)=> set({ intent: i }),
+  setAuthMode: (mode)=> set({ authMode: mode }),
 }));
 
 export function useAuthGate(){

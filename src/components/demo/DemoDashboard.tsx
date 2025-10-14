@@ -5,11 +5,13 @@ import { Banner } from '../shared/Banner'
 import { PrimaryButton } from '../shared/PrimaryButton'
 import { SecondaryButton } from '../shared/SecondaryButton'
 import { useAuthGate } from '../../lib/useAuthGate'
+import { useAuth } from '../../lib/auth/AuthProvider'
 import { useBookings, useAssessments, useChatPreview } from '../../hooks/useDataSource'
 import { DateTime } from 'luxon'
 
 export function DemoDashboard() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const { requireAuth } = useAuthGate()
   const { bookings } = useBookings()
   const { assessments } = useAssessments()
@@ -53,7 +55,7 @@ export function DemoDashboard() {
 
   return (
     <div className="space-y-6">
-      <Banner type="info" text={t('demo.banner')} />
+      {!user && <Banner type="info" text={t('demo.banner')} />}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

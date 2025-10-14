@@ -8,7 +8,7 @@ import { useGateStore } from '../lib/useAuthGate'
 
 export function LandingPage() {
   const { t } = useTranslation()
-  const { setOpen } = useGateStore()
+  const { setOpen, setAuthMode } = useGateStore()
 
   const scrollToDemoSection = () => {
     const demoSection = document.getElementById('demo-section')
@@ -17,7 +17,13 @@ export function LandingPage() {
     }
   }
 
-  const handleAuthClick = () => {
+  const handleLoginClick = () => {
+    setAuthMode("signin")
+    setOpen(true)
+  }
+
+  const handleSignupClick = () => {
+    setAuthMode("signup")
     setOpen(true)
   }
 
@@ -31,10 +37,10 @@ export function LandingPage() {
               <h1 className="text-xl font-semibold text-[var(--text)]">Huggys.ai</h1>
             </div>
             <div className="flex items-center gap-4">
-              <SecondaryButton onClick={handleAuthClick} size="sm">
+              <SecondaryButton onClick={handleLoginClick} size="sm">
                 {t('auth_login')}
               </SecondaryButton>
-              <PrimaryButton onClick={handleAuthClick} size="sm">
+              <PrimaryButton onClick={handleSignupClick} size="sm">
                 {t('hero.ctaStart')}
               </PrimaryButton>
             </div>
@@ -52,7 +58,7 @@ export function LandingPage() {
               {t('hero.subtitle')}
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <PrimaryButton onClick={handleAuthClick} className="text-lg px-8 py-3">
+              <PrimaryButton onClick={handleSignupClick} className="text-lg px-8 py-3">
                 {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
               </PrimaryButton>
               <SecondaryButton onClick={scrollToDemoSection} className="text-lg px-8 py-3">
