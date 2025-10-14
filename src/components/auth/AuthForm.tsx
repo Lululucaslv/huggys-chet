@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../../lib/auth/AuthProvider";
+import { supabase } from "../../lib/supabase";
 
 type Mode = "signin" | "signup";
 
@@ -7,7 +7,6 @@ export function AuthForm({ mode: defaultMode = "signup", onSuccess }:{
   mode?: Mode;
   onSuccess?: () => void;
 }) {
-  const { login, register } = useAuth();
   const [mode, setMode] = useState<Mode>(defaultMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,12 +18,20 @@ export function AuthForm({ mode: defaultMode = "signup", onSuccess }:{
     e.preventDefault();
     setErr("");
     if (!email) return setErr("Email is required.");
+    if (!password) return setErr("Password is required.");
     if (!agree && mode === "signup") return setErr("Please agree to the terms.");
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      if (mode === "signin") await login({ email, password });
-      else await register({ email, password });
-      onSuccess?.();
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        onSuccess?.();
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        onSuccess?.();
+      }
     } catch (e:any) {
       setErr(e?.message || "Authentication failed. Please try again.");
     } finally {
@@ -42,18 +49,21 @@ export function AuthForm({ mode: defaultMode = "signup", onSuccess }:{
                      focus:border-[var(--brand-400)] focus:ring-2 focus:ring-[var(--brand-400)]/40"
           type="email" placeholder="you@example.com" value={email}
           onChange={(e)=> setEmail(e.target.value)}
+          autoComplete="email"
           required
         />
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium">Password (optional)</label>
+        <label className="text-sm font-medium">Password</label>
         <input
           className="h-10 w-full rounded-[var(--radius-input)] border border-[var(--line)] bg-transparent
                      px-3 placeholder:text-[var(--muted)]
                      focus:border-[var(--brand-400)] focus:ring-2 focus:ring-[var(--brand-400)]/40"
           type="password" placeholder="••••••••" value={password}
           onChange={(e)=> setPassword(e.target.value)}
+          autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          required
         />
       </div>
 
