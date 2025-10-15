@@ -23,6 +23,7 @@ export function SecondaryButton({
         "text-[var(--brand-600)]",
         "transition-all duration-mid ease-smooth",
         "disabled:text-[var(--disabled)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex items-center justify-center gap-2",
         variant === 'ghost' && "hover:bg-[var(--brand-400)]/10",
         variant === 'outline' && "border border-[var(--brand-600)] hover:bg-[var(--brand-400)]/10",
         "focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]",
