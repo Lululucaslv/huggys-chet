@@ -1,7 +1,11 @@
 import { cn } from '../../lib/utils'
 import { ButtonHTMLAttributes } from 'react'
+import { motion } from 'framer-motion'
 
-interface SecondaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface SecondaryButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>, 
+  'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onDragEnter' | 'onDragExit' | 'onDragLeave' | 'onDragOver'
+> {
   size?: 'sm' | 'md'
   variant?: 'ghost' | 'outline'
 }
@@ -15,9 +19,10 @@ export function SecondaryButton({
   ...props 
 }: SecondaryButtonProps) {
   return (
-    <button
-      {...props}
+    <motion.button
       disabled={disabled}
+      whileHover={!disabled ? { y: -1 } : undefined}
+      whileTap={!disabled ? { scale: 0.98 } : undefined}
       className={cn(
         "px-5 rounded-xl font-medium",
         "text-[var(--brand-600)]",
@@ -31,8 +36,9 @@ export function SecondaryButton({
         size === 'sm' && "h-10",
         className
       )}
+      {...props}
     >
       {children}
-    </button>
+    </motion.button>
   )
 }

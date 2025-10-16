@@ -5,6 +5,9 @@ import { SecondaryButton } from '../components/shared/SecondaryButton'
 import { Card } from '../components/shared/Card'
 import { DemoDashboard } from '../components/demo/DemoDashboard'
 import { useGateStore } from '../lib/useAuthGate'
+import { motion } from 'framer-motion'
+import MotionSection from '../components/MotionSection'
+import { stagger, fadeInUp, springMd } from '../lib/anim'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -48,7 +51,7 @@ export function LandingPage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }}>
+      <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }} variant="fadeUp">
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black/70"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
@@ -68,57 +71,69 @@ export function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </MotionSection>
 
-      <section className="py-20 bg-[var(--bg)]">
+      <MotionSection as="section" className="py-20 bg-[var(--bg)]" variant="fade">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="p-8 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="bg-blue-100 p-4 rounded-full">
-                  <Calendar className="h-8 w-8 text-[var(--brand-600)]" />
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8"
+            variants={stagger(0.12)}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            <motion.div variants={fadeInUp} transition={springMd}>
+              <Card className="p-8 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-blue-100 p-4 rounded-full">
+                    <Calendar className="h-8 w-8 text-[var(--brand-600)]" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
-                {t('features.booking.title')}
-              </h3>
-              <p className="text-[var(--muted)]">
-                {t('features.booking.desc')}
-              </p>
-            </Card>
+                <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
+                  {t('features.booking.title')}
+                </h3>
+                <p className="text-[var(--muted)]">
+                  {t('features.booking.desc')}
+                </p>
+              </Card>
+            </motion.div>
 
-            <Card className="p-8 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="bg-purple-100 p-4 rounded-full">
-                  <ClipboardList className="h-8 w-8 text-[var(--accent-500)]" />
+            <motion.div variants={fadeInUp} transition={springMd}>
+              <Card className="p-8 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-purple-100 p-4 rounded-full">
+                    <ClipboardList className="h-8 w-8 text-[var(--accent-500)]" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
-                {t('features.assessments.title')}
-              </h3>
-              <p className="text-[var(--muted)]">
-                {t('features.assessments.desc')}
-              </p>
-            </Card>
+                <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
+                  {t('features.assessments.title')}
+                </h3>
+                <p className="text-[var(--muted)]">
+                  {t('features.assessments.desc')}
+                </p>
+              </Card>
+            </motion.div>
 
-            <Card className="p-8 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="bg-green-100 p-4 rounded-full">
-                  <MessageCircle className="h-8 w-8 text-[var(--success-600)]" />
+            <motion.div variants={fadeInUp} transition={springMd}>
+              <Card className="p-8 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-green-100 p-4 rounded-full">
+                    <MessageCircle className="h-8 w-8 text-[var(--success-600)]" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
-                {t('features.chat.title')}
-              </h3>
-              <p className="text-[var(--muted)]">
-                {t('features.chat.desc')}
-              </p>
-            </Card>
-          </div>
+                <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
+                  {t('features.chat.title')}
+                </h3>
+                <p className="text-[var(--muted)]">
+                  {t('features.chat.desc')}
+                </p>
+              </Card>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </MotionSection>
 
-      <section id="demo-section" className="py-20 bg-gray-50">
+      <MotionSection as="section" id="demo-section" className="py-20 bg-gray-50" variant="fadeUp">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[var(--text)] mb-4">
@@ -130,7 +145,7 @@ export function LandingPage() {
           </div>
           <DemoDashboard />
         </div>
-      </section>
+      </MotionSection>
 
       <footer className="bg-[var(--card)] border-t border-[var(--line)] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -3,9 +3,11 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { DateTime, Interval } from 'luxon'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
 import { toast } from '../hooks/use-toast'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
+import { springMd } from '../lib/anim'
 import { Toaster } from './ui/toaster'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -1016,7 +1018,12 @@ return (
   <div className="min-h-screen bg-[#F7F7F9]">
     <Toaster />
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pb-16 pt-6 md:px-6">
-        <section className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
+        <motion.section 
+          className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springMd}
+        >
           <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-6">
               <div>
@@ -1060,10 +1067,15 @@ return (
               {t('sched_refresh')}
             </Button>
           </div>
-        </section>
+        </motion.section>
 
         <section className="grid gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-6 lg:col-span-8">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...springMd, delay: 0.1 }}
+            >
             <Card className="rounded-2xl border border-[#E5E7EB] bg-white/80 backdrop-blur-md shadow-md">
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -1308,10 +1320,16 @@ return (
                 )}
               </CardContent>
             </Card>
+            </motion.div>
           </div>
 
           <div className="flex flex-col gap-6 lg:col-span-4">
-            <div className="sticky top-6 flex flex-col gap-6">
+            <motion.div
+              className="sticky top-6 flex flex-col gap-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...springMd, delay: 0.15 }}
+            >
               <Card className="rounded-2xl border border-[#E5E7EB] bg-white/90 backdrop-blur-lg shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-[18px] font-semibold leading-6 text-[#0F172A]">
@@ -1495,7 +1513,7 @@ return (
                   )}
                 </CardContent>
               </Card>
-            </div>
+            </motion.div>
           </div>
         </section>
       </main>

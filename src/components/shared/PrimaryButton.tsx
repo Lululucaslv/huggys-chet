@@ -1,7 +1,11 @@
 import { cn } from '../../lib/utils'
 import { ButtonHTMLAttributes } from 'react'
+import { motion } from 'framer-motion'
 
-interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface PrimaryButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>, 
+  'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onDragEnter' | 'onDragExit' | 'onDragLeave' | 'onDragOver'
+> {
   size?: 'sm' | 'md'
   loading?: boolean
 }
@@ -15,9 +19,10 @@ export function PrimaryButton({
   ...props 
 }: PrimaryButtonProps) {
   return (
-    <button
-      {...props}
+    <motion.button
       disabled={disabled || loading}
+      whileHover={!(disabled || loading) ? { y: -1 } : undefined}
+      whileTap={!(disabled || loading) ? { scale: 0.98 } : undefined}
       className={cn(
         "group relative px-5 rounded-xl font-medium text-white",
         "bg-[var(--brand-600)] hover:bg-[var(--brand-500)]",
@@ -29,6 +34,7 @@ export function PrimaryButton({
         size === 'sm' && "h-10",
         className
       )}
+      {...props}
     >
       <span className={cn(
         "absolute inset-0 rounded-xl pointer-events-none opacity-0",
@@ -45,6 +51,6 @@ export function PrimaryButton({
           {children}
         </>
       ) : children}
-    </button>
+    </motion.button>
   )
 }

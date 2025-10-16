@@ -11,6 +11,8 @@ import { toLocal, fmt } from "../lib/tz";
 import { useTranslation } from "react-i18next";
 import { Calendar } from "lucide-react";
 import { getTzPref } from "../lib/tzPref";
+import { motion } from "framer-motion";
+import { stagger, fadeInUp, springMd } from "../lib/anim";
 
 const DEFAULT_THERAPIST_CODE = "FAGHT34X";
 
@@ -101,7 +103,12 @@ export default function Bookings() {
         )}
 
         {!loading && !error && items.length > 0 && (
-          <div className="space-y-4">
+          <motion.div 
+            className="space-y-4"
+            variants={stagger(0.08)}
+            initial="hidden"
+            animate="show"
+          >
             {items.map(booking => {
               const local = toLocal(booking.startUTC, tz);
               const end = toLocal(booking.endUTC, tz);
@@ -109,8 +116,10 @@ export default function Bookings() {
               const time = local && end ? `${fmt(local, "HH:mm")} - ${fmt(end, "HH:mm")}` : "—";
               
               return (
-                <div
+                <motion.div
                   key={booking.id}
+                  variants={fadeInUp}
+                  transition={springMd}
                   className="rounded-[var(--radius-card)] border border-[var(--line)] p-6 bg-[var(--card)]"
                 >
                   <div className="flex items-start justify-between">
@@ -140,10 +149,10 @@ export default function Bookings() {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </main>
 

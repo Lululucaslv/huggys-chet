@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { AssessmentStart } from "../components/assessments/AssessmentStart";
 import { AssessmentForm } from "../components/assessments/AssessmentForm";
 import { AssessmentResult } from "../components/assessments/AssessmentResult";
+import MotionSection from "../components/MotionSection";
 
 export default function Tests() {
   return (
@@ -12,13 +13,13 @@ export default function Tests() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <MotionSection as="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" variant="fadeUp">
         <Routes>
           <Route index element={<AssessmentStart />} />
           <Route path=":type" element={<AssessmentForm />} />
           <Route path=":type/result" element={<AssessmentResult />} />
         </Routes>
-      </main>
+      </MotionSection>
     </div>
   );
 }

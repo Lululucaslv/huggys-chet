@@ -7,6 +7,9 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { Settings, LogOut } from "lucide-react";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import { motion } from 'framer-motion';
+import MotionSection from "../components/MotionSection";
+import { fadeInUp, springMd } from "../lib/anim";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -52,7 +55,7 @@ export default function Dashboard() {
         </div>
       </header>
       <div className="mx-auto max-w-[1200px] px-6 py-6 grid grid-cols-12 gap-6">
-      <section className="col-span-12 lg:col-span-8 space-y-6">
+      <MotionSection as="section" className="col-span-12 lg:col-span-8 space-y-6" variant="fadeUp">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[var(--brand-600)]" />
           <div>
@@ -63,12 +66,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <UpcomingList />
-        <AssessmentsSection />
-        <ContinueChatCard />
-      </section>
+        <motion.div variants={fadeInUp} transition={springMd}>
+          <UpcomingList />
+        </motion.div>
+        <motion.div variants={fadeInUp} transition={springMd}>
+          <AssessmentsSection />
+        </motion.div>
+        <motion.div variants={fadeInUp} transition={springMd}>
+          <ContinueChatCard />
+        </motion.div>
+      </MotionSection>
 
-      <aside className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-6 h-fit">
+      <MotionSection as="aside" className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-6 h-fit" variant="fadeUp" delay={0.1}>
         <div className="rounded-[var(--radius-card)] border border-[var(--line)] p-4 bg-[var(--card)]">
           <div className="font-medium mb-2">Today</div>
           <div className="text-sm text-[var(--muted)]">No events today.</div>
@@ -83,7 +92,7 @@ export default function Dashboard() {
             your local hotline.
           </p>
         </div>
-      </aside>
+      </MotionSection>
     </div>
     </div>
   );
