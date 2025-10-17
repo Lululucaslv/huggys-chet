@@ -52,9 +52,9 @@ export function LandingPage() {
         </div>
       </header>
 
-      <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }} variant="fadeUp">
-        <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/60 via-black/50 to-black/60"></div>
+      <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32" variant="fadeUp">
         <GradientBG />
+        <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/30 via-black/20 to-black/30"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
             <motion.h1 
