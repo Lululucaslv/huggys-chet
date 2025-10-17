@@ -8,7 +8,7 @@ import { useGateStore } from '../lib/useAuthGate'
 import { motion } from 'framer-motion'
 import MotionSection from '../components/MotionSection'
 import { stagger, fadeInUp, springMd } from '../lib/anim'
-import HeroTitleWave from '../components/hero/HeroTitleWave'
+import MultiWaveToTextTitle from '../components/hero/MultiWaveToTextTitle'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -53,10 +53,9 @@ export function LandingPage() {
       </header>
 
       <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }} variant="fadeUp">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black/70"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
-            <HeroTitleWave phrase={t('hero.title')} />
+            <MultiWaveToTextTitle phrase={t('hero.title')} />
             <motion.p
               className="text-xl text-white/90 mb-10 max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 12 }}
