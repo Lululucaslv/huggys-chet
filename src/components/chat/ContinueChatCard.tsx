@@ -30,7 +30,7 @@ export function ContinueChatCard() {
   return (
     <div className="rounded-[var(--radius-card)] border border-[var(--line)] p-4 bg-[var(--card)]">
       <div className="text-sm text-[var(--muted)] mb-1">Continue chat</div>
-      <div className="font-medium">{data.title}</div>
+      <div className="font-medium">{data.title}<span className="typing ml-1 text-gray-400" /></div>
       <p className="text-sm text-[var(--muted)] mt-1 line-clamp-2">
         {data.snippet}
       </p>

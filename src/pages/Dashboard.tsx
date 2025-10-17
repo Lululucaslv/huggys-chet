@@ -55,16 +55,21 @@ export default function Dashboard() {
         </div>
       </header>
       <div className="mx-auto max-w-[1200px] px-6 py-6 grid grid-cols-12 gap-6">
-      <MotionSection as="section" className="col-span-12 lg:col-span-8 space-y-6" variant="fadeUp">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--brand-600)]" />
+      <MotionSection as="section" className="col-span-12 lg:col-span-8 space-y-6" variant="fade">
+        <motion.div 
+          className="flex items-center gap-3"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="w-10 h-10 rounded-xl bg-[var(--brand-600)]" style={{ animation: 'float 3s ease-in-out infinite' }} />
           <div>
             <div className="font-semibold">Hi, there</div>
             <div className="text-sm text-[var(--muted)]">
               Times shown in your timezone.
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <motion.div variants={fadeInUp} transition={springMd}>
           <UpcomingList />

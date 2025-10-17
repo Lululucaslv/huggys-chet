@@ -8,6 +8,7 @@ import { useGateStore } from '../lib/useAuthGate'
 import { motion } from 'framer-motion'
 import MotionSection from '../components/MotionSection'
 import { stagger, fadeInUp, springMd } from '../lib/anim'
+import GradientBG from '../components/effects/GradientBG'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -52,19 +53,37 @@ export function LandingPage() {
       </header>
 
       <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }} variant="fadeUp">
+        <GradientBG />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black/70"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6">
-              {t('hero.title')}
-            </h1>
-            <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
+            <motion.h1 
+              className="text-4xl sm:text-6xl font-bold text-white mb-6"
+              variants={stagger(0.05)}
+              initial="hidden"
+              animate="show"
+            >
+              {t('hero.title').split('').map((ch, i) => (
+                <motion.span key={i} variants={fadeInUp} transition={springMd}>
+                  {ch === ' ' ? '\u00A0' : ch}
+                </motion.span>
+              ))}
+            </motion.h1>
+            <motion.p 
+              className="text-xl text-white/90 mb-10 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               {t('hero.subtitle')}
-            </p>
+            </motion.p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <PrimaryButton onClick={handleSignupClick} className="text-lg px-8 py-3">
-                {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
-              </PrimaryButton>
+              <div className="relative">
+                <PrimaryButton onClick={handleSignupClick} className="text-lg px-8 py-3 relative z-10">
+                  {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
+                </PrimaryButton>
+                <span className="motion-only absolute inset-0 rounded-xl blur-2xl opacity-40 pointer-events-none" style={{ animation: 'pulseSoft 3s ease-in-out infinite', background: 'radial-gradient(circle,#60a5fa33,#34d39922,#0000)' }} />
+              </div>
               <SecondaryButton onClick={scrollToDemoSection} className="text-lg px-8 py-3">
                 {t('hero.ctaDemo')}
               </SecondaryButton>
@@ -73,7 +92,7 @@ export function LandingPage() {
         </div>
       </MotionSection>
 
-      <MotionSection as="section" className="py-20 bg-[var(--bg)]" variant="fade">
+      <MotionSection as="section" className="py-20 bg-gradient-to-b from-white to-sky-50/40" variant="fade">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             className="grid md:grid-cols-3 gap-8"
@@ -82,11 +101,11 @@ export function LandingPage() {
             whileInView="show"
             viewport={{ once: true }}
           >
-            <motion.div variants={fadeInUp} transition={springMd}>
-              <Card className="p-8 text-center">
+            <motion.div variants={fadeInUp} transition={springMd} whileHover={{ y: -4 }}>
+              <Card className="p-8 text-center hover:shadow-xl transition-all duration-300 will-change-transform">
                 <div className="flex justify-center mb-4">
                   <div className="bg-blue-100 p-4 rounded-full">
-                    <Calendar className="h-8 w-8 text-[var(--brand-600)]" />
+                    <Calendar className="h-8 w-8 text-[var(--brand-600)]" style={{ animation: 'float 3s ease-in-out infinite' }} />
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
@@ -98,11 +117,11 @@ export function LandingPage() {
               </Card>
             </motion.div>
 
-            <motion.div variants={fadeInUp} transition={springMd}>
-              <Card className="p-8 text-center">
+            <motion.div variants={fadeInUp} transition={springMd} whileHover={{ y: -4 }}>
+              <Card className="p-8 text-center hover:shadow-xl transition-all duration-300 will-change-transform">
                 <div className="flex justify-center mb-4">
                   <div className="bg-purple-100 p-4 rounded-full">
-                    <ClipboardList className="h-8 w-8 text-[var(--accent-500)]" />
+                    <ClipboardList className="h-8 w-8 text-[var(--accent-500)]" style={{ animation: 'float 3s ease-in-out infinite', animationDelay: '0.3s' }} />
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
@@ -114,11 +133,11 @@ export function LandingPage() {
               </Card>
             </motion.div>
 
-            <motion.div variants={fadeInUp} transition={springMd}>
-              <Card className="p-8 text-center">
+            <motion.div variants={fadeInUp} transition={springMd} whileHover={{ y: -4 }}>
+              <Card className="p-8 text-center hover:shadow-xl transition-all duration-300 will-change-transform">
                 <div className="flex justify-center mb-4">
                   <div className="bg-green-100 p-4 rounded-full">
-                    <MessageCircle className="h-8 w-8 text-[var(--success-600)]" />
+                    <MessageCircle className="h-8 w-8 text-[var(--success-600)]" style={{ animation: 'float 3s ease-in-out infinite', animationDelay: '0.6s' }} />
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-[var(--text)] mb-3">
@@ -133,8 +152,9 @@ export function LandingPage() {
         </div>
       </MotionSection>
 
-      <MotionSection as="section" id="demo-section" className="py-20 bg-gray-50" variant="fadeUp">
+      <MotionSection as="section" id="demo-section" className="py-20 bg-gradient-to-tr from-sky-50 to-white" variant="fadeUp">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-24 bg-gradient-to-t from-white/70 to-transparent blur-md mb-12" />
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[var(--text)] mb-4">
               {t('landing.demoTitle')}

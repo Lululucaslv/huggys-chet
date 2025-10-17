@@ -1368,7 +1368,7 @@ return (
                         type="datetime-local"
                         value={formDraft.start}
                         onChange={(event) => handleStartChange(event.target.value)}
-                        className="rounded-xl border-[#E5E7EB]"
+                        className="rounded-xl border-[#E5E7EB] focus:outline-none focus:ring-2 ring-sky-300 ring-offset-1"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1397,7 +1397,7 @@ return (
                         type="datetime-local"
                         value={formDraft.end}
                         onChange={(event) => handleEndChange(event.target.value)}
-                        className="rounded-xl border-[#E5E7EB]"
+                        className="rounded-xl border-[#E5E7EB] focus:outline-none focus:ring-2 ring-sky-300 ring-offset-1"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1610,6 +1610,7 @@ return (
                   id="edit-start"
                   type="datetime-local"
                   defaultValue={editDialog.cellStart.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
+                  className="focus:outline-none focus:ring-2 ring-sky-300 ring-offset-1"
                 />
               </div>
               <div className="space-y-2">
@@ -1618,6 +1619,7 @@ return (
                   id="edit-end"
                   type="datetime-local"
                   defaultValue={editDialog.cellEnd.setZone(timezone).toFormat("yyyy-MM-dd'T'HH:mm")}
+                  className="focus:outline-none focus:ring-2 ring-sky-300 ring-offset-1"
                 />
               </div>
             </div>

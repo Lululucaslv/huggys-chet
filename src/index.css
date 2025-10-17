@@ -41,7 +41,55 @@
   }
 }
 
+/* ----- gradient background flow ----- */
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ----- pulsing / breathing glow ----- */
+@keyframes pulseSoft {
+  0%, 100% { opacity: .7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* ----- floating icon ----- */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ----- loading shimmer ----- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 37%, rgba(0,0,0,0.04) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ----- typing dots (… ) ----- */
+.typing::after {
+  content: ' ';
+  width: 1ch;
+  display: inline-block;
+  text-align: left;
+  animation: typingDots 1.4s steps(4, end) infinite;
+}
+@keyframes typingDots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}
+
+/* reduced motion helper */
 @media (prefers-reduced-motion: reduce) {
+  .motion-only { display: none !important; }
   .motion-safe\:hidden {
     display: none !important;
   }
