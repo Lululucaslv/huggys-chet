@@ -54,17 +54,15 @@ export function LandingPage() {
       </header>
 
       <section className="relative overflow-hidden py-24 md:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }}>
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-[1]">
-          <div className="relative">
-            <HeroScrim strength={0.36} />
-            <h1 className="sr-only">{t('hero.title')}</h1>
-            <MultiWaveToTextTitle phrase={t('hero.title')} fontSize={64} fontSizeSm={38} />
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 top-[26%] z-[1]">
+          <HeroScrim strength={0.36} />
+          <h1 className="sr-only">{t('hero.title')}</h1>
+          <MultiWaveToTextTitle phrase={t('hero.title')} fontSize={64} fontSizeSm={38} />
         </div>
 
-        <div className="container mx-auto px-6 text-center relative z-[2] mt-10">
+        <div className="container mx-auto px-6 text-center relative z-[2]">
           <motion.p
-            className="text-xl text-white/90 mb-10 max-w-2xl mx-auto"
+            className="mt-6 text-lg text-white/90 max-w-2xl mx-auto mb-10"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
