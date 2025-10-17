@@ -9,7 +9,6 @@ import { motion } from 'framer-motion'
 import MotionSection from '../components/MotionSection'
 import { stagger, fadeInUp, springMd } from '../lib/anim'
 import MultiWaveToTextTitle from '../components/hero/MultiWaveToTextTitle'
-import HeroScrim from '../components/hero/HeroScrim'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -53,32 +52,35 @@ export function LandingPage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden py-24 md:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }}>
-        <div className="pointer-events-none absolute inset-x-0 top-[26%] z-[1]">
-          <HeroScrim strength={0.36} />
-          <h1 className="sr-only">{t('hero.title')}</h1>
-          <MultiWaveToTextTitle phrase={t('hero.title')} fontSize={64} fontSizeSm={38} />
-        </div>
-
-        <div className="container mx-auto px-6 text-center relative z-[2]">
-          <motion.p
-            className="mt-6 text-lg text-white/90 max-w-2xl mx-auto mb-10"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            {t('hero.subtitle')}
-          </motion.p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <div className="relative">
-              <PrimaryButton onClick={handleSignupClick} className="text-lg px-8 py-3 relative z-10">
-                {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
-              </PrimaryButton>
-              <span className="motion-only absolute inset-0 rounded-xl blur-2xl opacity-40 pointer-events-none" style={{ animation: 'pulseSoft 3s ease-in-out infinite', background: 'radial-gradient(circle,#60a5fa33,#34d39922,#0000)' }} />
+      <section className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }}>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black/70"></div>
+        <div className="relative z-10">
+          <div className="text-center mb-6">
+            <h1 className="sr-only">{t('hero.title')}</h1>
+            <MultiWaveToTextTitle phrase={t('hero.title')} fontSize={64} fontSizeSm={38} />
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <motion.p
+                className="text-xl text-white/90 mb-10 max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                {t('hero.subtitle')}
+              </motion.p>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <div className="relative">
+                  <PrimaryButton onClick={handleSignupClick} className="text-lg px-8 py-3 relative z-10">
+                    {t('hero.ctaStart')} <ArrowRight className="ml-2 h-5 w-5" />
+                  </PrimaryButton>
+                  <span className="motion-only absolute inset-0 rounded-xl blur-2xl opacity-40 pointer-events-none" style={{ animation: 'pulseSoft 3s ease-in-out infinite', background: 'radial-gradient(circle,#60a5fa33,#34d39922,#0000)' }} />
+                </div>
+                <SecondaryButton onClick={scrollToDemoSection} className="text-lg px-8 py-3">
+                  {t('hero.ctaDemo')}
+                </SecondaryButton>
+              </div>
             </div>
-            <SecondaryButton onClick={scrollToDemoSection} className="text-lg px-8 py-3">
-              {t('hero.ctaDemo')}
-            </SecondaryButton>
           </div>
         </div>
       </section>
