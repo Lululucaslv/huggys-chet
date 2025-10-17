@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { TimeConfirmCard } from '../components/chat/TimeConfirmCard'
+import { motion, AnimatePresence } from 'framer-motion'
+import { fadeInUp, springMd, stagger } from '../lib/anim'
 
 
 interface ChatMessage {
@@ -467,7 +469,12 @@ export default function ChatPage({ session }: ChatPageProps) {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto space-y-6">
             {messages.length === 0 && (
-              <div className="text-center py-8">
+              <motion.div 
+                className="text-center py-8"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={springMd}
+              >
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-3xl">🤗</span>
                 </div>
@@ -486,17 +493,25 @@ export default function ChatPage({ session }: ChatPageProps) {
                     <p className="text-slate-300 mt-6">{t('chat_intro_closing')}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
             )}
             
+            <AnimatePresence initial={false}>
             {messages.map((message) => {
               try {
                 const obj = JSON.parse(message.content || '')
                 if (obj && obj.type === 'TIME_CONFIRM') {
                   const p = obj.payload || {}
                   return (
-                    <div key={message.id} className="flex items-start gap-4">
+                    <motion.div 
+                      key={message.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={springMd}
+                      className="flex items-start gap-4"
+                    >
                       <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-white text-sm">🤗</span>
                       </div>
@@ -523,13 +538,17 @@ export default function ChatPage({ session }: ChatPageProps) {
                           onCancel={() => {}}
                         />
                       </div>
-                    </div>
+                    </motion.div>
                   )
                 }
               } catch {}
               return (
-                <div
+                <motion.div
                   key={message.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={springMd}
                   className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   {message.role === 'assistant' && (
@@ -555,84 +574,135 @@ export default function ChatPage({ session }: ChatPageProps) {
                       <span className="text-white text-sm">👤</span>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )
             })}
+            </AnimatePresence>
             
             {isTyping && (
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 animate-spin">
+              <motion.div 
+                className="flex items-start gap-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={springMd}
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse">
                   <span className="text-white text-sm">🤗</span>
                 </div>
                 <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 px-6 py-4 rounded-2xl rounded-bl-md flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
                   <span className="text-slate-100">{t('chat_thinking')}</span>
                 </div>
-              </div>
+              </motion.div>
             )}
             {slotOptions && slotOptions.slots?.length > 0 && (
-              <div className="mt-4 mb-2">
+              <motion.div 
+                className="mt-4 mb-2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={springMd}
+              >
                 <div className="text-slate-300 text-sm mb-2">{t('chat_choose_slot')}</div>
-                <div className="flex flex-wrap gap-2">
+                <motion.div 
+                  className="flex flex-wrap gap-2"
+                  variants={stagger(0.05)}
+                  initial="hidden"
+                  animate="show"
+                >
                   {slotOptions.slots.map((s) => (
-                    <button
+                    <motion.button
                       key={s.id || s.startTime}
+                      variants={fadeInUp}
+                      transition={springMd}
                       onClick={() => handleBookSlot(slotOptions.therapistName, s)}
                       disabled={isTyping}
+                      whileHover={!isTyping ? { scale: 1.02, y: -1 } : undefined}
+                      whileTap={!isTyping ? { scale: 0.98 } : undefined}
                       className="px-3 py-2 bg-cyan-700/80 hover:bg-cyan-600 backdrop-blur-sm border border-cyan-400/30 text-white rounded-md text-sm transition-colors"
                     >
                       {slotOptions.therapistName
                         ? `${slotOptions.therapistName} — ${new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}`
                         : new Date(s.startTime).toLocaleString((i18n.resolvedLanguage === 'zh' ? 'zh-CN' : i18n.resolvedLanguage || 'en') as any, { hour12: false })}
-                    </button>
+                    </motion.button>
                   ))}
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             )}
             <div ref={messagesEndRef} />
           </div>
           
           {/* Quick Reply Buttons */}
           {messages.length === 0 && (
-            <div className="px-6 pb-4">
+            <motion.div 
+              className="px-6 pb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ ...springMd, delay: 0.2 }}
+            >
               <div className="text-center">
                 <small className="text-slate-400 block mb-4">{t('chat_quick_user_label')}</small>
-                <div className="flex flex-wrap justify-center gap-3 mb-4">
-                  <button 
+                <motion.div 
+                  className="flex flex-wrap justify-center gap-3 mb-4"
+                  variants={stagger(0.08)}
+                  initial="hidden"
+                  animate="show"
+                >
+                  <motion.button 
+                    variants={fadeInUp}
+                    transition={springMd}
                     onClick={() => handleQuickReply(t('chat_quick_feeling_tired'))}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_feeling_tired')}
-                  </button>
-                  <button 
+                  </motion.button>
+                  <motion.button 
+                    variants={fadeInUp}
+                    transition={springMd}
                     onClick={() => handleQuickReply(t('chat_quick_want_chat'))}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_want_chat')}
-                  </button>
-                  <button 
+                  </motion.button>
+                  <motion.button 
+                    variants={fadeInUp}
+                    transition={springMd}
                     onClick={() => handleQuickReply(t('chat_quick_share_today'))}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_share_today')}
-                  </button>
-                  <button 
+                  </motion.button>
+                  <motion.button 
+                    variants={fadeInUp}
+                    transition={springMd}
                     onClick={() => handleQuickReply(t('chat_quick_worried'))}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600/80 backdrop-blur-sm border border-slate-600/50 text-white rounded-full text-sm transition-colors"
                   >
                     {t('chat_quick_worried')}
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
           )}
           
           {/* Input Area */}
           <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-sm p-6">
             <div className="flex gap-4 items-end">
-              <button className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 backdrop-blur-sm border border-amber-400/30 rounded-full transition-all duration-300 hover:scale-110">
+              <motion.button 
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 backdrop-blur-sm border border-amber-400/30 rounded-full transition-all duration-300"
+              >
                 <Camera className="w-5 h-5 text-white" />
-              </button>
+              </motion.button>
               <div className="flex-1">
                 <textarea
                   value={inputMessage}
@@ -652,13 +722,15 @@ export default function ChatPage({ session }: ChatPageProps) {
                   <span>🔒 {t('chat_privacy_notice')}</span>
                 </div>
               </div>
-              <button 
+              <motion.button 
                 onClick={sendMessage} 
                 disabled={isTyping || !inputMessage.trim()}
-                className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:bg-slate-600 disabled:opacity-50 backdrop-blur-sm border border-cyan-400/30 rounded-full transition-all duration-300 hover:scale-110"
+                whileHover={!(isTyping || !inputMessage.trim()) ? { scale: 1.1, rotate: -5 } : undefined}
+                whileTap={!(isTyping || !inputMessage.trim()) ? { scale: 0.95 } : undefined}
+                className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 disabled:bg-slate-600 disabled:opacity-50 backdrop-blur-sm border border-cyan-400/30 rounded-full transition-all duration-300"
               >
                 <Send className="h-5 w-5 text-white" />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>

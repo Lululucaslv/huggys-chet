@@ -6,6 +6,8 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import TherapistCodeDisplay from '../components/fragments/TherapistCodeDisplay'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { fadeInUp, springMd, stagger } from '../lib/anim'
 
 export default function SettingsPage({ session }: { session: Session }) {
   const { t } = useTranslation()
@@ -60,44 +62,53 @@ export default function SettingsPage({ session }: { session: Session }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings_profile') || 'Profile'}</CardTitle>
-          <CardDescription>{t('settings_profile_desc') || 'Update your public display information'}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {notice && <div className="text-sm text-gray-600">{notice}</div>}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t('nickname') || 'Nickname'}</label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t('therapist_code') || 'Therapist code'}</label>
-            <div className="text-gray-900"><TherapistCodeDisplay userId={session.user.id} /></div>
-          </div>
-          <Button onClick={saveProfile} disabled={saving}>{saving ? (t('saving') || 'Saving...') : (t('save') || 'Save')}</Button>
-        </CardContent>
-      </Card>
+    <motion.div 
+      className="max-w-3xl mx-auto space-y-6"
+      variants={stagger(0.1)}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={fadeInUp} transition={springMd}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings_profile') || 'Profile'}</CardTitle>
+            <CardDescription>{t('settings_profile_desc') || 'Update your public display information'}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {notice && <div className="text-sm text-gray-600">{notice}</div>}
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">{t('nickname') || 'Nickname'}</label>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">{t('therapist_code') || 'Therapist code'}</label>
+              <div className="text-gray-900"><TherapistCodeDisplay userId={session.user.id} /></div>
+            </div>
+            <Button onClick={saveProfile} disabled={saving}>{saving ? (t('saving') || 'Saving...') : (t('save') || 'Save')}</Button>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings_security') || 'Security'}</CardTitle>
-          <CardDescription>{t('settings_security_desc') || 'Update your password'}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {pwNotice && <div className="text-sm text-gray-600">{pwNotice}</div>}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t('new_password') || 'New password'}</label>
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t('confirm_password') || 'Confirm password'}</label>
-            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-          </div>
-          <Button onClick={changePassword} disabled={pwSaving}>{pwSaving ? (t('saving') || 'Saving...') : (t('change_password') || 'Change password')}</Button>
-        </CardContent>
-      </Card>
-    </div>
+      <motion.div variants={fadeInUp} transition={springMd}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings_security') || 'Security'}</CardTitle>
+            <CardDescription>{t('settings_security_desc') || 'Update your password'}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pwNotice && <div className="text-sm text-gray-600">{pwNotice}</div>}
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">{t('new_password') || 'New password'}</label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">{t('confirm_password') || 'Confirm password'}</label>
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            </div>
+            <Button onClick={changePassword} disabled={pwSaving}>{pwSaving ? (t('saving') || 'Saving...') : (t('change_password') || 'Change password')}</Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   )
 }
