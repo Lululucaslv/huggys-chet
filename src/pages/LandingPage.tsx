@@ -8,7 +8,7 @@ import { useGateStore } from '../lib/useAuthGate'
 import { motion } from 'framer-motion'
 import MotionSection from '../components/MotionSection'
 import { stagger, fadeInUp, springMd } from '../lib/anim'
-import GradientBG from '../components/effects/GradientBG'
+import HeroTitleWave from '../components/hero/HeroTitleWave'
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -52,24 +52,12 @@ export function LandingPage() {
         </div>
       </header>
 
-      <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32" variant="fadeUp">
-        <GradientBG />
-        <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/30 via-black/20 to-black/30"></div>
+      <MotionSection as="section" className="relative overflow-hidden py-20 sm:py-32 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/hero-background.png)' }} variant="fadeUp">
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black/70"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
-            <motion.h1 
-              className="text-4xl sm:text-6xl font-bold text-white mb-6"
-              variants={stagger(0.05)}
-              initial="hidden"
-              animate="show"
-            >
-              {t('hero.title').split('').map((ch, i) => (
-                <motion.span key={i} variants={fadeInUp} transition={springMd}>
-                  {ch === ' ' ? '\u00A0' : ch}
-                </motion.span>
-              ))}
-            </motion.h1>
-            <motion.p 
+            <HeroTitleWave phrase={t('hero.title')} />
+            <motion.p
               className="text-xl text-white/90 mb-10 max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
