@@ -426,18 +426,18 @@ export default async function handler(req, res) {
 
     const payload = { message: userMessage, context: { browserTz, lang } };
     try {
-      const resp = await openai.responses.create(
+      const resp = await openai.chat.completions.create(
         {
           model: "gpt-4o",
-          input: [
+          messages: [
             { role: "system", content: SYSTEM_PROMPT_USER },
             { role: "user", content: JSON.stringify(payload) }
           ],
-          max_output_tokens: 600
+          max_tokens: 600
         },
         { timeout: 12000 }
       );
-      const text = resp.output_text ?? (resp.output?.[0]?.content?.[0]?.text ?? "");
+      const text = resp.choices?.[0]?.message?.content ?? "";
       return res.status(200).json(compat(text || "我在这，愿意听你说说。", []));
     } catch {
       const fallback = lang.startsWith("zh")
